@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Models and artifacts
+models/*.joblib
+models/*.pkl
+models/*.pt
+
+# Reports
+reports/*.pdf
+reports/*.csv
+reports/figures/*.png
+
+# Notebooks
+*.ipynb_checkpoints/
