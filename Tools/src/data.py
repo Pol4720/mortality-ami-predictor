@@ -34,7 +34,7 @@ SUPPORTED_EXT = {".csv", ".parquet", ".feather"}
 
 
 def load_dataset(path: Optional[str] = None) -> pd.DataFrame:
-    """Load dataset from a file path. Supports CSV, Parquet, Feather.
+    """Load dataset from a file path. Supports CSV, Parquet, Feather, Excel (.xlsx, .xls).
 
     Args:
         path: Path to file. If None, uses CONFIG.dataset_path.
@@ -46,16 +46,40 @@ def load_dataset(path: Optional[str] = None) -> pd.DataFrame:
         validate_config(CONFIG)
         path = CONFIG.dataset_path
 
+    if not path or not os.path.exists(path):
+        raise FileNotFoundError(f"Dataset path not found: {path}")
+
     ext = os.path.splitext(path)[1].lower()
-    if ext not in SUPPORTED_EXT:
-        raise ValueError(f"Unsupported dataset extension '{ext}'. Supported: {SUPPORTED_EXT}")
+    accepted_ext = set(SUPPORTED_EXT) | {".xlsx", ".xls"}
+
+    if ext not in accepted_ext:
+        raise ValueError(f"Unsupported dataset extension '{ext}'. Supported: {sorted(accepted_ext)}")
 
     if ext == ".csv":
         df = pd.read_csv(path)
     elif ext == ".parquet":
         df = pd.read_parquet(path)
-    else:
+    elif ext == ".feather":
         df = pd.read_feather(path)
+    elif ext in {".xlsx", ".xls"}:
+        # Prefer explicit engine for .xlsx to use openpyxl if installed
+        try:
+            if ext == ".xlsx":
+                df = pd.read_excel(path, engine="openpyxl")
+            else:
+                # .xls typically requires xlrd (<2.0). Let pandas choose default engine.
+                df = pd.read_excel(path)
+        except ImportError as e:
+            if ext == ".xlsx":
+                raise ImportError(
+                    "Reading .xlsx files requires 'openpyxl'. Install via: pip install openpyxl"
+                ) from e
+            else:
+                raise ImportError(
+                    "Reading .xls files requires 'xlrd<2.0'. Install via: pip install xlrd==1.2.0"
+                ) from e
+    else:
+        raise ValueError(f"Unhandled extension: {ext}")
 
     return df
 
