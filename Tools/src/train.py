@@ -172,6 +172,99 @@ def fit_and_save_best_classifier(
     return save_path, best_model
 
 
+def fit_and_save_selected_classifiers(
+    X: pd.DataFrame,
+    y: pd.Series,
+    selected_models: List[str],
+    quick: bool = False,
+    task_name: str = "mortality",
+    imputer_mode: str = "iterative",
+    progress_callback: Optional[Callable[[str, float], None]] = None,
+) -> Dict[str, str]:
+    """Train only selected classifiers; save each refit model and a summary.
+
+    Returns a dict model_name -> save_path. Also saves the best overall as best_classifier_{task}.joblib
+    """
+    pre, _ = build_preprocess_pipelines(X, imputer_mode=imputer_mode)
+    all_models = make_classifiers()
+    models = {k: v for k, v in all_models.items() if k in selected_models}
+    if not models:
+        raise ValueError("No hay modelos seleccionados para entrenar.")
+
+    outer_splits = 3 if not quick else 2
+    inner_splits = 3 if not quick else 2
+    inner_iter = 10 if not quick else 4
+    outer_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=RANDOM_SEED)
+
+    model_scores: Dict[str, float] = {}
+    total = len(models)
+    for idx, (name, (clf, grid)) in enumerate(models.items(), start=1):
+        if progress_callback:
+            progress_callback(f"Evaluando (CV externa) modelo: {name}", (idx - 1) / max(1, total))
+        scores: List[float] = []
+        for fold_idx, (tr, va) in enumerate(outer_cv.split(X, y)):
+            X_tr, X_va = X.iloc[tr], X.iloc[va]
+            y_tr, y_va = y.iloc[tr], y.iloc[va]
+            pipe = ImbPipeline(steps=[("pre", pre), ("smote", SMOTE(random_state=RANDOM_SEED)), ("clf", clf)]) if (ImbPipeline and SMOTE) else Pipeline(steps=[("pre", pre), ("clf", clf)])
+            search = RandomizedSearchCV(
+                pipe,
+                param_distributions={f"clf__{k}": v for k, v in grid.items()},
+                n_iter=inner_iter,
+                cv=StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=RANDOM_SEED),
+                scoring="roc_auc",
+                n_jobs=-1,
+                random_state=RANDOM_SEED + fold_idx,
+                refit=True,
+                verbose=0,
+            )
+            search.fit(X_tr, y_tr)
+            prob_va = search.best_estimator_.predict_proba(X_va)[:, 1]
+            scores.append(roc_auc_score(y_va, prob_va))
+            if progress_callback:
+                frac = (idx - 1 + (fold_idx + 1) / outer_splits) / max(1, total)
+                progress_callback(f"{name}: fold {fold_idx+1}/{outer_splits} AUROC={scores[-1]:.3f}", frac)
+        model_scores[name] = float(np.mean(scores)) if scores else -np.inf
+
+    # Refit and save each selected model on full training data
+    save_paths: Dict[str, str] = {}
+    for idx, (name, (clf, grid)) in enumerate(models.items(), start=1):
+        if progress_callback:
+            progress_callback(f"Refit final y guardado: {name}", (idx - 1) / max(1, total))
+        pipe = ImbPipeline(steps=[("pre", pre), ("smote", SMOTE(random_state=RANDOM_SEED)), ("clf", clf)]) if (ImbPipeline and SMOTE) else Pipeline(steps=[("pre", pre), ("clf", clf)])
+        final_search = RandomizedSearchCV(
+            pipe,
+            param_distributions={f"clf__{k}": v for k, v in grid.items()},
+            n_iter=(15 if not quick else 6),
+            cv=StratifiedKFold(n_splits=(3 if not quick else 2), shuffle=True, random_state=RANDOM_SEED),
+            scoring="roc_auc",
+            n_jobs=-1,
+            random_state=RANDOM_SEED,
+            refit=True,
+            verbose=0,
+        )
+        final_search.fit(X, y)
+        model = final_search.best_estimator_
+        path = os.path.join(MODELS_DIR, f"model_{task_name}_{name}.joblib")
+        joblib.dump(model, path)
+        save_paths[name] = path
+
+    # Save summary CSV
+    reports_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports")
+    os.makedirs(reports_dir, exist_ok=True)
+    pd.DataFrame([{"model": k, "outer_mean_auroc": v} for k, v in model_scores.items()]).to_csv(
+        os.path.join(reports_dir, f"training_summary_{task_name}.csv"), index=False
+    )
+
+    # Also save best-of-selected as legacy best_classifier_{task}.joblib
+    best_name = max(model_scores.items(), key=lambda kv: kv[1])[0]
+    best_model = joblib.load(save_paths[best_name])
+    best_path = os.path.join(MODELS_DIR, f"best_classifier_{task_name}.joblib")
+    joblib.dump(best_model, best_path)
+    if progress_callback:
+        progress_callback(f"Mejor modelo: {best_name}", 1.0)
+    return save_paths
+
+
 def train_main(argv: Optional[list] = None) -> None:
     parser = argparse.ArgumentParser(description="Train models for mortality/arrhythmia/regression.")
     parser.add_argument("--data", type=str, default=os.environ.get("DATASET_PATH"), help="Path to dataset file")

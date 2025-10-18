@@ -75,9 +75,13 @@ def build_preprocess_pipelines(
     num_pipe = Pipeline(steps=steps_num)
 
     if categorical_encoding == "onehot":
+        # Preserve empty features to avoid behavior change warnings in scikit-learn >=1.8
         cat_pipe = Pipeline(
             steps=[
-                ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
+                (
+                    "imputer",
+                    SimpleImputer(strategy="constant", fill_value="missing", keep_empty_features=True),
+                ),
                 ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
             ]
         )

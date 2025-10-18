@@ -91,6 +91,9 @@ def make_classifiers() -> Dict[str, Tuple[Pipeline, Dict]]:
                 class_weight="balanced",
                 random_state=42,
                 n_jobs=-1,
+                verbosity=-1,
+                min_data_in_leaf=20,
+                min_split_gain=0.0,
             ),
             {"num_leaves": [31, 63], "max_depth": [-1, 6]},
         )

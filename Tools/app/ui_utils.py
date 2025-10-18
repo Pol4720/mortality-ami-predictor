@@ -6,8 +6,9 @@ import streamlit as st
 
 from src.data import load_dataset, summarize_dataframe, data_audit
 from src.config import CONFIG
-from src.train import train_main, fit_and_save_best_classifier
+from src.train import train_main, fit_and_save_best_classifier, fit_and_save_selected_classifiers
 from src.evaluate import evaluate_main
+from pathlib import Path
 
 
 def sidebar_controls():
@@ -33,10 +34,14 @@ def sidebar_controls():
     task = st.sidebar.selectbox("Tarea", ["mortality", "arrhythmia"], index=0)
     quick = st.sidebar.checkbox("Modo rápido (debug)", value=True)
     imputer_mode = st.sidebar.selectbox("Imputación", ["iterative", "knn", "simple"], index=0)
-    return data_path, task, quick, imputer_mode
+    # Model selection
+    from src.models import make_classifiers
+    model_keys = list(make_classifiers().keys())
+    selected_models = st.sidebar.multiselect("Modelos a entrenar/evaluar", model_keys, default=model_keys)
+    return data_path, task, quick, imputer_mode, selected_models
 
 
-def run_training(data_path: str, task: str, quick: bool, imputer_mode: str) -> str:
+def run_training(data_path: str, task: str, quick: bool, imputer_mode: str, selected_models: list[str]) -> str:
     # Custom training with progress callback
     df = load_dataset(data_path)
     from src.features import safe_feature_columns
@@ -56,9 +61,19 @@ def run_training(data_path: str, task: str, quick: bool, imputer_mode: str) -> s
         status.info(msg)
         progress.progress(min(max(frac, 0.0), 1.0))
 
-    from src.train import fit_and_save_best_classifier
-    path, _ = fit_and_save_best_classifier(X, y, quick=quick, task_name=task, imputer_mode=imputer_mode, progress_callback=cb)
-    status.success(f"Modelo guardado en {path}")
+    if selected_models:
+        save_paths = fit_and_save_selected_classifiers(
+            X, y,
+            selected_models=selected_models,
+            quick=quick,
+            task_name=task,
+            imputer_mode=imputer_mode,
+            progress_callback=cb,
+        )
+        status.success("Modelos guardados: " + ", ".join([f"{k}: {v}" for k, v in save_paths.items()]))
+    else:
+        path, _ = fit_and_save_best_classifier(X, y, quick=quick, task_name=task, imputer_mode=imputer_mode, progress_callback=cb)
+        status.success(f"Modelo guardado en {path}")
     progress.progress(1.0)
     return f"Entrenamiento completado para {task}."
 
@@ -67,6 +82,19 @@ def run_evaluation(data_path: str, task: str) -> str:
     with st.spinner("Evaluando modelo en test hold-out..."):
         evaluate_main(["--data", data_path, "--task", task])
     return f"Evaluación completada para {task}."
+
+
+def list_saved_models(task: str) -> dict[str, str]:
+    models_dir = Path(__file__).parents[1] / "models"
+    mapping = {}
+    if models_dir.exists():
+        for p in models_dir.glob(f"model_{task}_*.joblib"):
+            name = p.stem.replace(f"model_{task}_", "")
+            mapping[name] = str(p)
+        best = models_dir / f"best_classifier_{task}.joblib"
+        if best.exists():
+            mapping["best"] = str(best)
+    return mapping
 
 
 def show_dataset_overview(df: pd.DataFrame):

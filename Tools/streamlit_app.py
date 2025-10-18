@@ -11,9 +11,10 @@ import streamlit as st
 from pathlib import Path
 
 from app.state import get_state
-from app.ui_utils import sidebar_controls, run_training, run_evaluation, show_dataset_overview
+from app.ui_utils import sidebar_controls, run_training, run_evaluation, show_dataset_overview, list_saved_models
 from src.config import CONFIG
 from src.data import load_dataset
+from src.scores import available_scores, compute_score
 
 # Resolve logo in app/assets if present
 _assets_dir = Path(__file__).parent / "app" / "assets"
@@ -45,7 +46,7 @@ def main():
     st.title("In-Hospital Mortality / Ventricular Arrhythmia Predictor")
 
     # Sidebar controls
-    data_path, task, quick, imputer_mode = sidebar_controls()
+    data_path, task, quick, imputer_mode, selected_models = sidebar_controls()
     if not data_path:
         data_path = args.data or ""
     if not data_path:
@@ -64,18 +65,31 @@ def main():
     c1, c2, c3 = st.columns(3)
     with c1:
         if st.button("Entrenar modelos"):
-            msg = run_training(data_path, task, quick, imputer_mode)
+            msg = run_training(data_path, task, quick, imputer_mode, selected_models)
             state["last_train_msg"] = msg
             st.success(msg)
     with c2:
+        saved = list_saved_models(task)
+        sel_eval = st.selectbox("Modelo a evaluar", list(saved.keys()) or ["best"], index=0)
         if st.button("Evaluar en test hold-out"):
+            # If user picked a specific saved model, copy/point it to the legacy best path for evaluate_main
+            try:
+                if sel_eval in saved:
+                    # set the path in session for predictions too
+                    st.session_state.model_path = saved[sel_eval]
+            except Exception:
+                pass
             msg = run_evaluation(data_path, task)
             st.success(msg)
     with c3:
+        saved = list_saved_models(task)
+        if saved:
+            pick = st.selectbox("Modelos guardados (predicción)", list(saved.keys()), index=0)
+            model_path = saved[pick]
         model_path = st.text_input("Ruta del modelo", value=model_path)
         state["model_path"] = model_path
 
-    tabs = st.tabs(["Predicción", "Explicabilidad", "Comparación", "Métricas"])
+    tabs = st.tabs(["Predicción", "Explicabilidad", "Comparación", "Métricas", "Escalas"])
 
     with tabs[0]:
         st.write("Predice en una fila seleccionada o sube un CSV")
@@ -90,9 +104,41 @@ def main():
         X_row = df.loc[[row_index], cols]
         with st.expander("What-if (numéricas)"):
             for c in [c for c in cols if pd.api.types.is_numeric_dtype(df[c])]:
-                val = float(df.loc[row_index, c]) if pd.notna(df.loc[row_index, c]) else 0.0
-                low = float(np.nanpercentile(df[c], 5)) if pd.api.types.is_numeric_dtype(df[c]) else val
-                high = float(np.nanpercentile(df[c], 95)) if pd.api.types.is_numeric_dtype(df[c]) else val
+                # Current value
+                raw_val = df.loc[row_index, c]
+                val = float(raw_val) if pd.notna(raw_val) else 0.0
+
+                # Compute robust percentile bounds using only finite values
+                s = pd.to_numeric(df[c], errors="coerce")
+                s = s[np.isfinite(s)]
+                if len(s) == 0:
+                    # Fallback range around current value
+                    low, high = val - 1.0, val + 1.0
+                else:
+                    try:
+                        low = float(np.nanpercentile(s, 5))
+                        high = float(np.nanpercentile(s, 95))
+                    except Exception:
+                        low, high = float(s.min()), float(s.max())
+
+                # Ensure finite numbers
+                if not np.isfinite(low):
+                    low = val - 1.0
+                if not np.isfinite(high):
+                    high = val + 1.0
+
+                # If bounds collapse, widen around a center
+                if not (high > low):
+                    center = val if np.isfinite(val) else float(s.median()) if len(s) else 0.0
+                    pad = abs(center) * 0.1 + 1.0
+                    low, high = center - pad, center + pad
+
+                # Clamp value into [low, high]
+                if val < low:
+                    val = low
+                elif val > high:
+                    val = high
+
                 X_row.loc[row_index, c] = st.slider(c, min_value=low, max_value=high, value=val)
         if hasattr(model, "predict_proba"):
             prob = model.predict_proba(X_row)[:, 1][0]
@@ -175,6 +221,42 @@ def main():
                 st.image(str(cmatrix), use_column_width=True)
             else:
                 st.write("Sin imagen")
+
+    with tabs[4]:
+        st.subheader("Escalas clásicas (educativas)")
+        st.caption("Nota: Implementaciones aproximadas y NO clínicas. Solo para investigación/educación.")
+        score_map = available_scores()
+        score_choice = st.selectbox("Escala", list(score_map.keys()), format_func=lambda k: score_map[k])
+        if score_choice == "grace":
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                age = st.number_input("Edad (años)", min_value=0, max_value=120, value=65)
+                hr = st.number_input("Frecuencia cardiaca (bpm)", min_value=0, max_value=250, value=80)
+            with c2:
+                sbp = st.number_input("PAS (mmHg)", min_value=50, max_value=250, value=120)
+                crea = st.number_input("Creatinina (mg/dL)", min_value=0.1, max_value=10.0, value=1.0, step=0.1)
+            with c3:
+                killip = st.selectbox("Clase Killip", ["I", "II", "III", "IV"], index=0)
+                st_dev = st.checkbox("Desviación del ST", value=False)
+                enz = st.checkbox("Enzimas elevadas", value=False)
+                arrest = st.checkbox("Parada cardiorrespiratoria al ingreso", value=False)
+            if st.button("Calcular", key="calc_grace"):
+                res = compute_score("grace", {
+                    "age": age,
+                    "heart_rate": hr,
+                    "sbp": sbp,
+                    "creatinine_mg_dl": crea,
+                    "killip": killip,
+                    "st_deviation": st_dev,
+                    "enzymes_elevated": enz,
+                    "cardiac_arrest": arrest,
+                })
+                st.metric("Puntaje", f"{res.points:.1f}")
+                st.metric("Categoría de riesgo", res.risk_category.capitalize())
+                with st.expander("Detalle de puntos"):
+                    st.json(res.details)
+        else:
+            st.info("Esta escala no está implementada aún. Próximamente.")
 
 
 if __name__ == "__main__":
