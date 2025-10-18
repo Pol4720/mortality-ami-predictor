@@ -12,7 +12,24 @@ from src.evaluate import evaluate_main
 
 def sidebar_controls():
     st.sidebar.header("Configuración")
-    data_path = st.sidebar.text_input("DATASET_PATH", value=os.environ.get("DATASET_PATH", ""))
+    # Show logo if present
+    try:
+        from pathlib import Path
+        assets_dir = Path(__file__).parent / "assets"
+        for pat in ("logo.png", "logo.jpg", "logo.jpeg", "logo.ico"):
+            cand = assets_dir / pat
+            if cand.exists():
+                st.sidebar.image(str(cand), use_container_width=True)
+                break
+    except Exception:
+        pass
+    # Default dataset path: relative from current working directory to the specified Excel file
+    try:
+        default_abs = r"C:\Users\HP\Desktop\ML\Proyecto\mortality-ami-predictor\DATA\recuima-020425.xlsx"
+        default_rel = os.path.relpath(default_abs, start=os.getcwd()) if os.path.isabs(default_abs) else default_abs
+    except Exception:
+        default_rel = "DATA\\recuima-020425.xlsx"
+    data_path = st.sidebar.text_input("DATASET_PATH", value=os.environ.get("DATASET_PATH", default_rel))
     task = st.sidebar.selectbox("Tarea", ["mortality", "arrhythmia"], index=0)
     quick = st.sidebar.checkbox("Modo rápido (debug)", value=True)
     imputer_mode = st.sidebar.selectbox("Imputación", ["iterative", "knn", "simple"], index=0)

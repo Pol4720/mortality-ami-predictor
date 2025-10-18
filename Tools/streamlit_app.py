@@ -15,7 +15,22 @@ from app.ui_utils import sidebar_controls, run_training, run_evaluation, show_da
 from src.config import CONFIG
 from src.data import load_dataset
 
-st.set_page_config(page_title="AMI Mortality/Arrhythmia Dashboard", layout="wide")
+# Resolve logo in app/assets if present
+_assets_dir = Path(__file__).parent / "app" / "assets"
+_logo = None
+if _assets_dir.exists():
+    for pat in ("logo.png", "logo.jpg", "logo.jpeg", "logo.ico"):
+        cand = _assets_dir / pat
+        if cand.exists():
+            _logo = str(cand)
+            break
+    if _logo is None:
+        # fallback: pick first image file
+        imgs = list(_assets_dir.glob("*.png")) + list(_assets_dir.glob("*.jpg")) + list(_assets_dir.glob("*.jpeg")) + list(_assets_dir.glob("*.ico"))
+        if imgs:
+            _logo = str(imgs[0])
+
+st.set_page_config(page_title="AMI Mortality/Arrhythmia Dashboard", layout="wide", page_icon=_logo if _logo else None)
 
 
 def load_model(model_path: str):

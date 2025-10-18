@@ -22,9 +22,6 @@ try:
 except Exception:
     LGBMClassifier = None  # type: ignore
 
-import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader, TensorDataset
 
 
 @dataclass
@@ -35,19 +32,9 @@ class ModelSpec:
     param_grid: Dict
 
 
-class FeedForwardNN(nn.Module):
-    """Simple feedforward neural network for tabular data."""
-
-    def __init__(self, in_dim: int, hidden: int = 64, dropout: float = 0.2):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(in_dim, hidden), nn.ReLU(), nn.Dropout(dropout),
-            nn.Linear(hidden, hidden), nn.ReLU(), nn.Dropout(dropout),
-            nn.Linear(hidden, 1)
-        )
-
-    def forward(self, x):
-        return self.net(x)
+# Note: PyTorch imports are intentionally avoided at module import-time
+# to prevent Streamlit's file watcher from scanning torch.classes. The
+# TorchTabularClassifier performs lazy imports inside its methods.
 
 
 def make_classifiers() -> Dict[str, Tuple[Pipeline, Dict]]:
@@ -136,9 +123,12 @@ class TorchTabularClassifier:
         self.epochs = epochs
         self.batch_size = batch_size
         self.focal = focal_loss
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # device will be set lazily when torch is imported in fit/predict
+        self.device = None
 
     def _criterion(self, logits, y):
+        import torch
+        import torch.nn as nn
         bce = nn.BCEWithLogitsLoss()
         if not self.focal:
             return bce(logits, y)
@@ -150,10 +140,19 @@ class TorchTabularClassifier:
         return (-(alpha * (1 - pt) ** gamma * torch.log(pt + 1e-8))).mean()
 
     def fit(self, X, y):
+        import torch
+        import torch.nn as nn
+        from torch.utils.data import DataLoader, TensorDataset
         if self.in_dim is None:
             self.in_dim = X.shape[1]
         if self.model is None:
-            self.model = FeedForwardNN(self.in_dim, hidden=self.hidden if hasattr(self, 'hidden') else 64, dropout=self.dropout if hasattr(self, 'dropout') else 0.2)
+            h = getattr(self, 'hidden', 64)
+            d = getattr(self, 'dropout', 0.2)
+            self.model = nn.Sequential(
+                nn.Linear(self.in_dim, h), nn.ReLU(), nn.Dropout(d),
+                nn.Linear(h, h), nn.ReLU(), nn.Dropout(d),
+                nn.Linear(h, 1)
+            )
         # cache hyperparams on self for get_params
         X_t = torch.tensor(X, dtype=torch.float32)
         y_t = torch.tensor(y.values if hasattr(y, "values") else y, dtype=torch.float32).view(-1, 1)
@@ -162,6 +161,9 @@ class TorchTabularClassifier:
         opt = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         best_loss = float("inf")
         best_state = None
+        # set device lazily
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
 
         for _ in range(self.epochs):
             self.model.train()
@@ -184,9 +186,10 @@ class TorchTabularClassifier:
         return self
 
     def predict_proba(self, X):
+        import torch
         self.model.eval()
         with torch.no_grad():
-            X_t = torch.tensor(X, dtype=torch.float32).to(self.device)
+            X_t = torch.tensor(X, dtype=torch.float32).to(self.device if self.device is not None else 'cpu')
             logits = self.model(X_t)
             probs = torch.sigmoid(logits).cpu().numpy().reshape(-1)
         return np.vstack([1 - probs, probs]).T
