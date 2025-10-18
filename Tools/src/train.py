@@ -64,6 +64,9 @@ def fit_and_save_best_classifier(
     except Exception:
         pass
     models = make_classifiers()
+    # Safety: drop NN model from grid entirely unless explicitly requested via env var
+    if "nn" in models and os.environ.get("ENABLE_TORCH_MODEL", "0") != "1":
+        models.pop("nn", None)
 
     outer_splits = 3 if not quick else 2
     inner_splits = 3 if not quick else 2

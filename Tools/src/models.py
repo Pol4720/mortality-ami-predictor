@@ -46,15 +46,15 @@ def make_classifiers() -> Dict[str, Tuple[Pipeline, Dict]]:
         {"n_neighbors": [3, 7], "weights": ["uniform", "distance"]},
     )
 
-    # Calibrated Logistic Regression with compatibility for sklearn versions
-    logreg = LogisticRegression(max_iter=2000, solver="saga", class_weight="balanced")
+    # Calibrated Logistic Regression with faster settings
+    logreg = LogisticRegression(max_iter=500, tol=1e-3, solver="lbfgs", class_weight="balanced")
     sig = inspect.signature(CalibratedClassifierCV)
     if "estimator" in sig.parameters:
-        calib = CalibratedClassifierCV(estimator=logreg, method="isotonic", cv=3)
-        grid = {"estimator__C": [0.1, 1.0], "estimator__penalty": ["l1", "l2"]}
+        calib = CalibratedClassifierCV(estimator=logreg, method="sigmoid", cv=2)
+        grid = {"estimator__C": [0.1, 1.0]}
     else:
-        calib = CalibratedClassifierCV(base_estimator=logreg, method="isotonic", cv=3)
-        grid = {"base_estimator__C": [0.1, 1.0], "base_estimator__penalty": ["l1", "l2"]}
+        calib = CalibratedClassifierCV(base_estimator=logreg, method="sigmoid", cv=2)
+        grid = {"base_estimator__C": [0.1, 1.0]}
     models["logreg"] = (calib, grid)
 
     models["dtree"] = (

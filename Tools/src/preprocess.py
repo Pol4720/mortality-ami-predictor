@@ -77,7 +77,7 @@ def build_preprocess_pipelines(
     if categorical_encoding == "onehot":
         cat_pipe = Pipeline(
             steps=[
-                ("imputer", SimpleImputer(strategy="most_frequent")),
+                ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
                 ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
             ]
         )
