@@ -21,6 +21,8 @@ def build_preprocess_pipelines(
     categorical_encoding: str = "onehot",
     feature_selection: bool = False,
     selection_estimator: Optional[object] = None,
+    drop_fully_missing: bool = True,
+    drop_constant: bool = True,
 ) -> Tuple[Pipeline, List[str]]:
     """Build a ColumnTransformer-based preprocessing pipeline.
 
@@ -38,6 +40,17 @@ def build_preprocess_pipelines(
 
     num_cols = X.select_dtypes(include=[np.number]).columns.tolist()
     cat_cols = X.select_dtypes(exclude=[np.number]).columns.tolist()
+
+    # Drop columns that are fully missing or constant if requested
+    drop_cols: List[str] = []
+    if drop_fully_missing:
+        drop_cols.extend([c for c in X.columns if X[c].isna().all()])
+    if drop_constant:
+        drop_cols.extend([c for c in X.columns if X[c].nunique(dropna=True) <= 1])
+    if drop_cols:
+        drop_cols = sorted(set(drop_cols))
+        num_cols = [c for c in num_cols if c not in drop_cols]
+        cat_cols = [c for c in cat_cols if c not in drop_cols]
 
     if imputer_mode == "iterative":
         # Use an estimator that accepts NaNs natively to avoid BayesianRidge errors

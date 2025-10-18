@@ -54,6 +54,15 @@ def fit_and_save_best_classifier(
     """
     # Preprocess builder (fitted to get feature names only; cloned in CV)
     pre, _ = build_preprocess_pipelines(X, imputer_mode=imputer_mode)
+    # If columns were dropped internally, inform via progress callback
+    try:
+        # infer columns selected by ColumnTransformer
+        selected = pre.transformers_[0][2] + pre.transformers_[1][2]
+        dropped = [c for c in X.columns if c not in selected]
+        if dropped and progress_callback:
+            progress_callback(f"Columnas descartadas (vacías/constantes): {', '.join(map(str, dropped[:20]))}", 0.05)
+    except Exception:
+        pass
     models = make_classifiers()
 
     outer_splits = 3 if not quick else 2
