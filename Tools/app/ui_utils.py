@@ -50,7 +50,8 @@ def run_training(data_path: str, task: str, quick: bool, imputer_mode: str, sele
         target = CONFIG.target_column
     else:
         target = CONFIG.arrhythmia_column
-    train_df, _ = train_test_split(df, stratify_target=target)
+    # Keep both train and test to persist test set for evaluation
+    train_df, test_df = train_test_split(df, stratify_target=target)
     X = train_df[safe_feature_columns(train_df, [target])]
     y = train_df[target]
 
@@ -75,6 +76,14 @@ def run_training(data_path: str, task: str, quick: bool, imputer_mode: str, sele
         path, _ = fit_and_save_best_classifier(X, y, quick=quick, task_name=task, imputer_mode=imputer_mode, progress_callback=cb)
         status.success(f"Modelo guardado en {path}")
     progress.progress(1.0)
+    # Persist test set so evaluate_main can load it
+    try:
+        models_dir = Path(__file__).parents[1] / "models"
+        models_dir.mkdir(parents=True, exist_ok=True)
+        test_path = models_dir / f"testset_{task}.parquet"
+        test_df.to_parquet(test_path)
+    except Exception as e:
+        status.warning(f"No se pudo guardar el test set: {e}")
     return f"Entrenamiento completado para {task}."
 
 
