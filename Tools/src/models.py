@@ -10,10 +10,17 @@ from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.cluster import KMeans
 from sklearn.calibration import CalibratedClassifierCV
+import inspect
 from sklearn.pipeline import Pipeline
 
-from xgboost import XGBClassifier
-from lightgbm import LGBMClassifier
+try:
+    from xgboost import XGBClassifier  # type: ignore
+except Exception:  # optional
+    XGBClassifier = None  # type: ignore
+try:
+    from lightgbm import LGBMClassifier  # type: ignore
+except Exception:
+    LGBMClassifier = None  # type: ignore
 
 import torch
 import torch.nn as nn
@@ -49,61 +56,60 @@ def make_classifiers() -> Dict[str, Tuple[Pipeline, Dict]]:
 
     models["knn"] = (
         KNeighborsClassifier(),
-        {"n_neighbors": [3, 5, 11, 21], "weights": ["uniform", "distance"]},
+        {"n_neighbors": [3, 7], "weights": ["uniform", "distance"]},
     )
 
-    models["logreg"] = (
-        CalibratedClassifierCV(
-            base_estimator=LogisticRegression(max_iter=2000, solver="saga", class_weight="balanced"),
-            method="isotonic",
-            cv=3,
-        ),
-        {"base_estimator__C": [0.01, 0.1, 1.0, 10.0], "base_estimator__penalty": ["l1", "l2"]},
-    )
+    # Calibrated Logistic Regression with compatibility for sklearn versions
+    logreg = LogisticRegression(max_iter=2000, solver="saga", class_weight="balanced")
+    sig = inspect.signature(CalibratedClassifierCV)
+    if "estimator" in sig.parameters:
+        calib = CalibratedClassifierCV(estimator=logreg, method="isotonic", cv=3)
+        grid = {"estimator__C": [0.1, 1.0], "estimator__penalty": ["l1", "l2"]}
+    else:
+        calib = CalibratedClassifierCV(base_estimator=logreg, method="isotonic", cv=3)
+        grid = {"base_estimator__C": [0.1, 1.0], "base_estimator__penalty": ["l1", "l2"]}
+    models["logreg"] = (calib, grid)
 
     models["dtree"] = (
         DecisionTreeClassifier(random_state=42, class_weight="balanced"),
-        {"max_depth": [3, 5, 10, None], "min_samples_split": [2, 10, 50]},
+        {"max_depth": [3, 5, None], "min_samples_split": [2, 20]},
     )
 
-    models["xgb"] = (
-        XGBClassifier(
-            n_estimators=400,
-            learning_rate=0.05,
-            subsample=0.9,
-            colsample_bytree=0.9,
-            eval_metric="logloss",
-            random_state=42,
-            tree_method="hist",
-            scale_pos_weight=1.0,
-        ),
-        {
-            "max_depth": [3, 5, 7],
-            "min_child_weight": [1, 5, 10],
-            "gamma": [0.0, 0.1, 0.2],
-        },
-    )
+    if XGBClassifier is not None:
+        models["xgb"] = (
+            XGBClassifier(
+                n_estimators=200,
+                learning_rate=0.05,
+                subsample=0.9,
+                colsample_bytree=0.9,
+                eval_metric="logloss",
+                random_state=42,
+                tree_method="hist",
+                scale_pos_weight=1.0,
+                n_jobs=-1,
+            ),
+            {
+                "max_depth": [3, 5],
+                "min_child_weight": [1, 5],
+            },
+        )
 
-    models["lgbm"] = (
-        LGBMClassifier(
-            n_estimators=600,
-            learning_rate=0.03,
-            subsample=0.9,
-            colsample_bytree=0.9,
-            class_weight="balanced",
-            random_state=42,
-        ),
-        {"num_leaves": [31, 63, 127], "max_depth": [-1, 5, 10]},
-    )
+    if LGBMClassifier is not None:
+        models["lgbm"] = (
+            LGBMClassifier(
+                n_estimators=400,
+                learning_rate=0.03,
+                subsample=0.9,
+                colsample_bytree=0.9,
+                class_weight="balanced",
+                random_state=42,
+                n_jobs=-1,
+            ),
+            {"num_leaves": [31, 63], "max_depth": [-1, 6]},
+        )
 
     # Optional Torch NN; to be used after preprocessing (dense numeric array)
-    try:
-        models["nn"] = (
-            TorchTabularClassifier(in_dim=None, hidden=64, dropout=0.2, epochs=30, batch_size=64, focal_loss=True),
-            {"epochs": [20, 30, 50], "hidden": [32, 64, 128], "dropout": [0.0, 0.2, 0.4]},
-        )
-    except Exception:
-        pass
+    # Keep NN optional; enable by a flag if needed (excluded from default grid to save time)
 
     return models
 

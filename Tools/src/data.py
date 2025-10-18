@@ -33,6 +33,20 @@ class DatasetInfo:
 SUPPORTED_EXT = {".csv", ".parquet", ".feather"}
 
 
+def _detect_excel_kind(path: str) -> str:
+    """Detect Excel kind by magic bytes: returns 'xlsx' (zip), 'xls' (cfb) or 'unknown'."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(4)
+        if head.startswith(b"PK\x03\x04"):
+            return "xlsx"
+        if head.startswith(b"\xD0\xCF\x11\xE0"):
+            return "xls"
+    except Exception:
+        pass
+    return "unknown"
+
+
 def load_dataset(path: Optional[str] = None) -> pd.DataFrame:
     """Load dataset from a file path. Supports CSV, Parquet, Feather, Excel (.xlsx, .xls).
 
@@ -62,22 +76,39 @@ def load_dataset(path: Optional[str] = None) -> pd.DataFrame:
     elif ext == ".feather":
         df = pd.read_feather(path)
     elif ext in {".xlsx", ".xls"}:
-        # Prefer explicit engine for .xlsx to use openpyxl if installed
+        # Robust handling with format detection and helpful fallbacks
+        kind = _detect_excel_kind(path)
         try:
-            if ext == ".xlsx":
+            if ext == ".xlsx" or kind == "xlsx":
+                # Require openpyxl for .xlsx
                 df = pd.read_excel(path, engine="openpyxl")
+            elif ext == ".xls" or kind == "xls":
+                # Require xlrd<2.0 for legacy .xls
+                # Prefer explicit engine to avoid incompatible xlrd versions
+                df = pd.read_excel(path, engine="xlrd")
             else:
-                # .xls typically requires xlrd (<2.0). Let pandas choose default engine.
-                df = pd.read_excel(path)
+                # Unknown signature: try openpyxl first, then xlrd
+                try:
+                    df = pd.read_excel(path, engine="openpyxl")
+                except Exception:
+                    df = pd.read_excel(path, engine="xlrd")
         except ImportError as e:
-            if ext == ".xlsx":
+            if ext == ".xlsx" or kind == "xlsx":
                 raise ImportError(
-                    "Reading .xlsx files requires 'openpyxl'. Install via: pip install openpyxl"
+                    "Para leer .xlsx necesitas 'openpyxl'. Instala con: pip install openpyxl"
                 ) from e
             else:
                 raise ImportError(
-                    "Reading .xls files requires 'xlrd<2.0'. Install via: pip install xlrd==1.2.0"
+                    "Para leer .xls necesitas 'xlrd<2.0'. Instala con: pip install xlrd==1.2.0"
                 ) from e
+        except Exception as e:
+            # Provide guidance on common corruption/extension mismatches
+            msg = (
+                "No se pudo leer el Excel. Posibles causas: archivo corrupto o extensión incorrecta. "
+                "Si el archivo es moderno, regrábalo como .xlsx y vuelve a intentar; también puedes exportarlo a CSV. "
+                f"Detalle: {type(e).__name__}: {e}"
+            )
+            raise RuntimeError(msg) from e
     else:
         raise ValueError(f"Unhandled extension: {ext}")
 
@@ -96,9 +127,14 @@ def get_dataset_info(df: pd.DataFrame, cfg: ProjectConfig = CONFIG) -> DatasetIn
 
 
 def summarize_dataframe(df: pd.DataFrame, cfg: ProjectConfig = CONFIG) -> Dict[str, pd.DataFrame]:
-    """Compute summary tables for EDA."""
+    """Compute summary tables for EDA with compatibility across pandas versions."""
+    try:
+        desc = df.describe(include="all", datetime_is_numeric=True).T  # pandas >= 1.1
+    except TypeError:
+        # Fallback for older pandas without datetime_is_numeric
+        desc = df.describe(include="all").T
     summary = {
-        "describe": df.describe(include="all", datetime_is_numeric=True).T,
+        "describe": desc,
         "missing": df.isna().mean().sort_values(ascending=False).to_frame("missing_rate"),
         "dtypes": df.dtypes.astype(str).to_frame("dtype"),
     }
@@ -127,7 +163,10 @@ def save_eda_plots(df: pd.DataFrame, cfg: ProjectConfig = CONFIG, prefix: str = 
     num_cols = df.select_dtypes(include=[np.number]).columns
     if len(num_cols) > 1:
         plt.figure(figsize=(10, 8))
-        corr = df[num_cols].corr(numeric_only=True)
+        try:
+            corr = df[num_cols].corr(numeric_only=True)
+        except TypeError:
+            corr = df[num_cols].corr()
         sns.heatmap(corr, cmap="coolwarm", center=0)
         plt.title("Correlation matrix (numeric)")
         plt.tight_layout()
@@ -139,7 +178,10 @@ def save_eda_plots(df: pd.DataFrame, cfg: ProjectConfig = CONFIG, prefix: str = 
         if col and col in df.columns:
             plt.figure(figsize=(6, 4))
             ax = sns.countplot(x=df[col].astype(str))
-            ax.bar_label(ax.containers[0])
+            try:
+                ax.bar_label(ax.containers[0])
+            except Exception:
+                pass
             plt.title(f"Target distribution: {col}")
             plt.tight_layout()
             plt.savefig(os.path.join(FIG_DIR, f"{prefix}_target_{col}_dist.png"))
@@ -175,3 +217,35 @@ def select_feature_target(df: pd.DataFrame, target_col: str) -> Tuple[pd.DataFra
     X = df.drop(columns=[target_col])
     y = df[target_col]
     return X, y
+
+
+def data_audit(df: pd.DataFrame, feature_cols: Optional[list] = None, top_n: int = 30) -> Dict[str, object]:
+    """Early audit to inspect NaNs and feature quality.
+
+    Returns a dict with:
+    - head: first rows of features
+    - nan_summary: DataFrame with count and fraction of NaNs per column (sorted desc)
+    - full_missing: list of columns fully NaN
+    - mostly_missing: list of columns with >80% NaNs
+    - constant: list of columns with <=1 unique non-NaN value
+    """
+    if feature_cols is None:
+        feature_cols = list(df.columns)
+    X = df[feature_cols]
+    nan_count = X.isna().sum()
+    nan_frac = (nan_count / len(X)).fillna(0.0)
+    nan_summary = (
+        pd.DataFrame({"nan_count": nan_count, "nan_fraction": nan_frac})
+        .sort_values("nan_fraction", ascending=False)
+        .head(top_n)
+    )
+    full_missing = [c for c in feature_cols if X[c].isna().all()]
+    mostly_missing = [c for c in feature_cols if X[c].isna().mean() > 0.8]
+    constant = [c for c in feature_cols if X[c].nunique(dropna=True) <= 1]
+    return {
+        "head": X.head(10),
+        "nan_summary": nan_summary,
+        "full_missing": full_missing,
+        "mostly_missing": mostly_missing,
+        "constant": constant,
+    }

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 import os
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Callable
 
 import joblib
 import numpy as np
@@ -39,19 +39,26 @@ MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 
-def fit_and_save_best_classifier(X: pd.DataFrame, y: pd.Series, quick: bool = False, task_name: str = "mortality") -> Tuple[str, object]:
+def fit_and_save_best_classifier(
+    X: pd.DataFrame,
+    y: pd.Series,
+    quick: bool = False,
+    task_name: str = "mortality",
+    imputer_mode: str = "iterative",
+    progress_callback: Optional[Callable[[str, float], None]] = None,
+) -> Tuple[str, object]:
     """Train multiple classifiers using nested CV, pick best by outer AUROC, refit and save.
 
     Returns:
         (save_path, fitted_model)
     """
     # Preprocess builder (fitted to get feature names only; cloned in CV)
-    pre, _ = build_preprocess_pipelines(X)
+    pre, _ = build_preprocess_pipelines(X, imputer_mode=imputer_mode)
     models = make_classifiers()
 
-    outer_splits = 5 if not quick else 3
+    outer_splits = 3 if not quick else 2
     inner_splits = 3 if not quick else 2
-    inner_iter = 15 if not quick else 5
+    inner_iter = 10 if not quick else 4
 
     outer_cv = StratifiedKFold(n_splits=outer_splits, shuffle=True, random_state=RANDOM_SEED)
 
@@ -63,8 +70,21 @@ def fit_and_save_best_classifier(X: pd.DataFrame, y: pd.Series, quick: bool = Fa
         except Exception:
             pass
 
+    # Warm start: if a best model already exists for this task, reuse it
+    save_path = os.path.join(MODELS_DIR, f"best_classifier_{task_name}.joblib")
+    if os.path.exists(save_path):
+        if progress_callback:
+            progress_callback("Modelo existente encontrado. Cargando sin reentrenar...", 1.0)
+        model = joblib.load(save_path)
+        return save_path, model
+
+    total_models = len(models)
+    model_index = 0
     for name, (clf, grid) in models.items():
         outer_scores: List[float] = []
+        model_index += 1
+        if progress_callback:
+            progress_callback(f"Entrenando modelo: {name}", (model_index - 1) / max(1, total_models))
         for fold_idx, (tr_idx, va_idx) in enumerate(outer_cv.split(X, y)):
             X_tr, X_va = X.iloc[tr_idx], X.iloc[va_idx]
             y_tr, y_va = y.iloc[tr_idx], y.iloc[va_idx]
@@ -90,6 +110,10 @@ def fit_and_save_best_classifier(X: pd.DataFrame, y: pd.Series, quick: bool = Fa
             prob_va = search.best_estimator_.predict_proba(X_va)[:, 1]
             auroc = roc_auc_score(y_va, prob_va)
             outer_scores.append(auroc)
+            if progress_callback:
+                # progress within model based on fold completion
+                frac = (model_index - 1 + (fold_idx + 1) / outer_splits) / max(1, total_models)
+                progress_callback(f"{name}: fold {fold_idx+1}/{outer_splits} AUROC={auroc:.3f}", frac)
 
             if use_mlflow:
                 try:
@@ -118,15 +142,17 @@ def fit_and_save_best_classifier(X: pd.DataFrame, y: pd.Series, quick: bool = Fa
     final_search = RandomizedSearchCV(
         final_pipe,
         param_distributions={**{f"clf__{k}": v for k, v in grid.items()}},
-        n_iter=(30 if not quick else 8),
-        cv=StratifiedKFold(n_splits=(5 if not quick else 3), shuffle=True, random_state=RANDOM_SEED),
+        n_iter=(15 if not quick else 6),
+        cv=StratifiedKFold(n_splits=(3 if not quick else 2), shuffle=True, random_state=RANDOM_SEED),
         scoring="roc_auc",
         n_jobs=-1,
         random_state=RANDOM_SEED,
         refit=True,
-        verbose=1 if not quick else 0,
+        verbose=0,
     )
     final_search.fit(X, y)
+    if progress_callback:
+        progress_callback("Refit final del mejor modelo", 1.0)
 
     best_model = final_search.best_estimator_
     save_path = os.path.join(MODELS_DIR, f"best_classifier_{task_name}.joblib")

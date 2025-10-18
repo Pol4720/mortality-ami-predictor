@@ -7,16 +7,16 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.impute import KNNImputer
+from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.experimental import enable_iterative_imputer  # noqa: F401
 from sklearn.impute import IterativeImputer
 from sklearn.feature_selection import SelectFromModel
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingRegressor
 
 
 def build_preprocess_pipelines(
     X: pd.DataFrame,
-    use_iterative_imputer: bool = True,
+    imputer_mode: str = "iterative",  # 'iterative' | 'knn' | 'simple'
     scale_numeric: bool = True,
     categorical_encoding: str = "onehot",
     feature_selection: bool = False,
@@ -39,10 +39,21 @@ def build_preprocess_pipelines(
     num_cols = X.select_dtypes(include=[np.number]).columns.tolist()
     cat_cols = X.select_dtypes(exclude=[np.number]).columns.tolist()
 
-    if use_iterative_imputer:
-        num_imputer = IterativeImputer(random_state=42, sample_posterior=False, max_iter=10)
-    else:
+    if imputer_mode == "iterative":
+        # Use an estimator that accepts NaNs natively to avoid BayesianRidge errors
+        num_imputer = IterativeImputer(
+            estimator=HistGradientBoostingRegressor(random_state=42),
+            random_state=42,
+            sample_posterior=False,
+            max_iter=10,
+            initial_strategy="median",
+        )
+    elif imputer_mode == "knn":
         num_imputer = KNNImputer(n_neighbors=5)
+    elif imputer_mode == "simple":
+        num_imputer = SimpleImputer(strategy="median")
+    else:
+        raise ValueError("imputer_mode debe ser 'iterative', 'knn' o 'simple'")
 
     steps_num = [("imputer", num_imputer)]
     if scale_numeric and num_cols:
@@ -53,8 +64,8 @@ def build_preprocess_pipelines(
     if categorical_encoding == "onehot":
         cat_pipe = Pipeline(
             steps=[
-                ("imputer", "drop"),  # let OneHotEncoder handle unknowns; we keep NaN as category
-                ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False))
+                ("imputer", SimpleImputer(strategy="most_frequent")),
+                ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
             ]
         )
     else:
@@ -63,7 +74,7 @@ def build_preprocess_pipelines(
     pre = ColumnTransformer(
         transformers=[
             ("num", num_pipe, num_cols),
-            ("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), cat_cols),
+            ("cat", cat_pipe, cat_cols),
         ],
         remainder="drop",
         verbose_feature_names_out=False,
@@ -77,12 +88,6 @@ def build_preprocess_pipelines(
 
     pipe = Pipeline(steps=steps)
 
-    # Fit to get feature names
-    pipe.fit(X)
-    # Feature names after OHE
-    try:
-        feature_names = pipe.named_steps["pre"].get_feature_names_out().tolist()
-    except Exception:
-        feature_names = [f"f_{i}" for i in range(len(num_cols) + len(cat_cols))]
-
+    # Do NOT fit here to avoid expensive work before CV; return approximate names
+    feature_names = num_cols + cat_cols
     return pipe, feature_names
