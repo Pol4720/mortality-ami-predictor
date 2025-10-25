@@ -1,0 +1,386 @@
+\documentclass[11pt,a4paper]{article}
+
+% Configuración básica
+\usepackage[margin=1.8cm,bottom=2.5cm]{geometry}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{csquotes}
+\usepackage{microtype} % Mejora el espaciado y reduce overfull
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue
+}
+
+% Tablas
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{ragged2e}
+\renewcommand{\arraystretch}{1.2}
+
+% Ajustes para mejorar el espaciado y evitar overfull
+\setlength{\emergencystretch}{4em}
+\setlength{\hfuzz}{2pt}
+\tolerance=5000
+\hbadness=5000
+\sloppy
+
+
+% Utilidad para celdas de párrafo alineadas a la izquierda
+\newcolumntype{L}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+% Columna que ajusta automáticamente el ancho
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+
+% Metadatos personalizables
+\newcommand{\DatasetNombre}{RECUIMA (Registro Cubano de Infarto Agudo de Miocardio)}
+\newcommand{\DatasetVersion}{v0.2 (post-limpieza inicial)}
+\newcommand{\Proyecto}{Predicción de Mortalidad en Infarto Agudo de Miocardio}
+\newcommand{\Responsable}{Equipo ML}
+
+\title{Planilla de dudas sobre variables del dataset}
+\author{\Responsable}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Resumen del dataset}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}L{0.28\textwidth} L{0.68\textwidth}@{}}
+\toprule
+Nombre del dataset & \DatasetNombre \\
+Versión & \DatasetVersion \\
+Fuente / Sistema origen & Registro hospitalario de pacientes con infarto agudo de miocardio \\
+Periodo de cobertura & 2016--2025 \\
+Población y unidad de análisis & Pacientes ingresados con diagnóstico de IAM;unidad: episodio de internación \\
+Número de registros / variables & 3,112 registros / 185 variables (después de limpieza inicial) \\
+Fecha de extracción & 02/04/2025 \\
+Objetivo analítico & Predicción de mortalidad intrahospitalaria en pacientes con IAM mediante modelos de machine learning \\
+Restricciones legales / privacidad & Se eliminaron variables de identificación personal (nombres, números de identidad, números de contacto) para cumplir con protección de datos \\
+Notas generales de calidad (duplicados, faltantes, codificaciones especiales) & Se observa presencia significativa de valores faltantes en múltiples variables. Existen duplicaciones de variables clave que requieren aclaración. El dataset parece ser resultado de la fusión de múltiples registros o fuentes. Se eliminaron variables redundantes identificadas en la limpieza inicial: \texttt{anno}, \texttt{numero} (identificador), \texttt{unidad}. \\
+\bottomrule
+\end{tabular}
+
+\vspace{1em}
+\noindent\textbf{Nota importante sobre duplicaciones:} Se han identificado las siguientes variables que aparecen duplicadas en el dataset: \texttt{presion\_arterial\_sistolica}, \texttt{presion\_arterial\_diastolica}, \texttt{asa}, \texttt{betabloqueadores}, \texttt{ieca}, \texttt{estatinas}, \texttt{clopidogrel}, \texttt{furosemida}, \texttt{nitratos}, \texttt{anticoagulantes}, \texttt{otros\_diureticos}, \texttt{fecha\_egreso} y \texttt{fecha\_ingreso}. Se desconoce el motivo exacto de estas duplicaciones, aunque se presume que puede deberse a: (1) registro en diferentes momentos temporales (ingreso vs. egreso), (2) fusión de múltiples fuentes de datos, o (3) diferencias entre prescripción y administración real. Se requiere aclaración urgente sobre la interpretación correcta de estas columnas duplicadas.
+
+\section*{Guía rápida}
+- Tipo: numérico, categórico, booleano, fecha/hora, texto libre, identificador. 
+- Códigos especiales: por ejemplo, -1, 9, 99, 999 = “desconocido/no aplica”. 
+- Estados: Pendiente, Enviado, Resuelto, Rechazado, En progreso.
+
+\section{Tabla maestra de variables}
+% Descripción breve: complete una fila por variable con la mejor información disponible.
+\scriptsize
+\setlength{\LTleft}{-1cm}
+\setlength{\LTright}{-1cm}
+\setlength{\tabcolsep}{1.5pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{longtable}{@{}L{0.095\textwidth} L{0.17\textwidth} L{0.07\textwidth} L{0.16\textwidth} L{0.14\textwidth} L{0.13\textwidth} L{0.15\textwidth}@{}}
+\toprule
+\textbf{Variable} & \textbf{Descripción} & \textbf{Tipo} & \textbf{Unidad / Rango o Dominio} & \textbf{Faltantes y códigos} & \textbf{Reglas / Validación} & \textbf{Dudas principales} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Variable} & \textbf{Descripción} & \textbf{Tipo} & \textbf{Unidad / Rango o Dominio} & \textbf{Faltantes y códigos} & \textbf{Reglas / Validación} & \textbf{Dudas principales} \\
+\midrule
+\endhead
+% ---- Variables de identificación y temporales ----
+numero & Identificador único del paciente & numérico & enteros positivos & ninguno & único por paciente & Eliminada varias veces: variable redundante \\
+anno & Año de registro & numérico & 2016--2025 & ninguno & -- & Eliminada varias veces: variable redundante \\
+unidad & Código de unidad hospitalaria & numérico & códigos específicos & presentes & -- & Eliminada varias: variable redundante \\
+fecha\_ingreso & Fecha de ingreso hospitalario & fecha & formato dd/mm/yyyy & presentes & fecha válida & \textbf{DUPLICADA}: requiere aclaración \\
+fecha\_egreso & Fecha de egreso hospitalario & fecha & formato dd/mm/yyyy & presentes & >= fecha\_ingreso & \textbf{DUPLICADA}: asociada a reingresos \\
+% ---- Variables demográficas ----
+numero\_identidad & Número de documento de identidad & texto & -- & -- & -- & Eliminada: protección de datos \\
+numero\_contacto & Número telefónico de contacto & texto & -- & -- & -- & Eliminada: protección de datos \\
+nombre & Nombre del paciente & texto & -- & -- & -- & Eliminada: protección de datos \\
+primer\_apellido & Primer apellido del paciente & texto & -- & -- & -- & Eliminada: protección de datos \\
+segundo\_apellido & Segundo apellido del paciente & texto & -- & -- & -- & Eliminada: protección de datos \\
+edad & Edad del paciente en años & numérico & 0--120 años & escasos & >0, <120 & Ninguna \\
+sexo & Sexo del paciente & categórico & masculino, femenino & presentes & dominio cerrado & Requiere codificación binaria \\
+color\_piel & Etnia o color de piel registrado & categórico & blanca, mestiza, negra & presentes & dominio cerrado & Requiere codificación numérica \\
+peso & Peso corporal del paciente & numérico & kg, 20--200 & presentes & >0 & Ninguna \\
+talla & Estatura del paciente & numérico & cm, 100--220 & presentes & >0 & Ninguna \\
+imc & Índice de masa corporal calculado & numérico & kg/m², 10--60 & presentes & peso/(talla/100)² & Ninguna \\
+% ---- Variables de ubicación geográfica ----
+provincia & Nombre de la provincia & categórico & nombres normalizados & presentes & -- & Valores con caracteres especiales \\
+municipio & Nombre del municipio & categórico & nombres normalizados & presentes & -- & Valores con caracteres especiales \\
+area\_salud & Código de área de salud & categórico & códigos específicos & presentes & -- & Valores con caracteres especiales \\
+idprovincia & Identificador numérico de provincia & numérico & enteros positivos & ninguno & -- & \textbf{DUPLICADA}: columna repetida \\
+idmunicipio & Identificador numérico de municipio & numérico & enteros positivos & ninguno & -- & Ninguna \\
+idareasalud & Identificador numérico de área de salud & numérico & enteros positivos & presentes & -- & Ninguna \\
+% ---- Variables de presentación y atención inicial ----
+atencion\_inicial & Tipo de atención inicial recibida & categórico & servicio, cuerpo, sala & presentes & -- & Requiere documentación del significado \\
+horario\_llegada & Horario de llegada al hospital & categórico & 7am7pm, 7pm7am & presentes & -- & Requiere codificación binaria \\
+ecg\_previo & Electrocardiograma previo realizado & booleano & si, no & presentes & -- & Requiere codificación binaria \\
+ecg & Código de hallazgo electrocardiográfico & numérico & enteros (5--35) & presentes & -- & Requiere tabla de correspondencia \\
+llamada\_emergencias & Llamada al servicio de emergencias & categórico & si, no & presentes & -- & Requiere codificación binaria \\
+tiempo\_respuesta & Tiempo de respuesta de emergencias & numérico & probablemente minutos & presentes (solo si llamada=si) & >=0 & Requiere confirmación de unidad \\
+tiempo\_llegada & Tiempo de llegada al hospital & numérico & probablemente minutos & presentes (solo si llamada=si) & >=0 & Requiere confirmación de unidad \\
+primera\_asistencia\_medica & Tiempo hasta primera asistencia & numérico & probablemente minutos & presentes & >=0 & Requiere confirmación de unidad \\
+% ---- Variables de diagnóstico ----
+scacest & Síndrome coronario agudo con elevación ST & booleano & 0, 1 & presentes & -- & Requiere explicación clínica detallada \\
+scacest\_secundario & SCACEST secundario & booleano & 0, 1 & presentes & -- & Requiere explicación clínica detallada \\
+angina & Tipo de angina presentada & categórico & inestable, (otros) & presentes & -- & Requiere dominio completo de valores \\
+angina24h & Angina en las últimas 24 horas & booleano & 0, 1 & presentes & -- & Requiere aclaración del período exacto \\
+angina\_inestable & Presencia de angina inestable & booleano & 0, 1 & muchos & -- & Posible variable de seguimiento \\
+presentacion & Forma de presentación clínica & categórico & dolor\_tipico, dolor\_atipico, sincope, asintomatico, otros & presentes & -- & Ninguna \\
+depresion\_st & Depresión del segmento ST & booleano & si, no & presentes & -- & Requiere explicación clínica y codificación \\
+depresion\_ondat & Depresión de onda T & categórico & (valores diversos) & presentes & -- & Requiere explicación clínica completa \\
+supradesnivel & Supradesnivel del segmento ST & numérico & enteros & muchos & -- & Requiere explicación clínica y unidad \\
+infradesnivel & Infradesnivel del segmento ST & numérico & enteros & muchos & -- & Requiere explicación clínica y unidad \\
+% ---- Derivaciones electrocardiográficas (V1-V9, D1-D3, AVL, AVF, AVR, V3R, V4R) ----
+v1 & Derivación precordial V1 & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+v2 & Derivación precordial V2 & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+v3 & Derivación precordial V3 & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+v4 & Derivación precordial V4 & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+v5 & Derivación precordial V5 & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+v6 & Derivación precordial V6 & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+v7 & Derivación precordial V7 & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+v8 & Derivación precordial V8 & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+v9 & Derivación precordial V9 & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+d1 & Derivación de miembro D1 & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+d2 & Derivación de miembro D2 & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+d3 & Derivación de miembro D3 & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+avl & Derivación aumentada AVL & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+avf & Derivación aumentada AVF & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+avr & Derivación aumentada AVR & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+v3r & Derivación precordial derecha V3R & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+v4r & Derivación precordial derecha V4R & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\
+% ---- Variables de signos vitales y estado hemodinámico ----
+presion\_arterial\_sistolica & Presión arterial sistólica & numérico & mmHg, 60--250 & escasos & >0 & \textbf{DUPLICADA}: requiere aclaración \\
+presion\_arterial\_diastolica & Presión arterial diastólica & numérico & mmHg, 40--150 & escasos & >0 & \textbf{DUPLICADA}: requiere aclaración \\
+frecuencia\_cardiaca & Frecuencia cardíaca & numérico & latidos/min, 30--200 & escasos & >0 & Ninguna \\
+shock & Presencia de shock & booleano & 0, 1 & presentes & -- & Requiere tipo de shock (cardiogénico, etc.) \\
+indice\_mkillip & Clasificación Killip modificada & categórico & I, II, III, IV (romanos) & presentes & -- & Requiere explicación de diferencia con Killip \\
+indice\_killip & Clasificación Killip & categórico & I, II, III, IV (romanos) & presentes & -- & Requiere explicación de diferencia con Killip-M \\
+ingresos\_anteriores & Ingresos previos por IAM & booleano & 0, 1 & presentes & -- & Requiere codificación binaria \\
+% ---- Antecedentes patológicos ----
+diabetes\_mellitus & Diabetes mellitus previa & booleano & 0, 1 & ninguno & -- & Ninguna \\
+insulina & Tratamiento con insulina & numérico & (valores diversos) & muchos & -- & Requiere aclaración: ¿dosis, tipo, booleano? \\
+insuficiencia\_cardiaca\_congestiva & Insuficiencia cardíaca congestiva previa & booleano & 0, 1 & ninguno & -- & Ninguna \\
+insuficiencia\_cardiaca & Insuficiencia cardíaca (evento) & booleano & 0, 1 & muchos & -- & Diferencia con ICC como antecedente \\
+hipertension\_arterial & Hipertensión arterial previa & booleano & 0, 1 & ninguno & -- & Ninguna \\
+hiperlipoproteinemia & Dislipidemia previa & booleano & 0, 1 & ninguno & -- & Ninguna \\
+enfermedad\_arterias\_coronarias & Enfermedad arterial coronaria previa & booleano & 0, 1 & ninguno & -- & Ninguna \\
+infarto\_miocardio\_agudo & Infarto de miocardio previo & booleano & 0, 1 & ninguno & -- & Ninguna \\
+fibrilacion\_auricular & Fibrilación auricular previa & booleano & 0, 1 & ninguno & -- & Ninguna \\
+intervencion\_coronaria\_percutanea & ICP previa & booleano & 0, 1 & ninguno & -- & Ninguna \\
+cabg & Cirugía de revascularización coronaria previa (CABG) & booleano & 0, 1 & ninguno & -- & Requiere aclaración del acrónimo CABG \\
+enfermedad\_venosa\_periferica & Enfermedad venosa periférica & booleano & 0, 1 & ninguno & -- & Ninguna \\
+insuficiencia\_renal\_cronica & Insuficiencia renal crónica & booleano & 0, 1 & ninguno & -- & Ninguna \\
+dialisis & Tratamiento con diálisis & booleano & 0, 1 & ninguno & -- & Ninguna \\
+enfermedad\_cerebro\_vascular & Enfermedad cerebrovascular previa & booleano & 0, 1 & ninguno & -- & Ninguna \\
+anemia & Anemia previa o actual & booleano & 0, 1 & ninguno & -- & Ninguna \\
+epoc & Enfermedad pulmonar obstructiva crónica & booleano & 0, 1 & ninguno & -- & Ninguna \\
+otros & Otros antecedentes & booleano & 0, 1 & presentes & -- & Requiere especificación de contenido \\
+otras & Otras complicaciones o condiciones & booleano & 0, 1 & muchos & -- & Requiere especificación de contenido \\
+% ---- Hábito tabáquico ----
+tabaquismo & Antecedente de tabaquismo & booleano & 0, 1 & ninguno & -- & Ninguna \\
+tipo\_tabaquismo & Tipo de tabaquismo & categórico & activo, noactivo & presentes & -- & Requiere codificación binaria \\
+annos\_fumando & Años de consumo de tabaco & numérico & años, 0--80 & presentes & >=0 & Ninguna \\
+annos\_sin\_fumar & Años sin fumar (ex-fumadores) & numérico & años, 0--80 & muchos & >=0 & Ninguna \\
+% ---- Medicamentos y tratamientos ----
+asa & Ácido acetilsalicílico (aspirina) & numérico & (valores diversos) & presentes & -- & \textbf{DUPLICADA}: ¿dosis o booleano? \\
+betabloqueadores & Betabloqueadores & numérico & (valores diversos) & presentes & -- & \textbf{DUPLICADA}: requiere escala o codificación \\
+clopidogrel & Clopidogrel & categórico & si, no & presentes & -- & \textbf{DUPLICADA}: requiere codificación binaria \\
+heparina & Heparina & categórico & si, no & presentes & -- & Requiere codificación binaria \\
+estatinas & Estatinas (hipolipemiantes) & categórico & si, no & presentes & -- & \textbf{DUPLICADA}: requiere codificación binaria \\
+furosemida & Furosemida (diurético de asa) & categórico & si, no & presentes & -- & \textbf{DUPLICADA}: requiere codificación binaria \\
+nitratos & Nitratos & categórico & si, no & presentes & -- & \textbf{DUPLICADA}: requiere codificación binaria \\
+anticoagulantes & Anticoagulantes & categórico & si, no & presentes & -- & \textbf{DUPLICADA}: requiere codificación binaria \\
+anticalcicos & Antagonistas del calcio & categórico & si, no & presentes & -- & Requiere codificación binaria \\
+anticalcico & Antagonista del calcio (¿duplicado?) & booleano & 0, 1 & presentes & -- & Posible duplicación de anticalcicos \\
+ieca & Inhibidores de ECA & categórico & si, no & presentes & -- & \textbf{DUPLICADA}: requiere codificación binaria \\
+otros\_diureticos & Otros diuréticos & categórico & si, no & presentes & -- & \textbf{DUPLICADA}: requiere codificación binaria \\
+% ---- Variables de reperfusión y procedimientos ----
+estreptoquinasa\_recombinante & Administración de estreptoquinasa & categórico & si, no & presentes & -- & Requiere codificación binaria \\
+tiempo\_puerta\_aguja & Tiempo puerta-aguja & numérico & probablemente minutos & presentes & >=0 & Requiere confirmación de unidad y definición \\
+tiempo\_isquemia & Tiempo de isquemia & numérico & probablemente minutos & presentes & >=0 & Requiere confirmación de unidad \\
+escala\_grace & Puntaje de riesgo GRACE & numérico & 0--372 & presentes & -- & Requiere validación de rango y significado \\
+reperfusion & Tipo de reperfusión realizada & categórico & no, parcial, total, otro & presentes & -- & Requiere codificación y explicación detallada \\
+coronariografia & Coronariografía realizada & categórico & no, si, otro, centro & presentes & -- & Requiere codificación y explicación \\
+lugar\_trombolisis & Lugar de trombolisis & categórico & ucie, sala, servicio, otro & presentes & -- & Candidata a eliminación según análisis \\
+ergometria & Prueba de esfuerzo (ergometría) & categórico & positiva, negativa, no & muchos & -- & Requiere dominio completo y codificación \\
+% ---- Variables de intervención hemodinámica y soporte ----
+avc & Asistencia ventricular o complicación & booleano & 0, 1 & ninguno & -- & Requiere aclaración del acrónimo \\
+mpt & Marcapaso temporal & booleano & 0, 1 & ninguno & -- & Requiere confirmación del acrónimo \\
+vam & Ventilación asistida mecánica & booleano & 0, 1 & ninguno & -- & Requiere confirmación del acrónimo \\
+mpp & Marcapaso permanente & booleano & 0, 1 & ninguno & -- & Requiere confirmación del acrónimo \\
+aminas & Uso de aminas vasoactivas & booleano & 0, 1 & ninguno & -- & Ninguna \\
+balon & Balón de contrapulsación intraaórtico & booleano & 0, 1 & ninguno & -- & Ninguna \\
+% ---- Variables de seguimiento y desenlaces ----
+proxima & Próxima consulta o evento & numérico & enteros & muchos & -- & Requiere explicación del significado \\
+fecha\_consulta & Fecha de consulta de seguimiento & fecha & formato dd/mm/yyyy & muchos & fecha >= fecha\_egreso & Ninguna \\
+resultado & Resultado del seguimiento & categórico & vivo\_sin, vivo\_con, noevaluado, alta, fallecido & muchos & -- & Requiere explicación de categorías \\
+fecha\_defuncion & Fecha de defunción & fecha & formato dd/mm/yyyy & muchos & >= fecha\_ingreso & Ninguna \\
+motivo & Motivo de reingreso & categórico & scacest (principalmente) & muchos & -- & Asociada a fecha\_ingreso duplicada \\
+% ---- Variables de coronariografía y calidad de atención ----
+fecha\_realizacion & Fecha de realización de procedimiento & fecha & formato dd/mm/yyyy & muchos & -- & Requiere especificación de procedimiento \\
+razones\_documentadas & Razones documentadas & booleano & 0, 1 & muchos & -- & Requiere contexto: ¿razones de qué? \\
+riesgo\_beneficio & Evaluación riesgo-beneficio & booleano & 0, 1 & muchos & -- & Requiere contexto específico \\
+anti\_agregacion\_plaquetaria & Antiagregación plaquetaria & booleano & 0, 1 & muchos & -- & Requiere aclaración del contexto \\
+proteccion\_embolica & Protección embólica & booleano & 0, 1 & muchos & -- & Requiere aclaración del contexto \\
+funcion\_renal & Evaluación de función renal & booleano & 0, 1 & muchos & -- & Requiere aclaración del contexto \\
+volumen\_contraste & Volumen de contraste utilizado & booleano & 0, 1 & muchos & -- & Requiere aclaración: ¿adecuado/inadecuado? \\
+prescripcion\_optima & Prescripción óptima al egreso & booleano & 0, 1 & muchos & -- & Requiere definición de "óptima" \\
+rehabilitacion & Rehabilitación cardíaca & booleano & 0, 1 & muchos & -- & \textbf{DUPLICADA}: aparece dos veces \\
+participacion\_registro & Participación en registro & booleano & 0, 1 & muchos & -- & Requiere aclaración del propósito \\
+coronariografias\_medico & Coronariografías por médico & booleano & 0, 1 & muchos & -- & Requiere aclaración del significado \\
+coronariografias\_centro & Coronariografías por centro & booleano & 0, 1 & muchos & -- & Requiere aclaración del significado \\
+% ---- Resultados de coronariografía ----
+idresultado & Identificador de resultado & numérico & enteros & muchos & -- & Requiere explicación del sistema de ID \\
+arteria & Arteria afectada & categórico & cd, cx, ada, otros & muchos & -- & Requiere tabla completa de códigos \\
+localizacion & Localización de lesión & categórico & proximal, media, distal, sin\_lesiones & muchos & -- & Ninguna \\
+estenosis & Grado de estenosis & numérico & porcentaje, 0--100 & muchos & 0--100 & Ninguna \\
+abordaje & Tipo de abordaje & categórico & stent\_farmaco, stent\_metalico, ninguno & muchos & -- & Requiere tabla completa de valores \\
+% ---- Variables de egreso y estadía ----
+fecha\_egreso & Fecha de egreso hospitalario & fecha & formato dd/mm/yyyy & presentes & >= fecha\_ingreso & \textbf{DUPLICADA}: requiere aclaración \\
+estado\_vital & Estado vital al egreso & categórico & vivo, fallecido & presentes & -- & Requiere codificación binaria \\
+otra\_institucion & Traslado a otra institución & categórico & si, no & muchos & -- & Requiere codificación binaria \\
+estadia\_ucie & Estadía en UCIE & numérico & días & presentes & >=0 & Ninguna (unidad confirmada: días) \\
+estadia\_uci & Estadía en UCI & numérico & días & presentes & >=0 & Ninguna (unidad confirmada: días) \\
+estadia\_intrahospitalaria & Estadía intrahospitalaria total & numérico & días & presentes & >=0 & Ninguna (unidad confirmada: días) \\
+% ---- Consejerías y educación al paciente ----
+consejeria\_antitabaquica & Consejería antitabáquica brindada & booleano & 0, 1 & presentes & -- & Ninguna \\
+consejeria & Consejería general brindada & booleano & 0, 1 & presentes & -- & Requiere especificación del tipo \\
+dieta & Consejería dietética brindada & booleano & 0, 1 & presentes & -- & Ninguna \\
+% ---- Complicaciones y observaciones ----
+complicaciones & Complicaciones durante hospitalización & categórico & valores diversos & muchos & -- & Requiere tabla de códigos completa \\
+observaciones & Observaciones clínicas libres & texto libre & texto único por caso & muchos & -- & Ninguna \\
+% ---- Variables de laboratorio ----
+colesterol & Colesterol total & numérico & mg/dL o mmol/L & muchos & >0 & Requiere confirmación de unidad \\
+creatinina & Creatinina sérica & numérico & mg/dL o $\mu$mol/L & muchos & >0 & Requiere confirmación de unidad \\
+filtrado\_glomerular & Tasa de filtrado glomerular estimado & numérico & mL/min/1.73m² & muchos & >0 & Requiere confirmación de unidad \\
+trigliceridos & Triglicéridos & numérico & mg/dL o mmol/L & muchos & >0 & Requiere confirmación de unidad \\
+glicemia & Glucemia & numérico & mg/dL o mmol/L & muchos & >0 & Requiere confirmación de unidad \\
+leuco & Leucocitos & numérico & células/mm³ o x10³/$\mu$L & muchos & >0 & Requiere confirmación de unidad \\
+hb & Hemoglobina & numérico & g/dL & muchos & >0 & Requiere confirmación de unidad \\
+ck & Creatina quinasa & numérico & U/L & muchos & >0 & Requiere confirmación de unidad \\
+ckmb & Creatina quinasa MB & numérico & U/L o ng/mL & muchos & >0 & Requiere confirmación de unidad \\
+% ---- Variables de arterias coronarias (acrónimos) ----
+acd & Arteria coronaria derecha & booleano & 0, 1 & presentes & -- & Requiere confirmación del acrónimo \\
+ada & Arteria descendente anterior & booleano & 0, 1 & presentes & -- & Requiere confirmación del acrónimo \\
+acx & Arteria circunfleja & booleano & 0, 1 & presentes & -- & Requiere confirmación del acrónimo \\
+% ---- Variables ecocardiográficas ----
+fraccion\_eyeccion & Fracción de eyección del VI & numérico & porcentaje, 0--100 & muchos & 0--100 & Ninguna \\
+ddvi & Diámetro diastólico del VI & numérico & mm & muchos & >0 & Requiere confirmación de unidad \\
+dsvi & Diámetro sistólico del VI & numérico & mm & muchos & >0 & Requiere confirmación de unidad \\
+tiv & Grosor del tabique interventricular & numérico & mm & muchos & >0 & Requiere confirmación de unidad \\
+pp & Grosor de pared posterior & numérico & mm & muchos & >0 & Requiere confirmación de unidad \\
+ud & Parámetro ecocardiográfico (desconocido) & numérico & (unidad desconocida) & muchos & >0 & Requiere aclaración completa \\
+fs & Fracción de acortamiento & numérico & porcentaje, 0--100 & muchos & 0--100 & Requiere confirmación \\
+tapse & TAPSE (función ventricular derecha) & numérico & mm & muchos & >0 & Requiere confirmación de unidad \\
+ea & Relación E/A mitral (función diastólica) & numérico & ratio & muchos & >0 & Requiere confirmación \\
+ee & Relación E/e' (función diastólica) & numérico & ratio & muchos & >0 & Requiere confirmación \\
+pat & Parámetro ecocardiográfico (desconocido) & numérico & (unidad desconocida) & muchos & >0 & Requiere aclaración completa \\
+% ---- Variables valvulares ecocardiográficas ----
+insao & Insuficiencia aórtica & booleano & 0, 1 & muchos & -- & Requiere aclaración del acrónimo \\
+estao & Estenosis aórtica & booleano & 0, 1 & muchos & -- & Requiere aclaración del acrónimo \\
+insmit & Insuficiencia mitral & booleano & 0, 1 & muchos & -- & Requiere aclaración del acrónimo \\
+estmit & Estenosis mitral & booleano & 0, 1 & muchos & -- & Requiere aclaración del acrónimo \\
+% ---- Variable desenlace principal ----
+mortality\_inhospital & Mortalidad intrahospitalaria & booleano & 0, 1 & ninguno & -- & \textbf{Variable objetivo del modelo} \\
+\bottomrule
+\endfoot
+
+% ------------------------------------------
+\end{longtable}
+\renewcommand{\arraystretch}{1.2}
+\normalsize
+
+\section{Registro de dudas y resoluciones}
+% Use una fila por duda específica. Mantenga el "Estado" actualizado.
+\scriptsize
+\setlength{\LTleft}{-1cm}
+\setlength{\LTright}{-1cm}
+\setlength{\tabcolsep}{1.5pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{longtable}{@{}L{0.035\textwidth} L{0.10\textwidth} L{0.265\textwidth} L{0.17\textwidth} L{0.05\textwidth} L{0.05\textwidth} L{0.095\textwidth} L{0.065\textwidth} L{0.075\textwidth}@{}}
+\toprule
+\textbf{ID} & \textbf{Variable} & \textbf{Duda / Observación} & \textbf{Evidencia / Contexto} & \textbf{Impacto} & \textbf{Prioridad} & \textbf{Responsable (consulta a)} & \textbf{Estado} & \textbf{Fechas (sol./cierre)} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Variable} & \textbf{Duda / Observación} & \textbf{Evidencia / Contexto} & \textbf{Impacto} & \textbf{Prioridad} & \textbf{Responsable (consulta a)} & \textbf{Estado} & \textbf{Fechas (sol./cierre)} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+% ---- Dudas prioritarias sobre el dataset ----
+001 & Variables duplicadas (grupo) & Se identifican 12 variables que aparecen duplicadas en el dataset. Se requiere aclaración sobre el significado de cada columna duplicada y cuál utilizar para el análisis. & Variables afectadas: presion\_arterial\_sistolica, presion\_arterial\_diastolica, asa, betabloqueadores, ieca, estatinas, clopidogrel, furosemida, nitratos, anticoagulantes, otros\_diureticos, fecha\_ingreso. Posibles hipótesis: (a) medición en momentos diferentes (ingreso vs egreso), (b) fusión incorrecta de datasets, (c) prescripción vs administración real & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+002 & asa & ¿La variable ASA representa dosis en mg, días de tratamiento, o simplemente presencia/ausencia? & Valores observados son numéricos diversos (rango 0--24). No se identifica patrón claro de dosificación estándar & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+003 & betabloqueadores & ¿Qué escala o codificación se utiliza para betabloqueadores? & Valores numéricos diversos (rango 0--36). No se identifica si es dosis, días, o código categórico & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+004 & ecg & Solicitar tabla de correspondencia completa para códigos ECG & Valores observados: 5, 10, 12, 15, 20, 25, 30, 35. Sin documentación disponible sobre significado clínico & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+005 & scacest, scacest\_secundario & Requiere explicación clínica detallada de la diferencia entre SCACEST primario y secundario & Ambas variables booleanas (0/1), pero no se comprende la distinción clínica ni criterios diagnósticos & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+006 & indice\_killip, indice\_mkillip & ¿Cuál es la diferencia entre clasificación Killip y Killip modificada? ¿Cuándo se utiliza cada una? & Ambas utilizan números romanos I--IV. En algunos registros difieren, en otros coinciden & Medio & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+007 & tiempo\_puerta\_aguja & Confirmar definición clínica exacta y unidad de medida & Asumimos minutos desde llegada hospitalaria hasta inicio de trombolisis, pero requiere confirmación oficial & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+008 & tiempo\_isquemia & Confirmar definición clínica exacta y unidad de medida & Asumimos minutos desde inicio de síntomas hasta reperfusión, pero requiere confirmación oficial & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+009 & tiempo\_respuesta, tiempo\_llegada & Confirmar unidades de medida y definiciones exactas de cada variable & Valores presentes solo cuando llamada\_emergencias=si. Asumimos minutos pero sin documentación & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
+010 & escala\_grace & Validar rango de valores observados contra rango teórico esperado (0--372) & Valores parecen consistentes pero requiere validación clínica del cálculo & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
+011 & Derivaciones ECG (V1--V9, D1--D3, AVL, AVF, AVR, V3R, V4R) & ¿Estas variables indican presencia de alteración en cada derivación? ¿Qué tipo de alteración (supradesnivel, infradesnivel, onda Q)? & Variables booleanas (0/1) con muchos faltantes. Requiere documentación de criterios diagnósticos utilizados & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+012 & avc, mpt, vam, mpp & Confirmar significado exacto de acrónimos & Asumimos: AVC=asistencia ventricular, MPT=marcapaso temporal, VAM=ventilación mecánica, MPP=marcapaso permanente & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
+013 & cabg & Confirmar acrónimo CABG (¿Coronary Artery Bypass Graft?) & Asumimos cirugía de revascularización coronaria pero requiere confirmación & Bajo & Baja & Cardiólogo & Pendiente & 2025-10-25 / \\
+014 & reperfusion & Explicar diferencia entre categorías y criterios de clasificación & Valores: no, parcial, total, otro. Requiere definición de criterios clínicos utilizados & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+015 & coronariografia & Explicar diferencia entre valores observados & Valores: no, si, otro, centro. Especialmente aclarar significado de "centro" vs "otro" & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
+016 & Grupo variables de calidad & Grupo de variables con muchos faltantes que requieren contexto clínico & Variables: razones\_documentadas, riesgo\_beneficio, anti\_agregacion\_plaquetaria, proteccion\_embolica, funcion\_renal, volumen\_contraste, prescripcion\_optima. ¿Son indicadores de calidad o checklist? & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
+017 & Laboratorio (grupo) & Confirmar unidades de medida para todas las variables de laboratorio & Variables: colesterol, creatinina, filtrado\_glomerular, trigliceridos, glicemia, leuco, hb, ck, ckmb. Especificar unidades (mg/dL, mmol/L, etc.) & Alto & Alta & Laboratorio & Pendiente & 2025-10-25 / \\
+018 & Ecocardiografía (grupo) & Confirmar significado de acrónimos: ud, pat, insao, estao, insmit, estmit & Asumimos insuficiencias y estenosis valvulares. ud y pat sin identificar & Medio & Media & Cardiología & Pendiente & 2025-10-25 / \\
+019 & arteria & Solicitar tabla completa de códigos de arterias coronarias & Códigos: cd, cx, ada. Asumimos: CD=coronaria derecha, CX=circunfleja, ADA=descendente anterior & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
+020 & abordaje & Solicitar tabla completa de tipos de abordaje/intervención coronaria & Valores: stent\_farmaco, stent\_metalico, ninguno. ¿Existen otros valores posibles? & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
+021 & resultado & Explicar categorías de seguimiento y su significado clínico & Valores: vivo\_sin, vivo\_con, noevaluado, alta, fallecido. Requiere explicación de "vivo\_sin" vs "vivo\_con" (¿con/sin complicaciones?) & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
+022 & angina24h & ¿Se refiere a angina en 24h previas al ingreso o durante primeras 24h de hospitalización? & Variable booleana con contexto temporal ambiguo que afecta interpretación clínica & Bajo & Baja & Cardiólogo & Pendiente & 2025-10-25 / \\
+023 & provincia, municipio, area\_salud & Normalizar caracteres especiales en nombres geográficos & Caracteres especiales mal codificados: Sancti Sp\'iritus, Cabaigu\'an, Camag\"uey, Manat\'i, G\"uines & Bajo & Baja & Admin. datos & Pendiente & 2025-10-25 / \\
+024 & insulina & ¿Variable representa dosis, tipo de insulina, duración de tratamiento, o uso binario? & Valores numéricos diversos sin patrón identificable. Dificulta su uso en modelado & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
+025 & lugar\_trombolisis & ¿Es necesaria esta variable para el objetivo analítico del proyecto? & Valores: ucie, sala, servicio. Considerada candidata a eliminación según relevancia clínica & Bajo & Baja & Equipo ML & Pendiente & 2025-10-25 / \\
+\end{longtable}
+\renewcommand{\arraystretch}{1.2}
+\normalsize
+
+
+\section*{Acciones siguientes y próximos pasos}
+
+\subsection*{Consultas prioritarias }
+\begin{enumerate}
+    \item \textbf{Duplicación de variables (Alta prioridad):} Aclarar el significado y uso correcto de las 12 variables que aparecen duplicadas en el dataset. Esta es la duda más crítica que afecta la calidad del análisis.
+    \item \textbf{Escalas y codificaciones de medicamentos:} Definir las escalas utilizadas para asa, betabloqueadores, insulina y confirmar codificaciones de otros medicamentos.
+    \item \textbf{Variables electrocardiográficas:} Proporcionar tabla de correspondencia para códigos ECG y documentar criterios para derivaciones (V1--V9, D1--D3, AVL, AVF, AVR, V3R, V4R).
+    \item \textbf{Variables de tiempo:} Confirmar definiciones clínicas exactas y unidades de medida para tiempo\_puerta\_aguja, tiempo\_isquemia, tiempo\_respuesta, tiempo\_llegada.
+    \item \textbf{Clasificaciones clínicas:} Explicar diferencias entre SCACEST primario/secundario, Killip/Killip modificado, y categorías de reperfusión.
+    \item \textbf{Acrónimos y términos técnicos:} Confirmar significado de acrónimos no documentados (avc, mpt, vam, mpp, cabg, acd, ada, acx, insao, estao, insmit, estmit, ud, pat).
+    \item \textbf{Tablas de códigos:} Solicitar tablas completas para arteria, abordaje, resultado, complicaciones.
+    \item Especificar unidades de medida para todas las variables de laboratorio (colesterol, creatinina, filtrado glomerular, triglicéridos, glicemia, leucocitos, hemoglobina, CK, CK-MB).
+    \item Confirmar rangos de referencia y límites de detección de los equipos utilizados.
+\end{enumerate}
+
+
+
+\subsection*{Tareas del equipo de machine learning}
+\begin{enumerate}
+    \item Mantener actualizado el "Registro de dudas y resoluciones" con estados y fechas.
+    \item Documentar todas las decisiones de preprocesamiento tomadas en ausencia de aclaraciones.
+    \item Priorizar variables según impacto en el objetivo analítico (predicción de mortalidad intrahospitalaria).
+    \item Preparar pipeline de preprocesamiento flexible que permita incorporar aclaraciones posteriores.
+    \item Normalizar caracteres especiales en nombres geográficos.
+\end{enumerate}
+
+
+\subsection*{Nota sobre el proceso de limpieza inicial}
+Este dataset es resultado de una primera etapa de limpieza en la que se eliminaron:
+\begin{itemize}
+    \item Variables de identificación personal (nombre, primer\_apellido, segundo\_apellido, numero\_identidad, numero\_contacto) para cumplir con protección de datos.
+    \item Variables redundantes identificadas en análisis preliminar (anno, numero como identificador, unidad).
+\end{itemize}
+
+El dataset original parece ser resultado de la fusión de múltiples fuentes o registros hospitalarios, lo cual explicaría algunas de las duplicaciones observadas. Se requiere confirmación de esta hipótesis por parte del equipo responsable de la recolección de datos.
+
+\end{document}

@@ -206,5 +206,27 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-
+# LaTeX compilation artefacts
+*.aux
+*.bbl
+*.blg
+*.brf
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.xdv
+*.dvi
+*.ps
+*.bcf
+*.run.xml
+_minted-*
+*.pdfsync
 DATA

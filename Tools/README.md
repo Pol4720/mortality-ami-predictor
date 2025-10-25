@@ -16,6 +16,29 @@ conda env create -f environment.yml; conda activate mortality-ami-env
 python -m venv .venv; .\.venv\Scripts\Activate.ps1; pip install -r requirements.txt
 ```
 
+Nota sobre PyTorch/torchvision (opcional):
+- La red neuronal en `src/models.py` es opcional y está desactivada por defecto. Si no la vas a usar, no necesitas instalar `torch`/`torchvision`.
+- En Windows, instala PyTorch desde el índice oficial para evitar errores como: `ERROR: No matching distribution found for torchvision`.
+
+Instalación PyTorch en Windows (elige una):
+
+```powershell
+# CPU-only
+pip install --extra-index-url https://download.pytorch.org/whl/cpu torch torchvision
+
+# CUDA 12.1 (si cuentas con drivers/CUDA compatibles)
+pip install --index-url https://download.pytorch.org/whl/cu121 torch torchvision
+
+# Extras opcionales
+pip install pytorch-lightning captum
+```
+
+Para activar el modelo de red neuronal en los experimentos, define:
+
+```powershell
+$env:ENABLE_TORCH_MODEL = "1"
+```
+
 2) Definir DATASET_PATH (ejemplo)
 
 ```powershell
