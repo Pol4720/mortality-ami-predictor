@@ -99,7 +99,7 @@ Notas generales de calidad (duplicados, faltantes, codificaciones especiales) & 
 % Línea más visible entre celdas
 \setlength{\arrayrulewidth}{0.6pt}
 
-\begin{longtable}{|L{0.095\textwidth}|L{0.17\textwidth}|L{0.07\textwidth}|L{0.16\textwidth}|L{0.14\textwidth}|L{0.13\textwidth}|L{0.15\textwidth}|}
+\begin{longtable}{|L{0.115\textwidth}|L{0.165\textwidth}|L{0.085\textwidth}|L{0.15\textwidth}|L{0.135\textwidth}|L{0.12\textwidth}|L{0.14\textwidth}|}
 \caption{Tabla maestra de variables.}\\
 \hline
 \textbf{Variable} & \textbf{Descripción} & \textbf{Tipo} & \textbf{Unidad / Rango o Dominio} & \textbf{Faltantes y códigos} & \textbf{Reglas / Validación} & \textbf{Dudas principales} \\ \hline
@@ -173,14 +173,14 @@ avf & Derivación aumentada AVF & booleano & 0, 1 & muchos & -- & Requiere expli
 avr & Derivación aumentada AVR & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\ \hline
 v3r & Derivación precordial derecha V3R & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\ \hline
 v4r & Derivación precordial derecha V4R & booleano & 0, 1 & muchos & -- & Requiere explicación: ¿alteración presente? \\ \hline
-presion\_arterial\_sistolica & Presión arterial sistólica & numérico & mmHg, 60--250 & escasos & >0 & \textbf{DUPLICADA}: requiere aclaración \\ \hline
-presion\_arterial\_diastolica & Presión arterial diastólica & numérico & mmHg, 40--150 & escasos & >0 & \textbf{DUPLICADA}: requiere aclaración \\ \hline
-frecuencia\_cardiaca & Frecuencia cardíaca & numérico & latidos/min, 30--200 & escasos & >0 & Ninguna \\ \hline
+\makecell[l]{presion\\arterial\\sistolica} & Presión arterial sistólica & numérico & mmHg, 60--250 & escasos & >0 & \textbf{DUPLICADA}: requiere aclaración \\ \hline
+\makecell[l]{presion\\arterial\\diastolica} & Presión arterial diastólica & numérico & mmHg, 40--150 & escasos & >0 & \textbf{DUPLICADA}: requiere aclaración \\ \hline
+\makecell[l]{frecuencia\\cardiaca} & Frecuencia cardíaca & numérico & latidos/min, 30--200 & escasos & >0 & Ninguna \\ \hline
 shock & Presencia de shock & booleano & 0, 1 & presentes & -- & Requiere tipo de shock (cardiogénico, etc.) \\ \hline
 indice\_mkillip & Clasificación Killip modificada & categórico & I, II, III, IV (romanos) & presentes & -- & Requiere explicación de diferencia con Killip \\ \hline
 indice\_killip & Clasificación Killip & categórico & I, II, III, IV (romanos) & presentes & -- & Requiere explicación de diferencia con Killip-M \\ \hline
-ingresos\_anteriores & Ingresos previos por IAM & booleano & 0, 1 & presentes & -- & Requiere codificación binaria \\ \hline
-diabetes\_mellitus & Diabetes mellitus previa & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
+\makecell[l]{ingresos\\anteriores} & Ingresos previos por IAM & booleano & 0, 1 & presentes & -- & Requiere codificación binaria \\ \hline
+\makecell[l]{diabetes\\mellitus} & Diabetes mellitus previa & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
 insulina & Tratamiento con insulina & numérico & (valores diversos) & muchos & -- & Requiere aclaración: ¿dosis, tipo, booleano? \\ \hline
 \makecell[l]{insuficiencia\\cardiaca\\congestiva} & Insuficiencia cardíaca congestiva previa & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
 \makecell[l]{insuficiencia\\cardiaca} & Insuficiencia cardíaca (evento) & booleano & 0, 1 & muchos & -- & Diferencia con ICC como antecedente \\ \hline
@@ -192,17 +192,17 @@ fibrilacion\_auricular & Fibrilación auricular previa & booleano & 0, 1 & ningu
 \makecell[l]{intervencion\\coronaria\\percutanea} & ICP previa & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
 cabg & Cirugía de revascularización coronaria previa (CABG) & booleano & 0, 1 & ninguno & -- & Requiere aclaración del acrónimo CABG \\ \hline
 \makecell[l]{enfermedad\\venosa\\periferica} & Enfermedad venosa periférica & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
-insuficiencia\_renal\_cronica & Insuficiencia renal crónica & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
+\makecell[l]{insuficiencia\\renal\\cronica} & Insuficiencia renal crónica & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
 dialisis & Tratamiento con diálisis & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
-enfermedad\_cerebro\_vascular & Enfermedad cerebrovascular previa & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
+\makecell[l]{enfermedad\\cerebro\\vascular} & Enfermedad cerebrovascular previa & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
 anemia & Anemia previa o actual & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
 epoc & Enfermedad pulmonar obstructiva crónica & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
 otros & Otros antecedentes & booleano & 0, 1 & presentes & -- & Requiere especificación de contenido \\ \hline
 otras & Otras complicaciones o condiciones & booleano & 0, 1 & muchos & -- & Requiere especificación de contenido \\ \hline
 tabaquismo & Antecedente de tabaquismo & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
-tipo\_tabaquismo & Tipo de tabaquismo & categórico & activo, noactivo & presentes & -- & Requiere codificación binaria \\ \hline
-annos\_fumando & Años de consumo de tabaco & numérico & años, 0--80 & presentes & >=0 & Ninguna \\ \hline
-annos\_sin\_fumar & Años sin fumar (ex-fumadores) & numérico & años, 0--80 & muchos & >=0 & Ninguna \\ \hline
+\makecell[l]{tipo\\tabaquismo} & Tipo de tabaquismo & categórico & activo, noactivo & presentes & -- & Requiere codificación binaria \\ \hline
+\makecell[l]{annos\\fumando} & Años de consumo de tabaco & numérico & años, 0--80 & presentes & >=0 & Ninguna \\ \hline
+\makecell[l]{annos\\sin\\fumar} & Años sin fumar (ex-fumadores) & numérico & años, 0--80 & muchos & >=0 & Ninguna \\ \hline
 asa & Ácido acetilsalicílico (aspirina) & numérico & (valores diversos) & presentes & -- & \textbf{DUPLICADA}: ¿dosis o booleano? \\ \hline
 betabloqueadores & Betabloqueadores & numérico & (valores diversos) & presentes & -- & \textbf{DUPLICADA}: requiere escala o codificación \\ \hline
 clopidogrel & Clopidogrel & categórico & si, no & presentes & -- & \textbf{DUPLICADA}: requiere codificación binaria \\ \hline
@@ -214,11 +214,11 @@ anticoagulantes & Anticoagulantes & categórico & si, no & presentes & -- & \tex
 anticalcicos & Antagonistas del calcio & categórico & si, no & presentes & -- & Requiere codificación binaria \\ \hline
 anticalcico & Antagonista del calcio (¿duplicado?) & booleano & 0, 1 & presentes & -- & Posible duplicación de anticalcicos \\ \hline
 ieca & Inhibidores de ECA & categórico & si, no & presentes & -- & \textbf{DUPLICADA}: requiere codificación binaria \\ \hline
-otros\_diureticos & Otros diuréticos & categórico & si, no & presentes & -- & \textbf{DUPLICADA}: requiere codificación binaria \\ \hline
-estreptoquinasa\_recombinante & Administración de estreptoquinasa & categórico & si, no & presentes & -- & Requiere codificación binaria \\ \hline
-tiempo\_puerta\_aguja & Tiempo puerta-aguja & numérico & probablemente minutos & presentes & >=0 & Requiere confirmación de unidad y definición \\ \hline
-tiempo\_isquemia & Tiempo de isquemia & numérico & probablemente minutos & presentes & >=0 & Requiere confirmación de unidad \\ \hline
-escala\_grace & Puntaje de riesgo GRACE & numérico & 0--372 & presentes & -- & Requiere validación de rango y significado \\ \hline
+\makecell[l]{otros\\diureticos} & Otros diuréticos & categórico & si, no & presentes & -- & \textbf{DUPLICADA}: requiere codificación binaria \\ \hline
+\makecell[l]{estreptoquinasa\\recombinante} & Administración de estreptoquinasa & categórico & si, no & presentes & -- & Requiere codificación binaria \\ \hline
+\makecell[l]{tiempo\\puerta\\aguja} & Tiempo puerta-aguja & numérico & probablemente minutos & presentes & >=0 & Requiere confirmación de unidad y definición \\ \hline
+\makecell[l]{tiempo\\isquemia} & Tiempo de isquemia & numérico & probablemente minutos & presentes & >=0 & Requiere confirmación de unidad \\ \hline
+\makecell[l]{escala\\grace} & Puntaje de riesgo GRACE & numérico & 0--372 & presentes & -- & Requiere validación de rango y significado \\ \hline
 reperfusion & Tipo de reperfusión realizada & categórico & no, parcial, total, otro & presentes & -- & Requiere codificación y explicación detallada \\ \hline
 coronariografia & Coronariografía realizada & categórico & no, si, otro, centro & presentes & -- & Requiere codificación y explicación \\ \hline
 lugar\_trombolisis & Lugar de trombolisis & categórico & ucie, sala, servicio, otro & presentes & -- & Candidata a eliminación según análisis \\ \hline
@@ -230,41 +230,41 @@ mpp & Marcapaso permanente & booleano & 0, 1 & ninguno & -- & Requiere confirmac
 aminas & Uso de aminas vasoactivas & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
 balon & Balón de contrapulsación intraaórtico & booleano & 0, 1 & ninguno & -- & Ninguna \\ \hline
 proxima & Próxima consulta o evento & numérico & enteros & muchos & -- & Requiere explicación del significado \\ \hline
-fecha\_consulta & Fecha de consulta de seguimiento & fecha & formato dd/mm/yyyy & muchos & fecha >= fecha\_egreso & Ninguna \\ \hline
+\makecell[l]{fecha\\consulta} & Fecha de consulta de seguimiento & fecha & formato dd/mm/yyyy & muchos & fecha >= fecha\_egreso & Ninguna \\ \hline
 resultado & Resultado del seguimiento & categórico & vivo\_sin, vivo\_con, noevaluado, alta, fallecido & muchos & -- & Requiere explicación de categorías \\ \hline
 fecha\_defuncion & Fecha de defunción & fecha & formato dd/mm/yyyy & muchos & >= fecha\_ingreso & Ninguna \\ \hline
 motivo & Motivo de reingreso & categórico & scacest (principalmente) & muchos & -- & Asociada a fecha\_ingreso duplicada \\ \hline
-fecha\_realizacion & Fecha de realización de procedimiento & fecha & formato dd/mm/yyyy & muchos & -- & Requiere especificación de procedimiento \\ \hline
-razones\_documentadas & Razones documentadas & booleano & 0, 1 & muchos & -- & Requiere contexto: ¿razones de qué? \\ \hline
-riesgo\_beneficio & Evaluación riesgo-beneficio & booleano & 0, 1 & muchos & -- & Requiere contexto específico \\ \hline
-anti\_agregacion\_plaquetaria & Antiagregación plaquetaria & booleano & 0, 1 & muchos & -- & Requiere aclaración del contexto \\ \hline
-proteccion\_embolica & Protección embólica & booleano & 0, 1 & muchos & -- & Requiere aclaración del contexto \\ \hline
-funcion\_renal & Evaluación de función renal & booleano & 0, 1 & muchos & -- & Requiere aclaración del contexto \\ \hline
-volumen\_contraste & Volumen de contraste utilizado & booleano & 0, 1 & muchos & -- & Requiere aclaración: ¿adecuado/inadecuado? \\ \hline
-prescripcion\_optima & Prescripción óptima al egreso & booleano & 0, 1 & muchos & -- & Requiere definición de "óptima" \\ \hline
+\makecell[l]{fecha\\realizacion} & Fecha de realización de procedimiento & fecha & formato dd/mm/yyyy & muchos & -- & Requiere especificación de procedimiento \\ \hline
+\makecell[l]{razones\\documentadas} & Razones documentadas & booleano & 0, 1 & muchos & -- & Requiere contexto: ¿razones de qué? \\ \hline
+\makecell[l]{riesgo\\beneficio} & Evaluación riesgo-beneficio & booleano & 0, 1 & muchos & -- & Requiere contexto específico \\ \hline
+\makecell[l]{anti\\agregacion\\plaquetaria} & Antiagregación plaquetaria & booleano & 0, 1 & muchos & -- & Requiere aclaración del contexto \\ \hline
+\makecell[l]{proteccion\\embolica} & Protección embólica & booleano & 0, 1 & muchos & -- & Requiere aclaración del contexto \\ \hline
+\makecell[l]{funcion\\renal} & Evaluación de función renal & booleano & 0, 1 & muchos & -- & Requiere aclaración del contexto \\ \hline
+\makecell[l]{volumen\\contraste} & Volumen de contraste utilizado & booleano & 0, 1 & muchos & -- & Requiere aclaración: ¿adecuado/inadecuado? \\ \hline
+\makecell[l]{prescripcion\\optima} & Prescripción óptima al egreso & booleano & 0, 1 & muchos & -- & Requiere definición de "óptima" \\ \hline
 rehabilitacion & Rehabilitación cardíaca & booleano & 0, 1 & muchos & -- & \textbf{DUPLICADA}: aparece dos veces \\ \hline
-participacion\_registro & Participación en registro & booleano & 0, 1 & muchos & -- & Requiere aclaración del propósito \\ \hline
-coronariografias\_medico & Coronariografías por médico & booleano & 0, 1 & muchos & -- & Requiere aclaración del significado \\ \hline
-coronariografias\_centro & Coronariografías por centro & booleano & 0, 1 & muchos & -- & Requiere aclaración del significado \\ \hline
+\makecell[l]{participacion\\registro} & Participación en registro & booleano & 0, 1 & muchos & -- & Requiere aclaración del propósito \\ \hline
+\makecell[l]{coronariografias\\medico} & Coronariografías por médico & booleano & 0, 1 & muchos & -- & Requiere aclaración del significado \\ \hline
+\makecell[l]{coronariografias\\centro} & Coronariografías por centro & booleano & 0, 1 & muchos & -- & Requiere aclaración del significado \\ \hline
 idresultado & Identificador de resultado & numérico & enteros & muchos & -- & Requiere explicación del sistema de ID \\ \hline
 arteria & Arteria afectada & categórico & cd, cx, ada, otros & muchos & -- & Requiere tabla completa de códigos \\ \hline
 localizacion & Localización de lesión & categórico & proximal, media, distal, sin\_lesiones & muchos & -- & Ninguna \\ \hline
 estenosis & Grado de estenosis & numérico & porcentaje, 0--100 & muchos & 0--100 & Ninguna \\ \hline
 abordaje & Tipo de abordaje & categórico & stent\_farmaco, stent\_metalico, ninguno & muchos & -- & Requiere tabla completa de valores \\ \hline
-fecha\_egreso & Fecha de egreso hospitalario & fecha & formato dd/mm/yyyy & presentes & >= fecha\_ingreso & \textbf{DUPLICADA}: requiere aclaración \\ \hline
-estado\_vital & Estado vital al egreso & categórico & vivo, fallecido & presentes & -- & Requiere codificación binaria \\ \hline
-otra\_institucion & Traslado a otra institución & categórico & si, no & muchos & -- & Requiere codificación binaria \\ \hline
-estadia\_ucie & Estadía en UCIE & numérico & días & presentes & >=0 & Ninguna (unidad confirmada: días) \\ \hline
-estadia\_uci & Estadía en UCI & numérico & días & presentes & >=0 & Ninguna (unidad confirmada: días) \\ \hline
-estadia\_intrahospitalaria & Estadía intrahospitalaria total & numérico & días & presentes & >=0 & Ninguna (unidad confirmada: días) \\ \hline
-consejeria\_antitabaquica & Consejería antitabáquica brindada & booleano & 0, 1 & presentes & -- & Ninguna \\ \hline
+\makecell[l]{fecha\\egreso} & Fecha de egreso hospitalario & fecha & formato dd/mm/yyyy & presentes & >= fecha\_ingreso & \textbf{DUPLICADA}: requiere aclaración \\ \hline
+\makecell[l]{estado\\vital} & Estado vital al egreso & categórico & vivo, fallecido & presentes & -- & Requiere codificación binaria \\ \hline
+\makecell[l]{otra\\institucion} & Traslado a otra institución & categórico & si, no & muchos & -- & Requiere codificación binaria \\ \hline
+\makecell[l]{estadia\\ucie} & Estadía en UCIE & numérico & días & presentes & >=0 & Ninguna (unidad confirmada: días) \\ \hline
+\makecell[l]{estadia\\uci} & Estadía en UCI & numérico & días & presentes & >=0 & Ninguna (unidad confirmada: días) \\ \hline
+\makecell[l]{estadia\\intrahospitalaria} & Estadía intrahospitalaria total & numérico & días & presentes & >=0 & Ninguna (unidad confirmada: días) \\ \hline
+\makecell[l]{consejeria\\antitabaquica} & Consejería antitabáquica brindada & booleano & 0, 1 & presentes & -- & Ninguna \\ \hline
 consejeria & Consejería general brindada & booleano & 0, 1 & presentes & -- & Requiere especificación del tipo \\ \hline
 dieta & Consejería dietética brindada & booleano & 0, 1 & presentes & -- & Ninguna \\ \hline
 complicaciones & Complicaciones durante hospitalización & categórico & valores diversos & muchos & -- & Requiere tabla de códigos completa \\ \hline
 observaciones & Observaciones clínicas libres & texto libre & texto único por caso & muchos & -- & Ninguna \\ \hline
 colesterol & Colesterol total & numérico & mg/dL o mmol/L & muchos & >0 & Requiere confirmación de unidad \\ \hline
 creatinina & Creatinina sérica & numérico & mg/dL o $\mu$mol/L & muchos & >0 & Requiere confirmación de unidad \\ \hline
-filtrado\_glomerular & Tasa de filtrado glomerular estimado & numérico & mL/min/1.73m² & muchos & >0 & Requiere confirmación de unidad \\ \hline
+\makecell[l]{filtrado\\glomerular} & Tasa de filtrado glomerular estimado & numérico & mL/min/1.73m² & muchos & >0 & Requiere confirmación de unidad \\ \hline
 trigliceridos & Triglicéridos & numérico & mg/dL o mmol/L & muchos & >0 & Requiere confirmación de unidad \\ \hline
 glicemia & Glucemia & numérico & mg/dL o mmol/L & muchos & >0 & Requiere confirmación de unidad \\ \hline
 leuco & Leucocitos & numérico & células/mm³ o x10³/$\mu$L & muchos & >0 & Requiere confirmación de unidad \\ \hline
@@ -274,7 +274,7 @@ ckmb & Creatina quinasa MB & numérico & U/L o ng/mL & muchos & >0 & Requiere co
 acd & Arteria coronaria derecha & booleano & 0, 1 & presentes & -- & Requiere confirmación del acrónimo \\ \hline
 ada & Arteria descendente anterior & booleano & 0, 1 & presentes & -- & Requiere confirmación del acrónimo \\ \hline
 acx & Arteria circunfleja & booleano & 0, 1 & presentes & -- & Requiere confirmación del acrónimo \\ \hline
-fraccion\_eyeccion & Fracción de eyección del VI & numérico & porcentaje, 0--100 & muchos & 0--100 & Ninguna \\ \hline
+\makecell[l]{fraccion\\eyeccion} & Fracción de eyección del VI & numérico & porcentaje, 0--100 & muchos & 0--100 & Ninguna \\ \hline
 ddvi & Diámetro diastólico del VI & numérico & mm & muchos & >0 & Requiere confirmación de unidad \\ \hline
 dsvi & Diámetro sistólico del VI & numérico & mm & muchos & >0 & Requiere confirmación de unidad \\ \hline
 tiv & Grosor del tabique interventricular & numérico & mm & muchos & >0 & Requiere confirmación de unidad \\ \hline
@@ -289,7 +289,7 @@ insao & Insuficiencia aórtica & booleano & 0, 1 & muchos & -- & Requiere aclara
 estao & Estenosis aórtica & booleano & 0, 1 & muchos & -- & Requiere aclaración del acrónimo \\ \hline
 insmit & Insuficiencia mitral & booleano & 0, 1 & muchos & -- & Requiere aclaración del acrónimo \\ \hline
 estmit & Estenosis mitral & booleano & 0, 1 & muchos & -- & Requiere aclaración del acrónimo \\ \hline
-mortality\_inhospital & Mortalidad intrahospitalaria & booleano & 0, 1 & ninguno & -- & \textbf{Variable objetivo del modelo} \\ \hline
+\makecell[l]{mortality\\inhospital} & Mortalidad intrahospitalaria & booleano & 0, 1 & ninguno & -- & \textbf{Variable objetivo del modelo} \\ \hline
 \end{longtable}
 
 \renewcommand{\arraystretch}{1.2}
@@ -298,23 +298,31 @@ mortality\_inhospital & Mortalidad intrahospitalaria & booleano & 0, 1 & ninguno
 \section{Registro de dudas y resoluciones}
 % Use una fila por duda específica. Mantenga el "Estado" actualizado.
 \scriptsize
-\setlength{\LTleft}{-1cm}
-\setlength{\LTright}{-1cm}
-\setlength{\tabcolsep}{1.5pt}
+\setlength{\LTleft}{\fill}
+\setlength{\LTright}{\fill}
+\setlength{\tabcolsep}{4pt}
 \renewcommand{\arraystretch}{1.15}
 
 % Línea más visible entre celdas
 \setlength{\arrayrulewidth}{0.6pt}
 
 \begin{longtable}{|L{0.035\textwidth}|L{0.10\textwidth}|L{0.265\textwidth}|L{0.17\textwidth}|L{0.05\textwidth}|L{0.05\textwidth}|L{0.095\textwidth}|L{0.065\textwidth}|L{0.075\textwidth}|}
+\caption{Registro de dudas y resoluciones.}\\
 \hline
 \textbf{ID} & \textbf{Variable} & \textbf{Duda / Observación} & \textbf{Evidencia / Contexto} & \textbf{Impacto} & \textbf{Prioridad} & \textbf{Responsable (consulta a)} & \textbf{Estado} & \textbf{Fechas (sol./cierre)} \\ \hline
 \endfirsthead
+
+\multicolumn{9}{c}{\small\itshape Continuación del Registro de dudas y resoluciones (encabezado repetido)}\\[3pt]
 \hline
 \textbf{ID} & \textbf{Variable} & \textbf{Duda / Observación} & \textbf{Evidencia / Contexto} & \textbf{Impacto} & \textbf{Prioridad} & \textbf{Responsable (consulta a)} & \textbf{Estado} & \textbf{Fechas (sol./cierre)} \\ \hline
 \endhead
+
 \hline
+\multicolumn{9}{r}{\small\itshape Continua en la siguiente página} \\ \hline
 \endfoot
+
+\hline
+\endlastfoot
 % ---- Dudas prioritarias sobre el dataset ----
 001 & Variables duplicadas (grupo) & Se identifican 12 variables que aparecen duplicadas en el dataset. Se requiere aclaración sobre el significado de cada columna duplicada y cuál utilizar para el análisis. & Variables afectadas: presion\_arterial\_sistolica, presion\_arterial\_diastolica, asa, betabloqueadores, ieca, estatinas, clopidogrel, furosemida, nitratos, anticoagulantes, otros\_diureticos, fecha\_ingreso. Posibles hipótesis: (a) medición en momentos diferentes (ingreso vs egreso), (b) fusión incorrecta de datasets, (c) prescripción vs administración real & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\ \hline
 002 & asa & ¿La variable ASA representa dosis en mg, días de tratamiento, o simplemente presencia/ausencia? & Valores observados son numéricos diversos (rango 0--24). No se identifica patrón claro de dosificación estándar & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\ \hline
