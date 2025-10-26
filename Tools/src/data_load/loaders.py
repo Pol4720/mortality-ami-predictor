@@ -102,7 +102,23 @@ def load_dataset(path: Optional[str] = None) -> pd.DataFrame:
     # Load based on format
     try:
         if ext == ".csv":
-            df = pd.read_csv(path)
+            # Try multiple encodings for CSV files (common in Spanish datasets)
+            encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252']
+            df = None
+            last_error = None
+            
+            for encoding in encodings:
+                try:
+                    df = pd.read_csv(path, encoding=encoding)
+                    break
+                except (UnicodeDecodeError, LookupError) as e:
+                    last_error = e
+                    continue
+            
+            if df is None:
+                raise RuntimeError(
+                    f"Failed to decode CSV with any encoding. Last error: {last_error}"
+                )
         
         elif ext == ".parquet":
             df = pd.read_parquet(path)

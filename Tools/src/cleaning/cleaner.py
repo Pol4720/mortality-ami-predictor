@@ -478,6 +478,9 @@ class DataCleaner:
             "variables_encoded": sum(
                 1 for m in self.metadata.values() if m.encoding_type is not None
             ),
+            "variables_discretized": sum(
+                1 for m in self.metadata.values() if m.discretization_bins is not None
+            ),
             "quality_issues": {
                 name: meta.quality_flags
                 for name, meta in self.metadata.items()

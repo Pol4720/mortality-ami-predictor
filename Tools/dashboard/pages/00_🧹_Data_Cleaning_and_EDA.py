@@ -73,7 +73,23 @@ def load_data_page():
         if st.button("Cargar dataset desde ruta", type="primary"):
             try:
                 if data_path.endswith('.csv'):
-                    df = pd.read_csv(data_path)
+                    # Try multiple encodings for CSV files
+                    encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252']
+                    df = None
+                    last_error = None
+                    
+                    for encoding in encodings:
+                        try:
+                            df = pd.read_csv(data_path, encoding=encoding)
+                            break
+                        except (UnicodeDecodeError, LookupError) as e:
+                            last_error = e
+                            continue
+                    
+                    if df is None:
+                        raise RuntimeError(
+                            f"No se pudo decodificar el CSV con ninguna codificación. Error: {last_error}"
+                        )
                 elif data_path.endswith(('.xlsx', '.xls')):
                     df = pd.read_excel(data_path)
                 else:
@@ -81,6 +97,7 @@ def load_data_page():
                     return
                 
                 st.session_state.raw_data = df
+                st.session_state.data_path = data_path  # Guardar la ruta del dataset
                 st.success(f"✅ Dataset cargado: {df.shape[0]} filas, {df.shape[1]} columnas")
             except Exception as e:
                 st.error(f"❌ Error al cargar datos: {e}")
@@ -96,11 +113,38 @@ def load_data_page():
         if uploaded is not None:
             try:
                 if uploaded.name.endswith('.csv'):
-                    df = pd.read_csv(uploaded)
+                    # Try multiple encodings for CSV files
+                    encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252']
+                    df = None
+                    last_error = None
+                    
+                    for encoding in encodings:
+                        try:
+                            df = pd.read_csv(uploaded, encoding=encoding)
+                            break
+                        except (UnicodeDecodeError, LookupError) as e:
+                            last_error = e
+                            continue
+                    
+                    if df is None:
+                        raise RuntimeError(
+                            f"No se pudo decodificar el CSV. Error: {last_error}"
+                        )
                 else:
                     df = pd.read_excel(uploaded)
                 
                 st.session_state.raw_data = df
+                
+                # Guardar archivo subido en temporal para uso posterior
+                import tempfile
+                temp_dir = Path(tempfile.gettempdir())
+                temp_path = temp_dir / f"uploaded_{uploaded.name}"
+                if uploaded.name.endswith('.csv'):
+                    df.to_csv(temp_path, index=False)
+                else:
+                    df.to_excel(temp_path, index=False)
+                st.session_state.data_path = str(temp_path)
+                
                 st.success(f"✅ Archivo cargado: {df.shape[0]} filas, {df.shape[1]} columnas")
             except Exception as e:
                 st.error(f"❌ Error al leer archivo: {e}")
@@ -122,8 +166,26 @@ def load_data_page():
             with col1:
                 if st.button("Cargar dataset limpio"):
                     try:
-                        df = pd.read_csv(file_options[selected_file])
+                        # Try multiple encodings for CSV files
+                        encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252']
+                        df = None
+                        last_error = None
+                        
+                        for encoding in encodings:
+                            try:
+                                df = pd.read_csv(file_options[selected_file], encoding=encoding)
+                                break
+                            except (UnicodeDecodeError, LookupError) as e:
+                                last_error = e
+                                continue
+                        
+                        if df is None:
+                            raise RuntimeError(
+                                f"No se pudo decodificar el CSV. Error: {last_error}"
+                            )
+                        
                         st.session_state.cleaned_data = df
+                        st.session_state.data_path = str(file_options[selected_file])
                         st.success(f"✅ Dataset limpio cargado: {df.shape}")
                     except Exception as e:
                         st.error(f"❌ Error: {e}")
@@ -409,13 +471,13 @@ def data_cleaning_page():
                 st.subheader("Resumen de Operaciones")
                 
                 col1, col2, col3 = st.columns(3)
-                col1.metric("Variables procesadas", report['variables_cleaned'])
-                col2.metric("Variables con outliers", report['variables_with_outliers'])
-                col3.metric("Variables imputadas", report['variables_imputed'])
+                col1.metric("Variables procesadas", report.get('variables_cleaned', 0))
+                col2.metric("Variables con outliers", report.get('variables_with_outliers', 0))
+                col3.metric("Variables imputadas", report.get('variables_imputed', 0))
                 
                 col1, col2 = st.columns(2)
-                col1.metric("Variables codificadas", report['variables_encoded'])
-                col2.metric("Variables discretizadas", report['variables_discretized'])
+                col1.metric("Variables codificadas", report.get('variables_encoded', 0))
+                col2.metric("Variables discretizadas", report.get('variables_discretized', 0))
                 
                 # Problemas de calidad
                 if report['quality_issues']:
@@ -622,6 +684,11 @@ def bivariate_analysis_page():
             st.session_state.analyzer = analyzer
     else:
         analyzer = st.session_state.analyzer
+        # Forzar recreación si bivariate_results es una lista (versión antigua)
+        if isinstance(analyzer.bivariate_results, list):
+            with st.spinner("Actualizando analizador..."):
+                analyzer = EDAAnalyzer(df)
+                st.session_state.analyzer = analyzer
     
     # Seleccionar variables
     col1, col2 = st.columns(2)
@@ -644,76 +711,78 @@ def bivariate_analysis_page():
         st.warning("⚠️ Selecciona variables diferentes")
         return
     
-    # Analizar
+    # Analizar y mostrar resultados
     if st.button("🔍 Analizar Relación", type="primary"):
         with st.spinner("Analizando relación bivariada..."):
-            analyzer.analyze_bivariate(var1, var2)
-            st.success("✅ Análisis completado")
-    
-    # Mostrar resultados
-    key = f"{var1}_vs_{var2}"
-    if key in analyzer.bivariate_results:
-        result = analyzer.bivariate_results[key]
-        
-        st.markdown("---")
-        st.subheader(f"Relación: **{var1}** vs **{var2}**")
-        
-        # Mostrar métricas según tipo de relación
-        if result.relationship_type == "numerical_numerical":
-            col1, col2, col3 = st.columns(3)
+            result = analyzer.analyze_bivariate(var1, var2)
             
-            col1.metric("Correlación de Pearson", f"{result.correlation:.3f}")
-            col2.metric("Correlación de Spearman", f"{result.spearman_corr:.3f}")
-            col3.metric("p-value", f"{result.p_value:.4f}" if result.p_value else "N/A")
-            
-            # Interpretación
-            if result.correlation and abs(result.correlation) > 0.7:
-                st.success("✅ Correlación fuerte detectada")
-            elif result.correlation and abs(result.correlation) > 0.4:
-                st.info("📊 Correlación moderada")
-            else:
-                st.warning("⚠️ Correlación débil o no significativa")
-            
-            # Visualización
-            fig = analyzer.plot_relationship(var1, var2, plot_type='scatter')
-            st.plotly_chart(fig, use_container_width=True)
-        
-        elif result.relationship_type == "categorical_categorical":
-            col1, col2 = st.columns(2)
-            
-            col1.metric("Chi-cuadrado", f"{result.chi2:.2f}" if result.chi2 else "N/A")
-            col2.metric("p-value", f"{result.p_value:.4f}" if result.p_value else "N/A")
-            
-            if result.p_value and result.p_value < 0.05:
-                st.success("✅ Relación estadísticamente significativa (p < 0.05)")
-            else:
-                st.info("📊 No hay evidencia de relación significativa")
-            
-            # Tabla de contingencia
-            if result.contingency_table is not None:
-                st.subheader("Tabla de Contingencia")
-                st.dataframe(result.contingency_table, use_container_width=True)
-            
-            # Visualización
-            fig = analyzer.plot_relationship(var1, var2, plot_type='heatmap')
-            st.plotly_chart(fig, use_container_width=True)
-        
-        else:  # categorical_numerical
-            st.subheader("Análisis de Diferencias entre Grupos")
-            
-            if result.group_stats:
-                st.dataframe(result.group_stats, use_container_width=True)
-            
-            # Visualización
-            tab1, tab2 = st.tabs(["Boxplot por Grupo", "Violin Plot"])
-            
-            with tab1:
-                fig = analyzer.plot_relationship(var1, var2, plot_type='box')
-                st.plotly_chart(fig, use_container_width=True)
-            
-            with tab2:
-                fig = analyzer.plot_relationship(var1, var2, plot_type='violin')
-                st.plotly_chart(fig, use_container_width=True)
+            # Mostrar resultados inmediatamente después del análisis
+            key = f"{var1}_vs_{var2}"
+            if key in analyzer.bivariate_results:
+                result = analyzer.bivariate_results[key]
+                
+                st.markdown("---")
+                st.subheader(f"Relación: **{var1}** vs **{var2}**")
+                
+                # Mostrar métricas según tipo de relación
+                if result.relationship_type == "num-num":
+                    col1, col2, col3 = st.columns(3)
+                    
+                    col1.metric("Correlación de Pearson", f"{result.pearson_corr:.3f}" if result.pearson_corr else "N/A")
+                    col2.metric("Correlación de Spearman", f"{result.spearman_corr:.3f}" if result.spearman_corr else "N/A")
+                    col3.metric("p-value", f"{result.pearson_pvalue:.4f}" if result.pearson_pvalue else "N/A")
+                    
+                    # Interpretación
+                    if result.pearson_corr and abs(result.pearson_corr) > 0.7:
+                        st.success("✅ Correlación fuerte detectada")
+                    elif result.pearson_corr and abs(result.pearson_corr) > 0.4:
+                        st.info("📊 Correlación moderada")
+                    else:
+                        st.warning("⚠️ Correlación débil o no significativa")
+                    
+                    # Visualización
+                    try:
+                        fig = analyzer.plot_scatter(var1, var2, add_trendline=True)
+                    except (ImportError, ModuleNotFoundError):
+                        # Si statsmodels no está instalado, mostrar sin trendline
+                        fig = analyzer.plot_scatter(var1, var2, add_trendline=False)
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                elif result.relationship_type == "cat-cat":
+                    col1, col2, col3 = st.columns(3)
+                    
+                    col1.metric("Chi-cuadrado", f"{result.chi2_statistic:.2f}" if result.chi2_statistic else "N/A")
+                    col2.metric("p-value", f"{result.chi2_pvalue:.4f}" if result.chi2_pvalue else "N/A")
+                    col3.metric("Cramér's V", f"{result.cramers_v:.3f}" if result.cramers_v else "N/A")
+                    
+                    if result.chi2_pvalue and result.chi2_pvalue < 0.05:
+                        st.success("✅ Relación estadísticamente significativa (p < 0.05)")
+                    else:
+                        st.info("📊 No hay evidencia de relación significativa")
+                    
+                    # Tabla de contingencia
+                    st.subheader("Tabla de Contingencia")
+                    contingency = pd.crosstab(df[var1], df[var2])
+                    st.dataframe(contingency, use_container_width=True)
+                
+                else:  # num-cat (ANOVA)
+                    col1, col2 = st.columns(2)
+                    
+                    col1.metric("F-statistic (ANOVA)", f"{result.anova_f:.3f}" if result.anova_f else "N/A")
+                    col2.metric("p-value", f"{result.anova_pvalue:.4f}" if result.anova_pvalue else "N/A")
+                    
+                    if result.anova_pvalue and result.anova_pvalue < 0.05:
+                        st.success("✅ Diferencias significativas entre grupos (p < 0.05)")
+                    else:
+                        st.info("📊 No hay evidencia de diferencias significativas")
+                    
+                    # Estadísticas por grupo
+                    st.subheader("Estadísticas por Grupo")
+                    # Determinar cuál es numérica y cuál categórica
+                    num_var = var1 if var1 in analyzer.numeric_cols else var2
+                    cat_var = var2 if var1 in analyzer.numeric_cols else var1
+                    group_stats = df.groupby(cat_var)[num_var].describe()
+                    st.dataframe(group_stats, use_container_width=True)
 
 
 def multivariate_analysis_page():
@@ -767,16 +836,11 @@ def multivariate_analysis_page():
             if st.button("📊 Calcular Matriz de Correlación", type="primary"):
                 with st.spinner("Calculando correlaciones..."):
                     try:
+                        # Calcular matriz de correlación usando el analyzer
                         corr_matrix = analyzer.analyze_multivariate(method=corr_method)
                         
-                        # Filtrar correlaciones bajas
-                        if min_corr > 0:
-                            corr_matrix = corr_matrix.where(
-                                (corr_matrix >= min_corr) | (corr_matrix <= -min_corr)
-                            )
-                        
                         # Visualización
-                        fig = analyzer.plot_correlation_matrix(method=corr_method, min_corr=min_corr)
+                        fig = analyzer.plot_correlation_matrix(method=corr_method)
                         st.plotly_chart(fig, use_container_width=True)
                         
                         # Tabla de correlaciones más altas

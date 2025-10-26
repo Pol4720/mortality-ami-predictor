@@ -18,8 +18,6 @@ from app import (
     get_state,
     initialize_state,
     list_saved_models,
-    load_data,
-    sidebar_data_controls,
 )
 from src.config import CONFIG
 
@@ -30,12 +28,21 @@ initialize_state()
 st.title("🔮 Make Predictions")
 st.markdown("---")
 
-# Sidebar controls
-data_path, task = sidebar_data_controls()
-
-if not data_path:
-    st.warning("⚠️ Please provide a dataset path in the sidebar")
+# Check if data has been loaded
+if st.session_state.cleaned_data is not None:
+    df = st.session_state.cleaned_data
+    st.success("✅ Usando datos limpios")
+elif st.session_state.raw_data is not None:
+    df = st.session_state.raw_data
+    st.warning("⚠️ Usando datos crudos")
+else:
+    st.warning("⚠️ No hay datos cargados. Por favor, carga un dataset en la página **🧹 Data Cleaning and EDA** primero.")
     st.stop()
+
+# Get task from session state
+task = st.session_state.get('target_column', 'mortality')
+if task == 'exitus':
+    task = 'mortality'
 
 # Model selection
 st.sidebar.markdown("---")
@@ -62,13 +69,6 @@ try:
     st.success(f"✅ Model loaded: {selected_model_name}")
 except Exception as e:
     st.error(f"❌ Error loading model: {e}")
-    st.stop()
-
-# Load data
-try:
-    df = load_data(data_path)
-except Exception as e:
-    st.error(f"❌ Error loading data: {e}")
     st.stop()
 
 # Get feature columns
@@ -195,7 +195,23 @@ with tab2:
     
     if uploaded_file is not None:
         try:
-            upload_df = pd.read_csv(uploaded_file)
+            # Try multiple encodings for CSV files
+            encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252']
+            upload_df = None
+            last_error = None
+            
+            for encoding in encodings:
+                try:
+                    upload_df = pd.read_csv(uploaded_file, encoding=encoding)
+                    break
+                except (UnicodeDecodeError, LookupError) as e:
+                    last_error = e
+                    continue
+            
+            if upload_df is None:
+                raise RuntimeError(
+                    f"No se pudo decodificar el CSV. Error: {last_error}"
+                )
             
             st.success(f"✅ Uploaded {len(upload_df)} rows")
             

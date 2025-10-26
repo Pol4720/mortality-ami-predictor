@@ -23,6 +23,7 @@ openpyxl
 xlrd
 scipy
 kaleido
+statsmodels
 
 # --- Opcional: pila PyTorch (solo si activas el modelo NN) ---
 # Nota: Instálala por separado para evitar errores de compatibilidad en Windows.

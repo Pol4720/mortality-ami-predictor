@@ -63,7 +63,19 @@ def load_data_with_fallback(
         cleaned_path = get_latest_cleaned_dataset(task_name)
         if cleaned_path and cleaned_path.exists():
             try:
-                df = pd.read_csv(cleaned_path)
+                # Try multiple encodings for CSV files
+                encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252']
+                df = None
+                for encoding in encodings:
+                    try:
+                        df = pd.read_csv(cleaned_path, encoding=encoding)
+                        break
+                    except (UnicodeDecodeError, LookupError):
+                        continue
+                
+                if df is None:
+                    raise RuntimeError("Failed to decode CSV with any encoding")
+                
                 print(f"✅ Loaded cleaned dataset from: {cleaned_path}")
                 return df, True
             except Exception as e:
@@ -73,7 +85,23 @@ def load_data_with_fallback(
     # Fallback to raw data
     try:
         if raw_data_path.endswith('.csv'):
-            df = pd.read_csv(raw_data_path)
+            # Try multiple encodings for CSV files
+            encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252']
+            df = None
+            last_error = None
+            
+            for encoding in encodings:
+                try:
+                    df = pd.read_csv(raw_data_path, encoding=encoding)
+                    break
+                except (UnicodeDecodeError, LookupError) as e:
+                    last_error = e
+                    continue
+            
+            if df is None:
+                raise RuntimeError(
+                    f"Failed to decode CSV with any encoding. Last error: {last_error}"
+                )
         elif raw_data_path.endswith(('.xlsx', '.xls')):
             df = pd.read_excel(raw_data_path)
         elif raw_data_path.endswith('.parquet'):

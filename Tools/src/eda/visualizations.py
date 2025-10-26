@@ -106,12 +106,15 @@ def plot_correlation_matrix(
         fig.add_annotation(text="No numerical variables for correlation")
         return fig
     
-    df_numeric = df[numeric_cols].dropna()
+    # No eliminar filas con NaN, dejar que corr() maneje los valores faltantes
+    df_numeric = df[numeric_cols]
     
     if method == 'pearson':
         corr_matrix = df_numeric.corr(method='pearson')
-    else:
+    elif method == 'spearman':
         corr_matrix = df_numeric.corr(method='spearman')
+    else:  # kendall
+        corr_matrix = df_numeric.corr(method='kendall')
     
     fig = px.imshow(
         corr_matrix,
@@ -119,10 +122,15 @@ def plot_correlation_matrix(
         aspect='auto',
         color_continuous_scale='RdBu_r',
         zmin=-1, zmax=1,
-        title=f'Correlation Matrix ({method.capitalize()})'
+        title=f'Correlation Matrix ({method.capitalize()})',
+        labels=dict(color="Correlation")
     )
     
-    fig.update_layout(template='plotly_white')
+    fig.update_layout(
+        template='plotly_white',
+        width=800,
+        height=800
+    )
     return fig
 
 

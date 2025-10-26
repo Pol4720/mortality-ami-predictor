@@ -41,7 +41,7 @@ class EDAAnalyzer:
         self.categorical_cols = df.select_dtypes(exclude=[np.number]).columns.tolist()
         
         self.univariate_results: Dict[str, UnivariateStats] = {}
-        self.bivariate_results: List[BivariateStats] = []
+        self.bivariate_results: Dict[str, BivariateStats] = {}
         self.pca_results: Optional[PCAResults] = None
     
     # ==================== UNIVARIATE ANALYSIS ====================
@@ -110,7 +110,9 @@ class EDAAnalyzer:
         else:
             result = analyze_categorical_categorical(self.df, var1, var2)
         
-        self.bivariate_results.append(result)
+        # Guardar con clave para fácil acceso
+        key = f"{var1}_vs_{var2}"
+        self.bivariate_results[key] = result
         return result
     
     def plot_correlation_matrix(self, method: str = 'pearson') -> go.Figure:
@@ -166,6 +168,22 @@ class EDAAnalyzer:
         return plot_pairwise_scatter(self.df, variables, max_vars)
     
     # ==================== MULTIVARIATE ANALYSIS ====================
+    
+    def analyze_multivariate(self, method: str = 'pearson') -> pd.DataFrame:
+        """Calculate correlation matrix for multivariate analysis.
+        
+        Args:
+            method: Correlation method ('pearson', 'spearman', or 'kendall')
+            
+        Returns:
+            Correlation matrix DataFrame
+        """
+        if len(self.numeric_cols) < 2:
+            raise ValueError("Need at least 2 numeric columns for correlation analysis")
+        
+        numeric_df = self.df[self.numeric_cols]
+        corr_matrix = numeric_df.corr(method=method)
+        return corr_matrix
     
     def perform_pca(
         self,
@@ -265,7 +283,7 @@ class EDAAnalyzer:
             results = pickle.load(f)
         
         self.univariate_results = results.get('univariate', {})
-        self.bivariate_results = results.get('bivariate', [])
+        self.bivariate_results = results.get('bivariate', {})
         self.pca_results = results.get('pca', None)
     
     def generate_summary_report(self) -> Dict[str, Any]:
@@ -291,7 +309,7 @@ class EDAAnalyzer:
         
         if self.bivariate_results:
             report['bivariate_analyzed'] = len(self.bivariate_results)
-            report['significant_relationships'] = sum(1 for b in self.bivariate_results if b.is_significant)
+            report['significant_relationships'] = sum(1 for b in self.bivariate_results.values() if b.is_significant)
         
         if self.pca_results:
             report['pca_components'] = self.pca_results.n_components

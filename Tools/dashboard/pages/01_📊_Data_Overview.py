@@ -15,10 +15,7 @@ from app import (
     display_data_audit,
     display_dataframe_info,
     display_dataset_preview,
-    get_state,
     initialize_state,
-    load_data,
-    sidebar_data_controls,
 )
 from src.config import CONFIG
 from src.features import safe_feature_columns
@@ -30,76 +27,66 @@ initialize_state()
 st.title("📊 Data Overview & Exploration")
 st.markdown("---")
 
-# Sidebar controls
-data_path, task = sidebar_data_controls()
-
-if not data_path:
-    st.warning("⚠️ Please provide a dataset path in the sidebar")
+# Check if data has been loaded in Data Cleaning page
+if st.session_state.cleaned_data is not None:
+    df = st.session_state.cleaned_data
+    st.success("✅ Usando datos limpios del proceso de limpieza")
+elif st.session_state.raw_data is not None:
+    df = st.session_state.raw_data
+    st.warning("⚠️ Usando datos crudos (se recomienda limpiar primero en la página anterior)")
+else:
+    st.warning("⚠️ No hay datos cargados. Por favor, carga un dataset en la página **🧹 Data Cleaning and EDA** primero.")
     st.stop()
 
-# Load data
-try:
-    with st.spinner("Loading dataset..."):
-        df = load_data(data_path)
+# Display basic info
+display_dataframe_info(df)
+# Display basic info
+display_dataframe_info(df)
+
+st.markdown("---")
+
+# Tabs for different views
+tab1, tab2, tab3 = st.tabs(["📋 Preview", "🔍 Quality Audit", "📈 Statistics"])
+
+with tab1:
+    n_rows = st.slider("Number of rows to display", 5, 50, 10)
+    display_dataset_preview(df, n_rows=n_rows)
+
+with tab2:
+    # Determine target column from session state
+    target = st.session_state.get('target_column', CONFIG.target_column)
     
-    st.success(f"✅ Dataset loaded successfully")
+    # Get feature columns
+    if target and target in df.columns:
+        feature_cols = safe_feature_columns(df, [target])
+    else:
+        feature_cols = list(df.columns)
     
-    # Display basic info
-    display_dataframe_info(df)
+    st.info(f"Analyzing {len(feature_cols)} feature columns (excluding target: {target})")
+    display_data_audit(df, feature_cols)
+
+with tab3:
+    st.subheader("📊 Column Statistics")
     
-    st.markdown("---")
+    # Select columns to analyze
+    all_cols = df.columns.tolist()
+    selected_cols = st.multiselect(
+        "Select columns to view statistics",
+        all_cols,
+        default=all_cols[:5] if len(all_cols) > 5 else all_cols
+    )
     
-    # Tabs for different views
-    tab1, tab2, tab3 = st.tabs(["📋 Preview", "🔍 Quality Audit", "📈 Statistics"])
-    
-    with tab1:
-        n_rows = st.slider("Number of rows to display", 5, 50, 10)
-        display_dataset_preview(df, n_rows=n_rows)
-    
-    with tab2:
-        # Determine target column
-        if task == "mortality":
-            target = CONFIG.target_column
-        else:
-            target = CONFIG.arrhythmia_column
-        
-        # Get feature columns
-        if target and target in df.columns:
-            feature_cols = safe_feature_columns(df, [target])
-        else:
-            feature_cols = list(df.columns)
-        
-        st.info(f"Analyzing {len(feature_cols)} feature columns (excluding target: {target})")
-        display_data_audit(df, feature_cols)
-    
-    with tab3:
-        st.subheader("📊 Column Statistics")
-        
-        # Select columns to analyze
-        all_cols = df.columns.tolist()
-        selected_cols = st.multiselect(
-            "Select columns to view statistics",
-            all_cols,
-            default=all_cols[:5] if len(all_cols) > 5 else all_cols
+    if selected_cols:
+        st.dataframe(
+            df[selected_cols].describe(),
+            use_container_width=True
         )
         
-        if selected_cols:
-            st.dataframe(
-                df[selected_cols].describe(),
-                use_container_width=True
-            )
-            
-            # Missing values visualization
-            st.subheader("Missing Values")
-            missing_df = df[selected_cols].isnull().sum().to_frame("Missing Count")
-            missing_df["Missing %"] = (missing_df["Missing Count"] / len(df) * 100).round(2)
-            
-            st.dataframe(missing_df, use_container_width=True)
-        else:
-            st.info("Select at least one column to view statistics")
-
-except FileNotFoundError:
-    st.error(f"❌ Dataset file not found: {data_path}")
-except Exception as e:
-    st.error(f"❌ Error loading dataset: {e}")
-    st.exception(e)
+        # Missing values visualization
+        st.subheader("Missing Values")
+        missing_df = df[selected_cols].isnull().sum().to_frame("Missing Count")
+        missing_df["Missing %"] = (missing_df["Missing Count"] / len(df) * 100).round(2)
+        
+        st.dataframe(missing_df, use_container_width=True)
+    else:
+        st.info("Select at least one column to view statistics")

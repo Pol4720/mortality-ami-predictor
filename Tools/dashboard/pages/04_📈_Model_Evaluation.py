@@ -16,7 +16,6 @@ from app import (
     get_state,
     initialize_state,
     list_saved_models,
-    sidebar_data_controls,
 )
 from src.evaluation import evaluate_main
 
@@ -27,12 +26,32 @@ initialize_state()
 st.title("📈 Model Evaluation")
 st.markdown("---")
 
-# Sidebar controls
-data_path, task = sidebar_data_controls()
-
-if not data_path:
-    st.warning("⚠️ Please provide a dataset path in the sidebar")
+# Check if data has been loaded
+if st.session_state.cleaned_data is not None:
+    df = st.session_state.cleaned_data
+    data_path = st.session_state.get('data_path')
+    st.success("✅ Usando datos limpios")
+elif st.session_state.raw_data is not None:
+    df = st.session_state.raw_data
+    data_path = st.session_state.get('data_path')
+    st.warning("⚠️ Usando datos crudos")
+else:
+    st.warning("⚠️ No hay datos cargados. Por favor, carga un dataset en la página **🧹 Data Cleaning and EDA** primero.")
     st.stop()
+
+# Si no hay data_path o el path no existe, crear un archivo temporal
+import tempfile
+if not data_path or not Path(data_path).exists():
+    st.info("ℹ️ Guardando datos en archivo temporal para la evaluación...")
+    temp_dir = Path(tempfile.gettempdir())
+    data_path = temp_dir / "streamlit_evaluation_dataset.csv"
+    df.to_csv(data_path, index=False)
+    st.session_state.data_path = str(data_path)
+
+# Get task from session state
+task = st.session_state.get('target_column', 'mortality')
+if task == 'exitus':
+    task = 'mortality'
 
 # Model selection for evaluation
 st.sidebar.markdown("---")
@@ -87,7 +106,19 @@ except Exception:
 
 if metrics_files:
     try:
-        metrics_df = pd.read_csv(metrics_files[-1])
+        # Try multiple encodings for CSV files
+        encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252']
+        metrics_df = None
+        
+        for encoding in encodings:
+            try:
+                metrics_df = pd.read_csv(metrics_files[-1], encoding=encoding)
+                break
+            except (UnicodeDecodeError, LookupError):
+                continue
+        
+        if metrics_df is None:
+            raise RuntimeError("No se pudo leer el archivo de métricas")
         
         # Display as styled dataframe
         st.dataframe(

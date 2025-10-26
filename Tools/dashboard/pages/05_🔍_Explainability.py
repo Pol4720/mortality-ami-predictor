@@ -15,8 +15,6 @@ import streamlit as st
 from app import (
     initialize_state,
     list_saved_models,
-    load_data,
-    sidebar_data_controls,
 )
 from src.config import CONFIG
 
@@ -27,12 +25,21 @@ initialize_state()
 st.title("🔍 Model Explainability")
 st.markdown("---")
 
-# Sidebar controls
-data_path, task = sidebar_data_controls()
-
-if not data_path:
-    st.warning("⚠️ Please provide a dataset path in the sidebar")
+# Check if data has been loaded
+if st.session_state.cleaned_data is not None:
+    df = st.session_state.cleaned_data
+    st.success("✅ Usando datos limpios")
+elif st.session_state.raw_data is not None:
+    df = st.session_state.raw_data
+    st.warning("⚠️ Usando datos crudos")
+else:
+    st.warning("⚠️ No hay datos cargados. Por favor, carga un dataset en la página **🧹 Data Cleaning and EDA** primero.")
     st.stop()
+
+# Get task from session state
+task = st.session_state.get('target_column', 'mortality')
+if task == 'exitus':
+    task = 'mortality'
 
 # Model selection
 st.sidebar.markdown("---")
@@ -65,18 +72,12 @@ n_samples = st.sidebar.slider(
     help="Number of samples to use for SHAP analysis"
 )
 
-# Load model and data
+# Load model
 try:
     model = joblib.load(model_path)
     st.success(f"✅ Model loaded: {selected_model_name}")
 except Exception as e:
     st.error(f"❌ Error loading model: {e}")
-    st.stop()
-
-try:
-    df = load_data(data_path)
-except Exception as e:
-    st.error(f"❌ Error loading data: {e}")
     st.stop()
 
 # Get feature columns

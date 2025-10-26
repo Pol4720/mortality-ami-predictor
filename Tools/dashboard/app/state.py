@@ -7,6 +7,8 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
+from src.data_load import read_csv_with_encoding
+
 
 def initialize_state():
     """Initialize session state variables if not already set."""
@@ -112,8 +114,9 @@ def load_data(file_path: Path | str, use_cache: bool = True) -> pd.DataFrame:
     if use_cache and st.session_state.df is not None:
         return st.session_state.df
     
-    # Load data
-    df = pd.read_csv(file_path)
+    # Use the robust CSV reader with encoding detection and error handling
+    df = read_csv_with_encoding(str(file_path))
+    
     st.session_state.df = df
     
     return df

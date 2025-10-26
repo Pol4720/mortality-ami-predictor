@@ -11,6 +11,50 @@ from typing import Optional
 import pandas as pd
 
 
+def read_csv_with_encoding(path: str, **kwargs) -> pd.DataFrame:
+    """Read CSV file with automatic encoding detection.
+    
+    Tries multiple common encodings used in Spanish datasets.
+    Also handles parsing errors with robust settings.
+    
+    Args:
+        path: Path to CSV file
+        **kwargs: Additional arguments passed to pd.read_csv
+        
+    Returns:
+        Loaded DataFrame
+        
+    Raises:
+        RuntimeError: If file cannot be decoded with any encoding
+    """
+    encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252']
+    last_error = None
+    
+    # Add robust parsing parameters if not specified
+    if 'on_bad_lines' not in kwargs:
+        kwargs['on_bad_lines'] = 'warn'
+    if 'low_memory' not in kwargs:
+        kwargs['low_memory'] = False
+    
+    for encoding in encodings:
+        try:
+            return pd.read_csv(path, encoding=encoding, **kwargs)
+        except (UnicodeDecodeError, LookupError) as e:
+            last_error = e
+            continue
+        except pd.errors.ParserError:
+            # If parser error, try with error_bad_lines=False (skip bad lines)
+            try:
+                return pd.read_csv(path, encoding=encoding, on_bad_lines='skip', **kwargs)
+            except Exception as e:
+                last_error = e
+                continue
+    
+    raise RuntimeError(
+        f"Failed to decode CSV with any encoding. Last error: {last_error}"
+    )
+
+
 def detect_file_format(path: str) -> str:
     """Detect file format from extension.
     

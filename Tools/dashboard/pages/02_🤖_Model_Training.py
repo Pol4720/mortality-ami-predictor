@@ -16,7 +16,6 @@ from app import (
     get_state,
     initialize_state,
     set_state,
-    sidebar_data_controls,
     sidebar_training_controls,
     train_models_with_progress,
 )
@@ -28,12 +27,33 @@ initialize_state()
 st.title("🤖 Model Training")
 st.markdown("---")
 
-# Sidebar controls
-data_path, task = sidebar_data_controls()
-
-if not data_path:
-    st.warning("⚠️ Please provide a dataset path in the sidebar")
+# Check if data has been loaded
+if st.session_state.cleaned_data is not None:
+    df = st.session_state.cleaned_data
+    data_path = st.session_state.get('data_path')
+    st.success("✅ Usando datos limpios del proceso de limpieza")
+elif st.session_state.raw_data is not None:
+    df = st.session_state.raw_data
+    data_path = st.session_state.get('data_path')
+    st.warning("⚠️ Usando datos crudos (se recomienda limpiar primero)")
+else:
+    st.warning("⚠️ No hay datos cargados. Por favor, carga un dataset en la página **🧹 Data Cleaning and EDA** primero.")
     st.stop()
+
+# Si no hay data_path o el path no existe, crear un archivo temporal
+import tempfile
+if not data_path or not Path(data_path).exists():
+    st.info("ℹ️ Guardando datos en archivo temporal para el entrenamiento...")
+    temp_dir = Path(tempfile.gettempdir())
+    data_path = temp_dir / "streamlit_training_dataset.csv"
+    df.to_csv(data_path, index=False)
+    st.session_state.data_path = str(data_path)
+    st.success(f"✅ Dataset guardado en: {data_path}")
+
+# Get task from session state
+task = st.session_state.get('target_column', 'mortality')
+if task == 'exitus':
+    task = 'mortality'
 
 # Training settings
 st.sidebar.markdown("---")

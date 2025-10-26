@@ -16,7 +16,7 @@ from .loaders import (
     data_audit,
 )
 from .splitters import train_test_split, create_temporal_split, create_stratified_split
-from .io_utils import detect_file_format, save_dataset
+from .io_utils import detect_file_format, save_dataset, read_csv_with_encoding
 
 __all__ = [
     # Loaders
@@ -30,7 +30,8 @@ __all__ = [
     "train_test_split",
     "create_temporal_split",
     "create_stratified_split",
-    # I/O utilities
+    # IO Utils
     "detect_file_format",
     "save_dataset",
+    "read_csv_with_encoding",
 ]
