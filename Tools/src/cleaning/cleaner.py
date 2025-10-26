@@ -434,6 +434,31 @@ class DataCleaner:
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(metadata_dict, f, indent=2, ensure_ascii=False)
     
+    def save_config(self, filepath: Path) -> None:
+        """Save configuration to JSON file.
+        
+        Args:
+            filepath: Output path for JSON file
+        """
+        config_dict = self.config.to_dict()
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(config_dict, f, indent=2, ensure_ascii=False)
+    
+    def load_metadata(self, filepath: Path) -> None:
+        """Load metadata from JSON file.
+        
+        Args:
+            filepath: Path to JSON file with metadata
+        """
+        with open(filepath, 'r', encoding='utf-8') as f:
+            metadata_dict = json.load(f)
+        
+        self.metadata = {
+            name: VariableMetadata(**meta_data)
+            for name, meta_data in metadata_dict.items()
+        }
+    
     def get_cleaning_report(self) -> Dict[str, Any]:
         """Generate cleaning summary report.
         

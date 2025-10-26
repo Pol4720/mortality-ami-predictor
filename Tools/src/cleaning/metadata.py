@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Any
+import numpy as np
 
 
 @dataclass
@@ -75,6 +76,24 @@ class VariableMetadata:
         """Convert metadata to dictionary.
         
         Returns:
-            Dictionary representation of metadata
+            Dictionary representation of metadata with numpy types converted to Python types
         """
-        return asdict(self)
+        def convert_value(val):
+            """Convert numpy types to Python types for JSON serialization."""
+            if isinstance(val, (np.integer, np.int64, np.int32)):
+                return int(val)
+            elif isinstance(val, (np.floating, np.float64, np.float32)):
+                return float(val)
+            elif isinstance(val, np.ndarray):
+                return val.tolist()
+            elif isinstance(val, dict):
+                return {k: convert_value(v) for k, v in val.items()}
+            elif isinstance(val, list):
+                return [convert_value(item) for item in val]
+            return val
+        
+        data = asdict(self)
+        # Convert all numpy types in the dictionary
+        for key, value in data.items():
+            data[key] = convert_value(value)
+        return data

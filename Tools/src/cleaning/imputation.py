@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import List, Optional
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -51,30 +52,37 @@ def impute_numeric_column(
     
     result = series.copy()
     
-    if strategy == ImputationStrategy.MEAN:
-        result.fillna(series.mean(), inplace=True)
-    
-    elif strategy == ImputationStrategy.MEDIAN:
-        result.fillna(series.median(), inplace=True)
-    
-    elif strategy == ImputationStrategy.FORWARD:
-        result.fillna(method='ffill', inplace=True)
-        # Fill remaining NaN at the start with median
-        if result.isna().any():
+    # Suppress numpy warnings for operations on empty slices
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', category=RuntimeWarning, 
+                              message='.*empty slice.*')
+        warnings.filterwarnings('ignore', category=RuntimeWarning,
+                              message='.*Mean of empty slice.*')
+        
+        if strategy == ImputationStrategy.MEAN:
+            result.fillna(series.mean(), inplace=True)
+        
+        elif strategy == ImputationStrategy.MEDIAN:
             result.fillna(series.median(), inplace=True)
-    
-    elif strategy == ImputationStrategy.BACKWARD:
-        result.fillna(method='bfill', inplace=True)
-        # Fill remaining NaN at the end with median
-        if result.isna().any():
+        
+        elif strategy == ImputationStrategy.FORWARD:
+            result.fillna(method='ffill', inplace=True)
+            # Fill remaining NaN at the start with median
+            if result.isna().any():
+                result.fillna(series.median(), inplace=True)
+        
+        elif strategy == ImputationStrategy.BACKWARD:
+            result.fillna(method='bfill', inplace=True)
+            # Fill remaining NaN at the end with median
+            if result.isna().any():
+                result.fillna(series.median(), inplace=True)
+        
+        elif strategy == ImputationStrategy.CONSTANT_NUMERIC:
+            result.fillna(fill_value, inplace=True)
+        
+        else:
+            # Default to median
             result.fillna(series.median(), inplace=True)
-    
-    elif strategy == ImputationStrategy.CONSTANT_NUMERIC:
-        result.fillna(fill_value, inplace=True)
-    
-    else:
-        # Default to median
-        result.fillna(series.median(), inplace=True)
     
     return result
 

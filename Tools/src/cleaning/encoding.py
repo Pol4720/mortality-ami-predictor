@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import Dict, List, Optional, Any, Tuple
+import warnings
 
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
@@ -32,17 +33,20 @@ def encode_label(
     Returns:
         Tuple of (encoded_series, encoding_mapping)
     """
-    series_str = series.astype(str)
-    
-    encoder = LabelEncoder()
-    encoded = encoder.fit_transform(series_str)
-    
-    mapping = dict(zip(
-        encoder.classes_,
-        encoder.transform(encoder.classes_)
-    ))
-    
-    return pd.Series(encoded, index=series.index, name=series.name), mapping
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', category=RuntimeWarning)
+        
+        series_str = series.astype(str)
+        
+        encoder = LabelEncoder()
+        encoded = encoder.fit_transform(series_str)
+        
+        mapping = dict(zip(
+            encoder.classes_,
+            encoder.transform(encoder.classes_)
+        ))
+        
+        return pd.Series(encoded, index=series.index, name=series.name), mapping
 
 
 def encode_ordinal(

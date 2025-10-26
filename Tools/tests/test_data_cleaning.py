@@ -148,7 +148,7 @@ class TestDataCleaner:
         
         # La columna 'all_missing' debe ser eliminada
         assert 'all_missing' not in cleaner.metadata or \
-               'columna_totalmente_vacia' in cleaner.metadata.get('all_missing', VariableMetadata(name='')).quality_flags
+               'fully_missing' in cleaner.metadata.get('all_missing', VariableMetadata(name='')).quality_flags
     
     def test_drop_constant_columns(self, sample_dataframe, cleaning_config):
         """Test de eliminación de columnas constantes."""
