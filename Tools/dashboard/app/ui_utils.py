@@ -196,7 +196,7 @@ def train_models_with_progress(
         target = CONFIG.arrhythmia_column
     
     # Split data
-    train_df, test_df = train_test_split(df, stratify_target=target)
+    train_df, test_df = train_test_split(df, stratify_column=target)
     
     # Prepare features
     X = train_df[safe_feature_columns(train_df, [target])]
