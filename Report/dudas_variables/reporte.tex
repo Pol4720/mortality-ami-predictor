@@ -97,17 +97,17 @@ Notas generales de calidad (duplicados, faltantes, codificaciones especiales) & 
 numero & Identificador único del paciente & numérico & enteros positivos & ninguno & único por paciente & Eliminada varias veces: variable redundante \\
 anno & Año de registro & numérico & 2016--2025 & ninguno & -- & Eliminada varias veces: variable redundante \\
 unidad & Código de unidad hospitalaria & numérico & códigos específicos & presentes & -- & Eliminada varias: variable redundante \\
-fecha\_ingreso & Fecha de ingreso hospitalario & fecha & formato dd/mm/yyyy & presentes & fecha válida & \textbf{DUPLICADA}: requiere aclaración \\
-fecha\_egreso & Fecha de egreso hospitalario & fecha & formato dd/mm/yyyy & presentes & >= fecha\_ingreso & \textbf{DUPLICADA}: asociada a reingresos \\
+fecha\\ingreso & Fecha de ingreso hospitalario & fecha & formato dd/mm/yyyy & presentes & fecha válida & \textbf{DUPLICADA}: requiere aclaración \\
+fecha\\egreso & Fecha de egreso hospitalario & fecha & formato dd/mm/yyyy & presentes & >= fecha\_ingreso & \textbf{DUPLICADA}: asociada a reingresos \\
 % ---- Variables demográficas ----
-numero\_identidad & Número de documento de identidad & texto & -- & -- & -- & Eliminada: protección de datos \\
-numero\_contacto & Número telefónico de contacto & texto & -- & -- & -- & Eliminada: protección de datos \\
+numero\\identidad & Número de documento de identidad & texto & -- & -- & -- & Eliminada: protección de datos \\
+numero\\contacto & Número telefónico de contacto & texto & -- & -- & -- & Eliminada: protección de datos \\
 nombre & Nombre del paciente & texto & -- & -- & -- & Eliminada: protección de datos \\
-primer\_apellido & Primer apellido del paciente & texto & -- & -- & -- & Eliminada: protección de datos \\
-segundo\_apellido & Segundo apellido del paciente & texto & -- & -- & -- & Eliminada: protección de datos \\
+primer\\apellido & Primer apellido del paciente & texto & -- & -- & -- & Eliminada: protección de datos \\
+segundo\\apellido & Segundo apellido del paciente & texto & -- & -- & -- & Eliminada: protección de datos \\
 edad & Edad del paciente en años & numérico & 0--120 años & escasos & >0, <120 & Ninguna \\
 sexo & Sexo del paciente & categórico & masculino, femenino & presentes & dominio cerrado & Requiere codificación binaria \\
-color\_piel & Etnia o color de piel registrado & categórico & blanca, mestiza, negra & presentes & dominio cerrado & Requiere codificación numérica \\
+color\\piel & Etnia o color de piel registrado & categórico & blanca, mestiza, negra & presentes & dominio cerrado & Requiere codificación numérica \\
 peso & Peso corporal del paciente & numérico & kg, 20--200 & presentes & >0 & Ninguna \\
 talla & Estatura del paciente & numérico & cm, 100--220 & presentes & >0 & Ninguna \\
 imc & Índice de masa corporal calculado & numérico & kg/m², 10--60 & presentes & peso/(talla/100)² & Ninguna \\
@@ -119,23 +119,23 @@ idprovincia & Identificador numérico de provincia & numérico & enteros positiv
 idmunicipio & Identificador numérico de municipio & numérico & enteros positivos & ninguno & -- & Ninguna \\
 idareasalud & Identificador numérico de área de salud & numérico & enteros positivos & presentes & -- & Ninguna \\
 % ---- Variables de presentación y atención inicial ----
-atencion\_inicial & Tipo de atención inicial recibida & categórico & servicio, cuerpo, sala & presentes & -- & Requiere documentación del significado \\
-horario\_llegada & Horario de llegada al hospital & categórico & 7am7pm, 7pm7am & presentes & -- & Requiere codificación binaria \\
+atencion\\inicial & Tipo de atención inicial recibida & categórico & servicio, cuerpo, sala & presentes & -- & Requiere documentación del significado \\
+horario\\llegada & Horario de llegada al hospital & categórico & 7am7pm, 7pm7am & presentes & -- & Requiere codificación binaria \\
 ecg\_previo & Electrocardiograma previo realizado & booleano & si, no & presentes & -- & Requiere codificación binaria \\
 ecg & Código de hallazgo electrocardiográfico & numérico & enteros (5--35) & presentes & -- & Requiere tabla de correspondencia \\
-llamada\_emergencias & Llamada al servicio de emergencias & categórico & si, no & presentes & -- & Requiere codificación binaria \\
-tiempo\_respuesta & Tiempo de respuesta de emergencias & numérico & probablemente minutos & presentes (solo si llamada=si) & >=0 & Requiere confirmación de unidad \\
-tiempo\_llegada & Tiempo de llegada al hospital & numérico & probablemente minutos & presentes (solo si llamada=si) & >=0 & Requiere confirmación de unidad \\
-primera\_asistencia\_medica & Tiempo hasta primera asistencia & numérico & probablemente minutos & presentes & >=0 & Requiere confirmación de unidad \\
+llamada\\emergencias & Llamada al servicio de emergencias & categórico & si, no & presentes & -- & Requiere codificación binaria \\
+tiempo\\respuesta & Tiempo de respuesta de emergencias & numérico & probablemente minutos & presentes (solo si llamada=si) & >=0 & Requiere confirmación de unidad \\
+tiempo\\llegada & Tiempo de llegada al hospital & numérico & probablemente minutos & presentes (solo si llamada=si) & >=0 & Requiere confirmación de unidad \\
+primera\\asistencia\_medica & Tiempo hasta primera asistencia & numérico & probablemente minutos & presentes & >=0 & Requiere confirmación de unidad \\
 % ---- Variables de diagnóstico ----
 scacest & Síndrome coronario agudo con elevación ST & booleano & 0, 1 & presentes & -- & Requiere explicación clínica detallada \\
-scacest\_secundario & SCACEST secundario & booleano & 0, 1 & presentes & -- & Requiere explicación clínica detallada \\
+scacest\\secundario & SCACEST secundario & booleano & 0, 1 & presentes & -- & Requiere explicación clínica detallada \\
 angina & Tipo de angina presentada & categórico & inestable, (otros) & presentes & -- & Requiere dominio completo de valores \\
 angina24h & Angina en las últimas 24 horas & booleano & 0, 1 & presentes & -- & Requiere aclaración del período exacto \\
-angina\_inestable & Presencia de angina inestable & booleano & 0, 1 & muchos & -- & Posible variable de seguimiento \\
+angina\\inestable & Presencia de angina inestable & booleano & 0, 1 & muchos & -- & Posible variable de seguimiento \\
 presentacion & Forma de presentación clínica & categórico & dolor\_tipico, dolor\_atipico, sincope, asintomatico, otros & presentes & -- & Ninguna \\
-depresion\_st & Depresión del segmento ST & booleano & si, no & presentes & -- & Requiere explicación clínica y codificación \\
-depresion\_ondat & Depresión de onda T & categórico & (valores diversos) & presentes & -- & Requiere explicación clínica completa \\
+depresion\\st & Depresión del segmento ST & booleano & si, no & presentes & -- & Requiere explicación clínica y codificación \\
+depresion\\ondat & Depresión de onda T & categórico & (valores diversos) & presentes & -- & Requiere explicación clínica completa \\
 supradesnivel & Supradesnivel del segmento ST & numérico & enteros & muchos & -- & Requiere explicación clínica y unidad \\
 infradesnivel & Infradesnivel del segmento ST & numérico & enteros & muchos & -- & Requiere explicación clínica y unidad \\
 % ---- Derivaciones electrocardiográficas (V1-V9, D1-D3, AVL, AVF, AVR, V3R, V4R) ----
@@ -319,29 +319,37 @@ mortality\_inhospital & Mortalidad intrahospitalaria & booleano & 0, 1 & ninguno
 % ---- Dudas prioritarias sobre el dataset ----
 001 & Variables duplicadas (grupo) & Se identifican 12 variables que aparecen duplicadas en el dataset. Se requiere aclaración sobre el significado de cada columna duplicada y cuál utilizar para el análisis. & Variables afectadas: presion\_arterial\_sistolica, presion\_arterial\_diastolica, asa, betabloqueadores, ieca, estatinas, clopidogrel, furosemida, nitratos, anticoagulantes, otros\_diureticos, fecha\_ingreso. Posibles hipótesis: (a) medición en momentos diferentes (ingreso vs egreso), (b) fusión incorrecta de datasets, (c) prescripción vs administración real & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
 002 & asa & ¿La variable ASA representa dosis en mg, días de tratamiento, o simplemente presencia/ausencia? & Valores observados son numéricos diversos (rango 0--24). No se identifica patrón claro de dosificación estándar & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
-003 & betabloqueadores & ¿Qué escala o codificación se utiliza para betabloqueadores? & Valores numéricos diversos (rango 0--36). No se identifica si es dosis, días, o código categórico & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+003 & betablo-
+queadores & ¿Qué escala o codificación se utiliza para betabloqueadores? & Valores numéricos diversos (rango 0--36). No se identifica si es dosis, días, o código categórico & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
 004 & ecg & Solicitar tabla de correspondencia completa para códigos ECG & Valores observados: 5, 10, 12, 15, 20, 25, 30, 35. Sin documentación disponible sobre significado clínico & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
-005 & scacest, scacest\_secundario & Requiere explicación clínica detallada de la diferencia entre SCACEST primario y secundario & Ambas variables booleanas (0/1), pero no se comprende la distinción clínica ni criterios diagnósticos & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+005 & scacest, scacest\_ 
+secundario & Requiere explicación clínica detallada de la diferencia entre SCACEST primario y secundario & Ambas variables booleanas (0/1), pero no se comprende la distinción clínica ni criterios diagnósticos & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
 006 & indice\_killip, indice\_mkillip & ¿Cuál es la diferencia entre clasificación Killip y Killip modificada? ¿Cuándo se utiliza cada una? & Ambas utilizan números romanos I--IV. En algunos registros difieren, en otros coinciden & Medio & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
-007 & tiempo\_puerta\_aguja & Confirmar definición clínica exacta y unidad de medida & Asumimos minutos desde llegada hospitalaria hasta inicio de trombolisis, pero requiere confirmación oficial & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
-008 & tiempo\_isquemia & Confirmar definición clínica exacta y unidad de medida & Asumimos minutos desde inicio de síntomas hasta reperfusión, pero requiere confirmación oficial & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
-009 & tiempo\_respuesta, tiempo\_llegada & Confirmar unidades de medida y definiciones exactas de cada variable & Valores presentes solo cuando llamada\_emergencias=si. Asumimos minutos pero sin documentación & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
+007 & tiempo
+puerta\_aguja & Confirmar definición clínica exacta y unidad de medida & Asumimos minutos desde llegada hospitalaria hasta inicio de trombolisis, pero requiere confirmación oficial & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+008 & tiempo
+isquemia & Confirmar definición clínica exacta y unidad de medida & Asumimos minutos desde inicio de síntomas hasta reperfusión, pero requiere confirmación oficial & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
+009 & tiempo
+respuesta, tiempo\_llegada & Confirmar unidades de medida y definiciones exactas de cada variable & Valores presentes solo cuando llamada\_emergencias=si. Asumimos minutos pero sin documentación & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
 010 & escala\_grace & Validar rango de valores observados contra rango teórico esperado (0--372) & Valores parecen consistentes pero requiere validación clínica del cálculo & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
 011 & Derivaciones ECG (V1--V9, D1--D3, AVL, AVF, AVR, V3R, V4R) & ¿Estas variables indican presencia de alteración en cada derivación? ¿Qué tipo de alteración (supradesnivel, infradesnivel, onda Q)? & Variables booleanas (0/1) con muchos faltantes. Requiere documentación de criterios diagnósticos utilizados & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
 012 & avc, mpt, vam, mpp & Confirmar significado exacto de acrónimos & Asumimos: AVC=asistencia ventricular, MPT=marcapaso temporal, VAM=ventilación mecánica, MPP=marcapaso permanente & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
 013 & cabg & Confirmar acrónimo CABG (¿Coronary Artery Bypass Graft?) & Asumimos cirugía de revascularización coronaria pero requiere confirmación & Bajo & Baja & Cardiólogo & Pendiente & 2025-10-25 / \\
 014 & reperfusion & Explicar diferencia entre categorías y criterios de clasificación & Valores: no, parcial, total, otro. Requiere definición de criterios clínicos utilizados & Alto & Alta & Cardiólogo & Pendiente & 2025-10-25 / \\
-015 & coronariografia & Explicar diferencia entre valores observados & Valores: no, si, otro, centro. Especialmente aclarar significado de "centro" vs "otro" & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
+015 & coronario-
+grafia & Explicar diferencia entre valores observados & Valores: no, si, otro, centro. Especialmente aclarar significado de "centro" vs "otro" & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
 016 & Grupo variables de calidad & Grupo de variables con muchos faltantes que requieren contexto clínico & Variables: razones\_documentadas, riesgo\_beneficio, anti\_agregacion\_plaquetaria, proteccion\_embolica, funcion\_renal, volumen\_contraste, prescripcion\_optima. ¿Son indicadores de calidad o checklist? & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
 017 & Laboratorio (grupo) & Confirmar unidades de medida para todas las variables de laboratorio & Variables: colesterol, creatinina, filtrado\_glomerular, trigliceridos, glicemia, leuco, hb, ck, ckmb. Especificar unidades (mg/dL, mmol/L, etc.) & Alto & Alta & Laboratorio & Pendiente & 2025-10-25 / \\
-018 & Ecocardiografía (grupo) & Confirmar significado de acrónimos: ud, pat, insao, estao, insmit, estmit & Asumimos insuficiencias y estenosis valvulares. ud y pat sin identificar & Medio & Media & Cardiología & Pendiente & 2025-10-25 / \\
+018 & Ecocardio-
+grafía (grupo) & Confirmar significado de acrónimos: ud, pat, insao, estao, insmit, estmit & Asumimos insuficiencias y estenosis valvulares. ud y pat sin identificar & Medio & Media & Cardiología & Pendiente & 2025-10-25 / \\
 019 & arteria & Solicitar tabla completa de códigos de arterias coronarias & Códigos: cd, cx, ada. Asumimos: CD=coronaria derecha, CX=circunfleja, ADA=descendente anterior & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
 020 & abordaje & Solicitar tabla completa de tipos de abordaje/intervención coronaria & Valores: stent\_farmaco, stent\_metalico, ninguno. ¿Existen otros valores posibles? & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
 021 & resultado & Explicar categorías de seguimiento y su significado clínico & Valores: vivo\_sin, vivo\_con, noevaluado, alta, fallecido. Requiere explicación de "vivo\_sin" vs "vivo\_con" (¿con/sin complicaciones?) & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
 022 & angina24h & ¿Se refiere a angina en 24h previas al ingreso o durante primeras 24h de hospitalización? & Variable booleana con contexto temporal ambiguo que afecta interpretación clínica & Bajo & Baja & Cardiólogo & Pendiente & 2025-10-25 / \\
 023 & provincia, municipio, area\_salud & Normalizar caracteres especiales en nombres geográficos & Caracteres especiales mal codificados: Sancti Sp\'iritus, Cabaigu\'an, Camag\"uey, Manat\'i, G\"uines & Bajo & Baja & Admin. datos & Pendiente & 2025-10-25 / \\
 024 & insulina & ¿Variable representa dosis, tipo de insulina, duración de tratamiento, o uso binario? & Valores numéricos diversos sin patrón identificable. Dificulta su uso en modelado & Medio & Media & Cardiólogo & Pendiente & 2025-10-25 / \\
-025 & lugar\_trombolisis & ¿Es necesaria esta variable para el objetivo analítico del proyecto? & Valores: ucie, sala, servicio. Considerada candidata a eliminación según relevancia clínica & Bajo & Baja & Equipo ML & Pendiente & 2025-10-25 / \\
+025 & lugar
+trombolisis & ¿Es necesaria esta variable para el objetivo analítico del proyecto? & Valores: ucie, sala, servicio. Considerada candidata a eliminación según relevancia clínica & Bajo & Baja & Equipo ML & Pendiente & 2025-10-25 / \\
 \end{longtable}
 \renewcommand{\arraystretch}{1.2}
 \normalsize
