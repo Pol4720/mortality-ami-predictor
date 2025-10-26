@@ -229,4 +229,20 @@ __marimo__/
 *.run.xml
 _minted-*
 *.pdfsync
-DATA
+
+# Project-specific: ML artifacts and data
+# MLflow tracking directory (experiments, runs, artifacts)
+mlruns/
+mlartifacts/
+
+# Data directory (raw and processed datasets)
+# Only ignoring uppercase DATA/ to allow lowercase data/ if needed
+DATA/
+*.csv.gz
+*.parquet
+
+# Additional ML artifacts
+*.joblib
+*.pkl
+*.h5
+*.onnx

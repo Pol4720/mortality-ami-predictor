@@ -4,10 +4,10 @@ import os
 import pandas as pd
 import streamlit as st
 
-from src.data import load_dataset, summarize_dataframe, data_audit
+from src.data_load import load_dataset, summarize_dataframe, data_audit
 from src.config import CONFIG
-from src.train import train_main, fit_and_save_best_classifier, fit_and_save_selected_classifiers
-from src.evaluate import evaluate_main
+from src.training import fit_and_save_best_classifier, fit_and_save_selected_classifiers
+from src.evaluation import evaluate_main
 from pathlib import Path
 
 
@@ -45,7 +45,7 @@ def run_training(data_path: str, task: str, quick: bool, imputer_mode: str, sele
     # Custom training with progress callback
     df = load_dataset(data_path)
     from src.features import safe_feature_columns
-    from src.data import train_test_split
+    from src.data_load import train_test_split
     if task == "mortality":
         target = CONFIG.target_column
     else:

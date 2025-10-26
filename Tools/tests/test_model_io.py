@@ -4,7 +4,7 @@ import numpy as np
 import joblib
 
 from src.models import make_classifiers
-from src.preprocess import build_preprocess_pipelines
+from src.preprocessing import build_preprocess_pipelines
 
 
 def test_model_save_load(tmp_path):

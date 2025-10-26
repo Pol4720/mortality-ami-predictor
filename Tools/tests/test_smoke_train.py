@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
-from src.train import fit_and_save_best_classifier
+from src.training import fit_and_save_best_classifier
 
 
 def test_smoke_train_small(tmp_path, monkeypatch):

@@ -1,17 +1,59 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .venv/
+venv/
+env/
+.Python
+
+# MLflow tracking
+mlruns/
+.mlruns/
+mlartifacts/
 
 # Models and artifacts
 models/*.joblib
 models/*.pkl
 models/*.pt
+models/*.h5
+models/*.onnx
+*.model
+*.weights
+
+
 
 # Reports
 reports/*.pdf
 reports/*.csv
 reports/figures/*.png
+reports/figures/*.jpg
+reports/figures/*.svg
 
 # Notebooks
 *.ipynb_checkpoints/
+.ipynb_checkpoints/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

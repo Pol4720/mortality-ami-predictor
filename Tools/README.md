@@ -1,8 +1,31 @@
-# Predictor de Mortalidad Intrahospitalaria / Arritmia Ventricular (Tools)
+# Mortality AMI Predictor (Tools)
 
-Proyecto de ML end-to-end y reproducible para predecir mortalidad intrahospitalaria y arritmias ventriculares. Incluye código modular en Python, notebooks, pruebas automáticas y un dashboard en Streamlit.
+**Version 2.0 - Fully Modularized Architecture**
 
-Importante: La única entrada obligatoria es `DATASET_PATH` (ruta a tu dataset CSV/Parquet). No se deben codificar otras rutas en el código.
+End-to-end ML project for predicting in-hospital mortality and ventricular arrhythmias in AMI patients. Features a professional, modular Python codebase, Jupyter notebooks, automated tests, and a Streamlit dashboard.
+
+## 🎉 What's New in v2.0
+
+- ✅ **Complete Modularization**: Transformed from 9 monolithic files into 10 specialized modules with 38+ focused files
+- ✅ **Professional Design**: Factory, Strategy, Builder, Singleton, and Adapter patterns
+- ✅ **Type Safety**: 100% type hints across all modules
+- ✅ **Extensibility**: Easy to add new models, strategies, and features via registry pattern
+- ✅ **Better Organization**: No file > 500 lines, average ~100 lines per file
+- ✅ **Comprehensive Documentation**: 4+ guides including architecture, migration, and structure docs
+
+### 📚 Documentation
+
+- **[Quick Start Guide](src/README.md)** - Get started in 5 minutes
+- **[Complete Modularization Summary](src/COMPLETE_MODULARIZATION_SUMMARY.md)** - Full overview of all modules
+- **[Migration Guide](src/MIGRATION_GUIDE.md)** - How to migrate from v1.0 to v2.0
+- **[Project Structure](src/PROJECT_STRUCTURE.md)** - Visual diagrams and architecture
+- **[Modularization Guide](src/MODULARIZATION_GUIDE.md)** - Deep dive into design decisions
+
+---
+
+## Quick Start
+
+**Important**: The only required input is `DATASET_PATH` (path to your CSV/Parquet dataset). No other paths should be hardcoded.
 
 ## Instalación rápida (Windows PowerShell)
 
