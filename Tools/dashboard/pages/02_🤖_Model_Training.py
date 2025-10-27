@@ -86,7 +86,7 @@ st.subheader("Train Models")
 if not selected_models:
     st.error("❌ Please select at least one model from the sidebar")
 else:
-    if st.button("🚀 Start Training", type="primary", use_container_width=True):
+    if st.button("🚀 Start Training", type="primary", width='stretch'):
         try:
             with st.spinner("Training models..."):
                 save_paths = train_models_with_progress(

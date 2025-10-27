@@ -28,6 +28,14 @@ configure_page()
 # Initialize session state
 initialize_state()
 
+# Add logo and title to sidebar (only in main page)
+logo_path = Path(__file__).parent / "app" / "assets" / "logo_ami_predictor.png"
+if logo_path.exists():
+    st.sidebar.image(str(logo_path), width='stretch')
+
+st.sidebar.title("Mortality AMI Predictor")
+st.sidebar.markdown("---")
+
 # Main page content
 st.title("🏥 AMI Mortality & Arrhythmia Predictor")
 

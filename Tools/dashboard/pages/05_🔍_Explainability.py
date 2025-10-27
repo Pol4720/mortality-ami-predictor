@@ -102,7 +102,7 @@ except ImportError:
 st.subheader("SHAP Analysis")
 st.caption(f"Using {len(sample_df)} samples for explainability")
 
-if st.button("🚀 Compute SHAP Values", type="primary", use_container_width=True):
+if st.button("🚀 Compute SHAP Values", type="primary", width='stretch'):
     try:
         with st.spinner("Computing SHAP values... This may take a moment"):
             # Create explainer
@@ -147,7 +147,7 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
             
             fig, ax = plt.subplots(figsize=(10, 8))
             shap.plots.beeswarm(shap_values, show=False)
-            st.pyplot(fig, use_container_width=True)
+            st.pyplot(fig, width='stretch')
             plt.close()
         
         except Exception as e:
@@ -162,7 +162,7 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
             
             fig, ax = plt.subplots(figsize=(10, 8))
             shap.plots.bar(shap_values, show=False)
-            st.pyplot(fig, use_container_width=True)
+            st.pyplot(fig, width='stretch')
             plt.close()
         
         except Exception as e:
@@ -199,7 +199,7 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
                     "Feature": feature_cols,
                     "SHAP Value": shap_values.values[sample_idx]
                 }).sort_values("SHAP Value", key=abs, ascending=False)
-                st.dataframe(shap_df, use_container_width=True)
+                st.dataframe(shap_df, width='stretch')
             except Exception:
                 pass
     
@@ -220,7 +220,7 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
             
             fig, ax = plt.subplots(figsize=(10, 8))
             shap.plots.waterfall(shap_values[sample_idx], show=False)
-            st.pyplot(fig, use_container_width=True)
+            st.pyplot(fig, width='stretch')
             plt.close()
         
         except Exception as e:
@@ -244,7 +244,7 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
             
             st.dataframe(
                 importance_df.style.format({"Mean |SHAP|": "{:.6f}"}),
-                use_container_width=True,
+                width='stretch',
                 hide_index=True
             )
         

@@ -70,7 +70,7 @@ selected_model = st.sidebar.selectbox(
 )
 
 # Evaluation button
-if st.button("🚀 Run Evaluation", type="primary", use_container_width=True):
+if st.button("🚀 Run Evaluation", type="primary", width='stretch'):
     try:
         # Get the selected model path
         selected_model_path = Path(saved_models[selected_model])
@@ -150,7 +150,7 @@ if metrics_file and metrics_file.exists():
         # Display as styled dataframe
         st.dataframe(
             metrics_df.style.format(precision=4),
-            use_container_width=True,
+            width='stretch',
             hide_index=True
         )
         

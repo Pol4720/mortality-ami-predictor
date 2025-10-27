@@ -218,18 +218,23 @@ def load_data_page():
         col3.metric("Valores faltantes", f"{df.isna().sum().sum():,}")
         col4.metric("% Completitud", f"{(1 - df.isna().mean().mean()) * 100:.1f}%")
         
-        st.dataframe(df.head(100), use_container_width=True, height=300)
+        st.dataframe(df.head(100), width='stretch', height=300)
 
 
 def data_cleaning_page():
     """Sección de limpieza de datos."""
     st.header("🧹 Limpieza de Datos")
     
-    if st.session_state.raw_data is None:
+    # Usar datos limpios si existen, sino usar datos crudos
+    if st.session_state.raw_data is not None:
+        df = st.session_state.raw_data
+        st.info("📊 Usando datos crudos para limpieza")
+    elif st.session_state.cleaned_data is not None:
+        df = st.session_state.cleaned_data
+        st.info("📊 Usando datos limpios existentes (se pueden re-procesar)")
+    else:
         st.warning("⚠️ Primero carga un dataset en la pestaña 'Carga de Datos'")
         return
-    
-    df = st.session_state.raw_data
     
     # Configuración de limpieza en sidebar expandido
     with st.expander("⚙️ Configuración de Limpieza", expanded=True):
@@ -369,7 +374,7 @@ def data_cleaning_page():
         target_column = target_column if target_column else None
     
     with col2:
-        if st.button("🚀 Aplicar Limpieza", type="primary", use_container_width=True):
+        if st.button("🚀 Aplicar Limpieza", type="primary", width='stretch'):
             with st.spinner("Limpiando datos..."):
                 try:
                     cleaner = DataCleaner(config)
@@ -387,7 +392,7 @@ def data_cleaning_page():
                     st.code(traceback.format_exc())
     
     with col3:
-        if st.button("💾 Guardar Configuración", use_container_width=True):
+        if st.button("💾 Guardar Configuración", width='stretch'):
             try:
                 config_path = Path(CONFIG.preprocessing_config_path)
                 config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -435,7 +440,7 @@ def data_cleaning_page():
         tab1, tab2, tab3 = st.tabs(["Datos Limpios", "Reporte de Calidad", "Metadatos"])
         
         with tab1:
-            st.dataframe(df_clean.head(100), use_container_width=True, height=400)
+            st.dataframe(df_clean.head(100), width='stretch', height=400)
             
             # Botones de descarga
             col1, col2 = st.columns(2)
@@ -448,11 +453,11 @@ def data_cleaning_page():
                     data=csv_data,
                     file_name=f"cleaned_dataset_{timestamp}.csv",
                     mime="text/csv",
-                    use_container_width=True
+                    width='stretch'
                 )
             
             with col2:
-                if st.button("💾 Guardar en DATA/cleaned", use_container_width=True):
+                if st.button("💾 Guardar en DATA/cleaned", width='stretch'):
                     try:
                         cleaned_dir = Path(CONFIG.cleaned_data_dir)
                         cleaned_dir.mkdir(parents=True, exist_ok=True)
@@ -510,7 +515,7 @@ def data_cleaning_page():
                     })
                 
                 df_meta = pd.DataFrame(metadata_rows)
-                st.dataframe(df_meta, use_container_width=True, height=400)
+                st.dataframe(df_meta, width='stretch', height=400)
                 
                 # Guardar metadatos
                 if st.button("💾 Guardar Metadatos como JSON"):
@@ -559,7 +564,7 @@ def univariate_analysis_page():
         )
     
     with col2:
-        if st.button("🔄 Reanalizar", use_container_width=True):
+        if st.button("🔄 Reanalizar", width='stretch'):
             with st.spinner("Analizando..."):
                 analyzer.analyze_univariate([selected_var])
                 st.success("✅ Análisis actualizado")
@@ -617,15 +622,15 @@ def univariate_analysis_page():
         
         with tab1:
             fig = analyzer.plot_distribution(selected_var, plot_type='histogram')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         with tab2:
             fig = analyzer.plot_distribution(selected_var, plot_type='box')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         with tab3:
             fig = analyzer.plot_distribution(selected_var, plot_type='violin')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
     
     else:
         # Estadísticas categóricas
@@ -645,7 +650,7 @@ def univariate_analysis_page():
                 {'Categoría': k, 'Frecuencia': v, 'Porcentaje': f"{v/stats.count*100:.1f}%"}
                 for k, v in sorted(stats.category_counts.items(), key=lambda x: x[1], reverse=True)
             ])
-            st.dataframe(freq_df, use_container_width=True, height=300)
+            st.dataframe(freq_df, width='stretch', height=300)
         
         # Visualizaciones
         st.markdown("---")
@@ -655,11 +660,11 @@ def univariate_analysis_page():
         
         with tab1:
             fig = analyzer.plot_distribution(selected_var, plot_type='bar')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         with tab2:
             fig = analyzer.plot_distribution(selected_var, plot_type='pie')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
 
 def bivariate_analysis_page():
@@ -746,7 +751,7 @@ def bivariate_analysis_page():
                     except (ImportError, ModuleNotFoundError):
                         # Si statsmodels no está instalado, mostrar sin trendline
                         fig = analyzer.plot_scatter(var1, var2, add_trendline=False)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                 
                 elif result.relationship_type == "cat-cat":
                     col1, col2, col3 = st.columns(3)
@@ -763,7 +768,7 @@ def bivariate_analysis_page():
                     # Tabla de contingencia
                     st.subheader("Tabla de Contingencia")
                     contingency = pd.crosstab(df[var1], df[var2])
-                    st.dataframe(contingency, use_container_width=True)
+                    st.dataframe(contingency, width='stretch')
                 
                 else:  # num-cat (ANOVA)
                     col1, col2 = st.columns(2)
@@ -782,7 +787,7 @@ def bivariate_analysis_page():
                     num_var = var1 if var1 in analyzer.numeric_cols else var2
                     cat_var = var2 if var1 in analyzer.numeric_cols else var1
                     group_stats = df.groupby(cat_var)[num_var].describe()
-                    st.dataframe(group_stats, use_container_width=True)
+                    st.dataframe(group_stats, width='stretch')
 
 
 def multivariate_analysis_page():
@@ -841,7 +846,7 @@ def multivariate_analysis_page():
                         
                         # Visualización
                         fig = analyzer.plot_correlation_matrix(method=corr_method)
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width='stretch')
                         
                         # Tabla de correlaciones más altas
                         st.subheader("Top Correlaciones")
@@ -867,7 +872,7 @@ def multivariate_analysis_page():
                             corr_df = corr_df.sort_values('Correlación Abs', ascending=False)
                             corr_df = corr_df.drop('Correlación Abs', axis=1)
                             
-                            st.dataframe(corr_df.head(20), use_container_width=True)
+                            st.dataframe(corr_df.head(20), width='stretch')
                         else:
                             st.info("No se encontraron correlaciones significativas con el filtro aplicado")
                         
@@ -915,6 +920,54 @@ def multivariate_analysis_page():
             if st.button("🚀 Ejecutar PCA", type="primary"):
                 with st.spinner("Ejecutando Análisis de Componentes Principales..."):
                     try:
+                        # Validar que hay suficientes variables numéricas
+                        if len(analyzer.numeric_cols) < 2:
+                            st.error("❌ Se requieren al menos 2 variables numéricas para PCA")
+                            st.stop()
+                        
+                        # Verificar cuántas filas completas hay
+                        df_for_pca = df[analyzer.numeric_cols].dropna()
+                        if len(df_for_pca) == 0:
+                            st.error(
+                                "❌ **No se puede ejecutar PCA: Todas las filas tienen valores faltantes**\n\n"
+                                "El Análisis de Componentes Principales requiere datos completos en las variables numéricas."
+                            )
+                            
+                            st.info(
+                                "**📋 Solución recomendada:**\n\n"
+                                "1. Ve a la sección **'🧹 Limpieza de Datos'** (arriba en esta misma página)\n"
+                                "2. Configura la **imputación de valores faltantes** para las variables numéricas\n"
+                                "3. Haz clic en **'🚀 Aplicar Limpieza'**\n"
+                                "4. Regresa a esta sección para ejecutar PCA con los datos limpios"
+                            )
+                            
+                            # Mostrar información sobre valores faltantes
+                            missing_info = df[analyzer.numeric_cols].isnull().sum()
+                            missing_pct = (missing_info / len(df) * 100).round(2)
+                            missing_df = pd.DataFrame({
+                                'Variable': missing_info.index,
+                                'Valores Faltantes': missing_info.values,
+                                'Porcentaje (%)': missing_pct.values
+                            })
+                            missing_df = missing_df[missing_df['Valores Faltantes'] > 0].sort_values(
+                                'Valores Faltantes', ascending=False
+                            )
+                            
+                            if len(missing_df) > 0:
+                                st.warning("**⚠️ Variables numéricas con valores faltantes:**")
+                                st.dataframe(missing_df, width='stretch', height=300)
+                            
+                            st.stop()
+                        
+                        if len(df_for_pca) < 2:
+                            st.warning(
+                                f"⚠️ **Datos insuficientes para PCA**\n\n"
+                                f"Solo hay {len(df_for_pca)} fila(s) sin valores faltantes. "
+                                "Se requieren al menos 2 observaciones completas.\n\n"
+                                "**Solución:** Aplica imputación de valores faltantes para aumentar el número de filas válidas."
+                            )
+                            st.stop()
+                        
                         pca_results = analyzer.perform_pca(
                             n_components=n_components,
                             variance_threshold=variance_threshold,
@@ -951,7 +1004,7 @@ def multivariate_analysis_page():
                             'Varianza Acumulada (%)': [v * 100 for v in pca_results.cumulative_variance]
                         })
                         
-                        st.dataframe(variance_df, use_container_width=True)
+                        st.dataframe(variance_df, width='stretch')
                         
                         # Visualizaciones
                         st.markdown("---")
@@ -965,7 +1018,7 @@ def multivariate_analysis_page():
                         with tab1:
                             st.subheader("Gráfico de Scree (Varianza Explicada)")
                             fig = analyzer.plot_pca_scree()
-                            st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, width='stretch')
                         
                         with tab2:
                             st.subheader("Biplot de PCA")
@@ -983,7 +1036,7 @@ def multivariate_analysis_page():
                             
                             if pc_x != pc_y:
                                 fig = analyzer.plot_pca_biplot(pc_x=pc_x, pc_y=pc_y, n_features=n_features_show)
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, width='stretch')
                             else:
                                 st.warning("⚠️ Selecciona diferentes componentes para X e Y")
                         
@@ -998,7 +1051,7 @@ def multivariate_analysis_page():
                             
                             importance_df = analyzer.get_feature_importance_pca(n_components=n_comp_importance)
                             
-                            st.dataframe(importance_df, use_container_width=True, height=400)
+                            st.dataframe(importance_df, width='stretch', height=400)
                             
                             # Gráfico de barras
                             import plotly.express as px
@@ -1011,7 +1064,7 @@ def multivariate_analysis_page():
                                 labels={'index': 'Feature', 'importance': 'Importancia'}
                             )
                             fig.update_layout(yaxis={'categoryorder':'total ascending'})
-                            st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, width='stretch')
                         
                         # Opción de guardar resultados transformados
                         st.markdown("---")
@@ -1026,10 +1079,20 @@ def multivariate_analysis_page():
                             except Exception as e:
                                 st.error(f"❌ Error: {e}")
                         
+                    except ValueError as ve:
+                        # Errores específicos de validación
+                        st.error(f"❌ Error de validación: {ve}")
+                        st.info(
+                            "💡 **Sugerencias:**\n"
+                            "- Asegúrate de haber aplicado limpieza de datos primero\n"
+                            "- Verifica que las variables numéricas seleccionadas tengan datos válidos\n"
+                            "- Aplica imputación de valores faltantes si es necesario"
+                        )
                     except Exception as e:
                         st.error(f"❌ Error durante PCA: {e}")
-                        import traceback
-                        st.code(traceback.format_exc())
+                        with st.expander("Ver detalles del error"):
+                            import traceback
+                            st.code(traceback.format_exc())
 
 
 def quality_report_page():
@@ -1109,17 +1172,17 @@ def quality_report_page():
             color_continuous_scale='Reds'
         )
         fig.update_layout(yaxis={'categoryorder':'total ascending'})
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
         
         # Tabla detallada
-        st.dataframe(missing_df, use_container_width=True, height=300)
+        st.dataframe(missing_df, width='stretch', height=300)
         
         # Alertas
         critical_missing = missing_df[missing_df['Missing %'] > 50]
         if len(critical_missing) > 0:
             st.error(f"🔴 **CRÍTICO**: {len(critical_missing)} variables tienen >50% de valores faltantes")
             with st.expander("Ver variables críticas"):
-                st.dataframe(critical_missing, use_container_width=True)
+                st.dataframe(critical_missing, width='stretch')
     else:
         st.success("✅ ¡No hay valores faltantes en el dataset!")
     
@@ -1160,15 +1223,15 @@ def quality_report_page():
         if len(high_card) > 0:
             st.warning(f"⚠️ {len(high_card)} variables con alta cardinalidad (>95%)")
             with st.expander("Ver variables"):
-                st.dataframe(high_card, use_container_width=True)
+                st.dataframe(high_card, width='stretch')
     
     with col2:
         if len(low_card) > 0:
             st.error(f"🔴 {len(low_card)} variables constantes (1 valor único)")
             with st.expander("Ver variables"):
-                st.dataframe(low_card, use_container_width=True)
+                st.dataframe(low_card, width='stretch')
     
-    st.dataframe(cardinality_df, use_container_width=True, height=300)
+    st.dataframe(cardinality_df, width='stretch', height=300)
     
     # Análisis de outliers (solo numéricas)
     if len(numeric_cols) > 0:
@@ -1199,7 +1262,7 @@ def quality_report_page():
         outlier_df = outlier_df[outlier_df['Outliers Count'] > 0].sort_values('Outliers %', ascending=False)
         
         if len(outlier_df) > 0:
-            st.dataframe(outlier_df, use_container_width=True, height=300)
+            st.dataframe(outlier_df, width='stretch', height=300)
             
             # Gráfico
             import plotly.express as px
@@ -1213,7 +1276,7 @@ def quality_report_page():
                 color_continuous_scale='Oranges'
             )
             fig.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         else:
             st.success("✅ No se detectaron outliers significativos (método IQR)")
     

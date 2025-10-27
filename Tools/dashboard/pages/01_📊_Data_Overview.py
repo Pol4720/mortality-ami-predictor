@@ -79,7 +79,7 @@ with tab3:
     if selected_cols:
         st.dataframe(
             df[selected_cols].describe(),
-            use_container_width=True
+            width='stretch'
         )
         
         # Missing values visualization
@@ -87,6 +87,6 @@ with tab3:
         missing_df = df[selected_cols].isnull().sum().to_frame("Missing Count")
         missing_df["Missing %"] = (missing_df["Missing Count"] / len(df) * 100).round(2)
         
-        st.dataframe(missing_df, use_container_width=True)
+        st.dataframe(missing_df, width='stretch')
     else:
         st.info("Select at least one column to view statistics")

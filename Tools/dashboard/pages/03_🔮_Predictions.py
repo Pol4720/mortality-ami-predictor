@@ -95,7 +95,7 @@ with tab1:
     
     # Display original values
     with st.expander("📋 Original Row Values"):
-        st.dataframe(X_row.T, use_container_width=True)
+        st.dataframe(X_row.T, width='stretch')
     
     # What-if analysis for numeric features
     st.subheader("What-If Analysis")
@@ -153,9 +153,9 @@ with tab1:
                             key=f"slider_{col_name}"
                         )
             
-            predict_btn = st.form_submit_button("🎯 Predict", use_container_width=True)
+            predict_btn = st.form_submit_button("🎯 Predict", width='stretch')
     else:
-        predict_btn = st.button("🎯 Predict", use_container_width=True)
+        predict_btn = st.button("🎯 Predict", width='stretch')
     
     # Make prediction
     if predict_btn or not numeric_cols:
@@ -216,7 +216,7 @@ with tab2:
             st.success(f"✅ Uploaded {len(upload_df)} rows")
             
             with st.expander("📋 Preview Uploaded Data"):
-                st.dataframe(upload_df.head(10), use_container_width=True)
+                st.dataframe(upload_df.head(10), width='stretch')
             
             if st.button("🎯 Predict All Rows", type="primary"):
                 with st.spinner("Making predictions..."):
@@ -234,7 +234,7 @@ with tab2:
                     st.success(f"✅ Predictions completed for {len(output_df)} rows")
                     
                     # Display results
-                    st.dataframe(output_df, use_container_width=True)
+                    st.dataframe(output_df, width='stretch')
                     
                     # Download button
                     csv_data = output_df.to_csv(index=False)
@@ -243,7 +243,7 @@ with tab2:
                         data=csv_data,
                         file_name=f"predictions_{task}_{selected_model_name}.csv",
                         mime="text/csv",
-                        use_container_width=True
+                        width='stretch'
                     )
         
         except Exception as e:

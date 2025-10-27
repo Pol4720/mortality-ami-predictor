@@ -43,10 +43,52 @@ def perform_pca(
         PCAResults object
     """
     if len(numeric_cols) < 2:
-        raise ValueError("At least 2 numerical variables required for PCA")
+        raise ValueError("Se requieren al menos 2 variables numéricas para realizar PCA")
     
-    # Prepare data
-    df_numeric = df[numeric_cols].dropna()
+    # Prepare data - filter only numeric columns that exist and have numeric data
+    valid_numeric_cols = []
+    for col in numeric_cols:
+        if col in df.columns:
+            try:
+                # Try to convert to numeric and check if there are any valid values
+                col_numeric = pd.to_numeric(df[col], errors='coerce')
+                if col_numeric.notna().sum() > 0:
+                    valid_numeric_cols.append(col)
+            except:
+                continue
+    
+    if len(valid_numeric_cols) < 2:
+        raise ValueError(
+            f"Se necesitan al menos 2 variables numéricas con datos válidos para PCA. "
+            f"Solo se encontraron {len(valid_numeric_cols)} variable(s) válida(s)."
+        )
+    
+    # Prepare data - drop rows with any missing values in valid numeric columns
+    df_numeric = df[valid_numeric_cols].copy()
+    
+    # Convert all columns to numeric (in case they weren't)
+    for col in valid_numeric_cols:
+        df_numeric[col] = pd.to_numeric(df_numeric[col], errors='coerce')
+    
+    # Drop rows with any NaN values
+    df_numeric = df_numeric.dropna()
+    
+    # Check if we have enough samples after dropping NaN
+    if len(df_numeric) == 0:
+        raise ValueError(
+            "Todas las filas contienen al menos un valor faltante en las variables numéricas. "
+            "Es necesario aplicar imputación de valores faltantes antes de ejecutar PCA."
+        )
+    
+    if len(df_numeric) < 2:
+        raise ValueError(
+            f"Se requieren al menos 2 observaciones completas para PCA, pero solo hay {len(df_numeric)}. "
+            "Aplique imputación de valores faltantes para aumentar el número de filas válidas."
+        )
+        raise ValueError(
+            f"Se requieren al menos 2 muestras para PCA. Solo se encontraron {len(df_numeric)} filas "
+            "sin valores faltantes. Por favor, impute los valores faltantes primero."
+        )
     
     # Scale if requested
     if scale:

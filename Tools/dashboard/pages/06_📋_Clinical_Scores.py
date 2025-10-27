@@ -137,7 +137,7 @@ if selected_score == "grace":
     
     st.markdown("---")
     
-    if st.button("🧮 Calculate GRACE Score", type="primary", use_container_width=True):
+    if st.button("🧮 Calculate GRACE Score", type="primary", width='stretch'):
         try:
             # Get GRACE scorer
             grace_scorer = get_score("grace")

@@ -42,18 +42,18 @@ def display_dataset_preview(df: pd.DataFrame, n_rows: int = 10):
         n_rows: Number of rows to show
     """
     st.subheader("Data Preview")
-    st.dataframe(df.head(n_rows), use_container_width=True)
+    st.dataframe(df.head(n_rows), width='stretch')
     
     summaries = summarize_dataframe(df)
     
     with st.expander("📊 Missing Values Summary"):
-        st.dataframe(summaries["missing"].head(50), use_container_width=True)
+        st.dataframe(summaries["missing"].head(50), width='stretch')
     
     with st.expander("📈 Statistical Description"):
-        st.dataframe(summaries["describe"].head(50), use_container_width=True)
+        st.dataframe(summaries["describe"].head(50), width='stretch')
     
     with st.expander("🔤 Data Types"):
-        st.dataframe(summaries["dtypes"], use_container_width=True)
+        st.dataframe(summaries["dtypes"], width='stretch')
 
 
 def display_data_audit(df: pd.DataFrame, feature_cols: list[str]):
@@ -68,10 +68,10 @@ def display_data_audit(df: pd.DataFrame, feature_cols: list[str]):
     st.subheader("🔍 Data Quality Audit")
     
     with st.expander("Preview"):
-        st.dataframe(audit["head"], use_container_width=True)
+        st.dataframe(audit["head"], width='stretch')
     
     with st.expander("Missing Values by Column"):
-        st.dataframe(audit["nan_summary"], use_container_width=True)
+        st.dataframe(audit["nan_summary"], width='stretch')
     
     if audit["full_missing"]:
         st.warning(f"⚠️ Completely empty columns: {', '.join(audit['full_missing'][:20])}")
@@ -112,7 +112,7 @@ def sidebar_data_controls():
         for pat in ("logo.png", "logo.jpg", "logo.jpeg", "logo.ico"):
             cand = assets_dir / pat
             if cand.exists():
-                st.sidebar.image(str(cand), use_container_width=True)
+                st.sidebar.image(str(cand), width='stretch')
                 break
     except Exception:
         pass
@@ -329,4 +329,5 @@ def display_metrics_table(metrics: dict[str, float], title: str = "Metrics"):
         for k, v in metrics.items()
     ])
     
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(df, width='stretch', hide_index=True)
+
