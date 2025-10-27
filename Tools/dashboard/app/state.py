@@ -20,6 +20,13 @@ def initialize_state():
     if "models_dir" not in st.session_state:
         st.session_state.models_dir = Path(__file__).parents[1] / "models"
     
+    # Raw and cleaned data
+    if "raw_data" not in st.session_state:
+        st.session_state.raw_data = None
+    
+    if "cleaned_data" not in st.session_state:
+        st.session_state.cleaned_data = None
+    
     # Dataset
     if "df" not in st.session_state:
         st.session_state.df = None

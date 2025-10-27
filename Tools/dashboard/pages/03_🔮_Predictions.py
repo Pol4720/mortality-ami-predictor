@@ -29,11 +29,14 @@ st.title("🔮 Make Predictions")
 st.markdown("---")
 
 # Check if data has been loaded
-if st.session_state.cleaned_data is not None:
-    df = st.session_state.cleaned_data
+cleaned_data = st.session_state.get('cleaned_data')
+raw_data = st.session_state.get('raw_data')
+
+if cleaned_data is not None:
+    df = cleaned_data
     st.success("✅ Usando datos limpios")
-elif st.session_state.raw_data is not None:
-    df = st.session_state.raw_data
+elif raw_data is not None:
+    df = raw_data
     st.warning("⚠️ Usando datos crudos")
 else:
     st.warning("⚠️ No hay datos cargados. Por favor, carga un dataset en la página **🧹 Data Cleaning and EDA** primero.")

@@ -28,12 +28,15 @@ st.title("🤖 Model Training")
 st.markdown("---")
 
 # Check if data has been loaded
-if st.session_state.cleaned_data is not None:
-    df = st.session_state.cleaned_data
+cleaned_data = st.session_state.get('cleaned_data')
+raw_data = st.session_state.get('raw_data')
+
+if cleaned_data is not None:
+    df = cleaned_data
     data_path = st.session_state.get('data_path')
     st.success("✅ Usando datos limpios del proceso de limpieza")
-elif st.session_state.raw_data is not None:
-    df = st.session_state.raw_data
+elif raw_data is not None:
+    df = raw_data
     data_path = st.session_state.get('data_path')
     st.warning("⚠️ Usando datos crudos (se recomienda limpiar primero)")
 else:

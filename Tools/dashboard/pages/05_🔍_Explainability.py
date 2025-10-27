@@ -10,6 +10,7 @@ if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
 import joblib
+import numpy as np
 import streamlit as st
 
 from app import (
@@ -17,6 +18,15 @@ from app import (
     list_saved_models,
 )
 from src.config import CONFIG
+from src.explainability import (
+    compute_shap_values,
+    plot_shap_beeswarm,
+    plot_shap_bar,
+    plot_shap_waterfall,
+    plot_shap_force,
+    get_feature_importance,
+    get_sample_shap_values,
+)
 
 # Initialize
 initialize_state()
@@ -26,11 +36,14 @@ st.title("🔍 Model Explainability")
 st.markdown("---")
 
 # Check if data has been loaded
-if st.session_state.cleaned_data is not None:
-    df = st.session_state.cleaned_data
+cleaned_data = st.session_state.get('cleaned_data')
+raw_data = st.session_state.get('raw_data')
+
+if cleaned_data is not None:
+    df = cleaned_data
     st.success("✅ Usando datos limpios")
-elif st.session_state.raw_data is not None:
-    df = st.session_state.raw_data
+elif raw_data is not None:
+    df = raw_data
     st.warning("⚠️ Usando datos crudos")
 else:
     st.warning("⚠️ No hay datos cargados. Por favor, carga un dataset en la página **🧹 Data Cleaning and EDA** primero.")
@@ -105,18 +118,17 @@ st.caption(f"Using {len(sample_df)} samples for explainability")
 if st.button("🚀 Compute SHAP Values", type="primary", width='stretch'):
     try:
         with st.spinner("Computing SHAP values... This may take a moment"):
-            # Create explainer
-            if hasattr(model, "predict_proba"):
-                explainer = shap.Explainer(model.predict_proba, sample_df)
-            else:
-                explainer = shap.Explainer(model.predict, sample_df)
-            
-            # Compute SHAP values
-            shap_values = explainer(sample_df)
+            # Compute SHAP values using the explainability module
+            explainer, shap_explanation = compute_shap_values(
+                model=model,
+                X=sample_df,
+                feature_names=feature_cols,
+                max_samples=n_samples
+            )
             
             # Store in session state
             st.session_state.shap_explainer = explainer
-            st.session_state.shap_values = shap_values
+            st.session_state.shap_values = shap_explanation
             
             st.success("✅ SHAP values computed successfully!")
     
@@ -143,12 +155,8 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
         st.caption("Shows the distribution of SHAP values for each feature across all samples")
         
         try:
-            import matplotlib.pyplot as plt
-            
-            fig, ax = plt.subplots(figsize=(10, 8))
-            shap.plots.beeswarm(shap_values, show=False)
-            st.pyplot(fig, width='stretch')
-            plt.close()
+            fig = plot_shap_beeswarm(shap_values, max_display=20)
+            st.pyplot(fig)
         
         except Exception as e:
             st.error(f"Error creating beeswarm plot: {e}")
@@ -158,12 +166,8 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
         st.caption("Mean absolute SHAP value for each feature")
         
         try:
-            import matplotlib.pyplot as plt
-            
-            fig, ax = plt.subplots(figsize=(10, 8))
-            shap.plots.bar(shap_values, show=False)
-            st.pyplot(fig, width='stretch')
-            plt.close()
+            fig = plot_shap_bar(shap_values, max_display=20)
+            st.pyplot(fig)
         
         except Exception as e:
             st.error(f"Error creating bar plot: {e}")
@@ -180,28 +184,18 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
         )
         
         try:
-            # Force plot for single prediction
-            st.pyplot(
-                shap.plots.force(
-                    shap_values[sample_idx],
-                    matplotlib=True,
-                    show=False
-                )
-            )
+            fig = plot_shap_force(shap_values, sample_idx=sample_idx)
+            st.pyplot(fig)
         
         except Exception as e:
             st.error(f"Error creating force plot: {e}")
             # Try alternative visualization
             try:
                 st.write("SHAP values for this sample:")
-                import pandas as pd
-                shap_df = pd.DataFrame({
-                    "Feature": feature_cols,
-                    "SHAP Value": shap_values.values[sample_idx]
-                }).sort_values("SHAP Value", key=abs, ascending=False)
-                st.dataframe(shap_df, width='stretch')
-            except Exception:
-                pass
+                shap_df = get_sample_shap_values(shap_values, sample_idx=sample_idx)
+                st.dataframe(shap_df, use_container_width=True)
+            except Exception as e2:
+                st.error(f"Error showing alternative view: {e2}")
     
     with tab4:
         st.markdown("### Waterfall Plot")
@@ -216,12 +210,8 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
         )
         
         try:
-            import matplotlib.pyplot as plt
-            
-            fig, ax = plt.subplots(figsize=(10, 8))
-            shap.plots.waterfall(shap_values[sample_idx], show=False)
-            st.pyplot(fig, width='stretch')
-            plt.close()
+            fig = plot_shap_waterfall(shap_values, sample_idx=sample_idx)
+            st.pyplot(fig)
         
         except Exception as e:
             st.error(f"Error creating waterfall plot: {e}")
@@ -231,20 +221,11 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
     
     with st.expander("🔢 Feature Importance Rankings"):
         try:
-            import pandas as pd
-            import numpy as np
-            
-            # Calculate mean absolute SHAP values
-            mean_shap = np.abs(shap_values.values).mean(axis=0)
-            
-            importance_df = pd.DataFrame({
-                "Feature": feature_cols,
-                "Mean |SHAP|": mean_shap
-            }).sort_values("Mean |SHAP|", ascending=False)
+            importance_df = get_feature_importance(shap_values)
             
             st.dataframe(
                 importance_df.style.format({"Mean |SHAP|": "{:.6f}"}),
-                width='stretch',
+                use_container_width=True,
                 hide_index=True
             )
         
