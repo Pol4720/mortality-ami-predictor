@@ -72,17 +72,34 @@ selected_model = st.sidebar.selectbox(
 # Evaluation button
 if st.button("🚀 Run Evaluation", type="primary", use_container_width=True):
     try:
-        # Set the selected model path in session
-        st.session_state.model_path = saved_models[selected_model]
+        # Get the selected model path
+        selected_model_path = Path(saved_models[selected_model])
+        
+        # Copy the selected model to best_classifier_{task}.joblib for evaluation
+        # This is needed because evaluate_main expects this specific filename
+        models_dir = selected_model_path.parent
+        best_classifier_path = models_dir / f"best_classifier_{task}.joblib"
+        testset_path = models_dir / f"testset_{task}.parquet"
+        
+        # Verify testset exists
+        if not testset_path.exists():
+            st.error(f"❌ Test set no encontrado: {testset_path}")
+            st.warning("⚠️ Por favor, re-entrena los modelos en la página **Model Training** para generar el test set.")
+            st.stop()
+        
+        import shutil
+        shutil.copy2(selected_model_path, best_classifier_path)
+        st.info(f"📋 Evaluando modelo: {selected_model}")
         
         with st.spinner(f"Evaluating {selected_model} on test hold-out set..."):
-            evaluate_main(["--data", data_path, "--task", task])
+            evaluate_main(["--data", str(data_path), "--task", task])
         
         st.success(f"✅ Evaluation completed for {selected_model}")
         st.session_state.is_evaluated = True
         
     except Exception as e:
         st.error(f"❌ Evaluation error: {e}")
+        st.exception(e)
         st.exception(e)
 
 st.markdown("---")
@@ -97,14 +114,24 @@ figures_dir = reports_dir / "figures"
 st.subheader("📊 Performance Metrics")
 
 try:
-    metrics_files = sorted(
-        reports_dir.glob(f"final_metrics_{task}_*.csv"),
-        key=lambda p: p.stat().st_mtime
-    )
+    # Buscar archivo de métricas (nuevo formato)
+    metrics_file = reports_dir / f"evaluation_metrics_{task}.csv"
+    
+    # Si no existe, buscar formato antiguo con timestamp
+    if not metrics_file.exists():
+        metrics_files = sorted(
+            reports_dir.glob(f"final_metrics_{task}_*.csv"),
+            key=lambda p: p.stat().st_mtime
+        )
+        if metrics_files:
+            metrics_file = metrics_files[-1]
+        else:
+            metrics_file = None
+    
 except Exception:
-    metrics_files = []
+    metrics_file = None
 
-if metrics_files:
+if metrics_file and metrics_file.exists():
     try:
         # Try multiple encodings for CSV files
         encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252']
@@ -112,7 +139,7 @@ if metrics_files:
         
         for encoding in encodings:
             try:
-                metrics_df = pd.read_csv(metrics_files[-1], encoding=encoding)
+                metrics_df = pd.read_csv(metrics_file, encoding=encoding)
                 break
             except (UnicodeDecodeError, LookupError):
                 continue
@@ -175,25 +202,26 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     st.markdown("#### Calibration Curve")
-    calib_fig = get_latest_figure(f"calibration_{task}_*.png")
+    # Try with and without timestamp pattern
+    calib_fig = get_latest_figure(f"calibration_{task}_*.png") or get_latest_figure(f"calibration_{task}.png")
     if calib_fig and calib_fig.exists():
-        st.image(str(calib_fig), use_column_width=True)
+        st.image(str(calib_fig), width='stretch')
     else:
         st.info("No calibration plot available")
 
 with col2:
     st.markdown("#### Decision Curve")
-    decision_fig = get_latest_figure(f"decision_curve_{task}_*.png")
+    decision_fig = get_latest_figure(f"decision_curve_{task}_*.png") or get_latest_figure(f"decision_curve_{task}.png")
     if decision_fig and decision_fig.exists():
-        st.image(str(decision_fig), use_column_width=True)
+        st.image(str(decision_fig), width='stretch')
     else:
         st.info("No decision curve available")
 
 with col3:
     st.markdown("#### Confusion Matrix")
-    confusion_fig = get_latest_figure(f"confusion_{task}_*.png")
+    confusion_fig = get_latest_figure(f"confusion_{task}_*.png") or get_latest_figure(f"confusion_{task}.png")
     if confusion_fig and confusion_fig.exists():
-        st.image(str(confusion_fig), use_column_width=True)
+        st.image(str(confusion_fig), width='stretch')
     else:
         st.info("No confusion matrix available")
 
@@ -201,25 +229,25 @@ st.markdown("---")
 
 # ROC Curve (full width)
 st.markdown("#### ROC Curve")
-roc_fig = get_latest_figure(f"roc_{task}_*.png")
+roc_fig = get_latest_figure(f"roc_{task}_*.png") or get_latest_figure(f"roc_{task}.png")
 if roc_fig and roc_fig.exists():
-    st.image(str(roc_fig), use_column_width=True)
+    st.image(str(roc_fig), width='stretch')
 else:
     st.info("No ROC curve available")
 
 # Additional figures
 with st.expander("🔍 Additional Plots"):
     # Precision-Recall curve
-    pr_fig = get_latest_figure(f"pr_{task}_*.png")
+    pr_fig = get_latest_figure(f"pr_{task}_*.png") or get_latest_figure(f"pr_{task}.png")
     if pr_fig and pr_fig.exists():
         st.markdown("##### Precision-Recall Curve")
-        st.image(str(pr_fig), use_column_width=True)
+        st.image(str(pr_fig), width='stretch')
     
     # Learning curve
-    learning_fig = get_latest_figure(f"learning_curve_{task}_*.png")
+    learning_fig = get_latest_figure(f"learning_curve_{task}_*.png") or get_latest_figure(f"learning_curve_{task}.png")
     if learning_fig and learning_fig.exists():
         st.markdown("##### Learning Curve")
-        st.image(str(learning_fig), use_column_width=True)
+        st.image(str(learning_fig), width='stretch')
 
 # Evaluation notes
 with st.expander("ℹ️ About Evaluation Metrics"):

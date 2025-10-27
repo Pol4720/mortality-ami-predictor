@@ -11,6 +11,7 @@ import streamlit as st
 from src.config import CONFIG
 from src.data_load import data_audit, load_dataset, summarize_dataframe, train_test_split
 from src.features import safe_feature_columns
+from src.preprocessing import PreprocessingConfig
 from src.training import fit_and_save_best_classifier, fit_and_save_selected_classifiers
 
 
@@ -198,6 +199,17 @@ def train_models_with_progress(
     # Split data
     train_df, test_df = train_test_split(df, stratify_column=target)
     
+    # Save test set immediately after split
+    models_dir = Path(__file__).parents[2] / "models"
+    models_dir.mkdir(parents=True, exist_ok=True)
+    test_path = models_dir / f"testset_{task}.parquet"
+    try:
+        test_df.to_parquet(test_path)
+        st.success(f"✅ Test set guardado: {len(test_df)} muestras en {test_path.name}")
+    except Exception as e:
+        st.error(f"❌ Error guardando test set: {e}")
+        raise
+    
     # Prepare features
     X = train_df[safe_feature_columns(train_df, [target])]
     y = train_df[target]
@@ -210,6 +222,10 @@ def train_models_with_progress(
         status.info(msg)
         progress.progress(min(max(frac, 0.0), 1.0))
     
+    # Create preprocessing config from imputer_mode
+    preprocessing_config = PreprocessingConfig()
+    preprocessing_config.imputer_mode = imputer_mode
+    
     # Train models
     if selected_models:
         save_paths = fit_and_save_selected_classifiers(
@@ -217,7 +233,7 @@ def train_models_with_progress(
             selected_models=selected_models,
             quick=quick,
             task_name=task,
-            imputer_mode=imputer_mode,
+            preprocessing_config=preprocessing_config,
             progress_callback=progress_callback,
         )
         status.success(f"✅ Models saved: {', '.join(save_paths.keys())}")
@@ -226,22 +242,13 @@ def train_models_with_progress(
             X, y,
             quick=quick,
             task_name=task,
-            imputer_mode=imputer_mode,
+            preprocessing_config=preprocessing_config,
             progress_callback=progress_callback
         )
         save_paths = {"best": path}
         status.success(f"✅ Model saved at {path}")
     
     progress.progress(1.0)
-    
-    # Save test set for evaluation
-    try:
-        models_dir = Path(__file__).parents[1] / "models"
-        models_dir.mkdir(parents=True, exist_ok=True)
-        test_path = models_dir / f"testset_{task}.parquet"
-        test_df.to_parquet(test_path)
-    except Exception as e:
-        st.warning(f"⚠️ Could not save test set: {e}")
     
     return save_paths
 
@@ -255,7 +262,8 @@ def list_saved_models(task: str) -> dict[str, str]:
     Returns:
         Dictionary mapping model names to file paths
     """
-    models_dir = Path(__file__).parents[1] / "models"
+    # Path from dashboard/app/ui_utils.py -> Tools/models
+    models_dir = Path(__file__).parents[2] / "models"
     mapping = {}
     
     if models_dir.exists():
