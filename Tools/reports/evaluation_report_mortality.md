@@ -11,6 +11,14 @@
 - **brier**: 0.0000
 - **specificity**: 1.0000
 - **npv**: 1.0000
+- **bootstrap_mean**: 1.0000
+- **bootstrap_std**: 0.0000
+- **bootstrap_ci_lower**: 1.0000
+- **bootstrap_ci_upper**: 1.0000
+- **jackknife_mean**: 1.0000
+- **jackknife_std**: 0.0000
+- **jackknife_ci_lower**: 1.0000
+- **jackknife_ci_upper**: 1.0000
 
 ## Plots
 

@@ -92,17 +92,57 @@ if st.button("🚀 Run Evaluation", type="primary", width='stretch'):
         
         import shutil
         shutil.copy2(selected_model_path, best_classifier_path)
-        st.info(f"📋 Evaluando modelo: {selected_model}")
         
-        with st.spinner(f"Evaluating {selected_model} on test hold-out set..."):
-            evaluate_main(["--data", str(data_path), "--task", task])
+        st.info(f"""
+        📋 **Evaluando modelo: {selected_model}**
         
-        st.success(f"✅ Evaluation completed for {selected_model}")
+        Se ejecutará:
+        - Métricas estándar (AUROC, AUPRC, Accuracy, Precision, Recall, F1, Brier)
+        - **FASE 2: Bootstrap** (1000 iteraciones con reemplazo)
+        - **FASE 2: Jackknife** (leave-one-out)
+        - Intervalos de confianza al 95% para todas las métricas
+        """)
+        
+        # Create a progress container
+        progress_container = st.empty()
+        status_container = st.empty()
+        
+        # Capture stdout to show progress
+        import sys
+        import io
+        from contextlib import redirect_stdout
+        
+        progress_text = []
+        
+        with status_container.container():
+            st.markdown("### 📊 Progreso de la Evaluación")
+            progress_area = st.empty()
+            
+            # Redirect stdout
+            output_buffer = io.StringIO()
+            
+            with redirect_stdout(output_buffer):
+                evaluate_main(["--data", str(data_path), "--task", task])
+            
+            # Get the output
+            output = output_buffer.getvalue()
+            
+            # Display in expander
+            with st.expander("📋 Ver detalles completos de la evaluación", expanded=False):
+                st.code(output, language="text")
+        
+        st.success(f"""
+        ✅ **Evaluación completada para {selected_model}**
+        
+        - Todas las métricas calculadas (AUROC, AUPRC, Accuracy, Precision, Recall, F1, Brier)
+        - Bootstrap y Jackknife ejecutados con todas las métricas
+        - Intervalos de confianza al 95% disponibles
+        - Gráficos generados
+        """)
         st.session_state.is_evaluated = True
         
     except Exception as e:
         st.error(f"❌ Evaluation error: {e}")
-        st.exception(e)
         st.exception(e)
 
 st.markdown("---")
@@ -157,6 +197,18 @@ if metrics_file and metrics_file.exists():
             hide_index=True
         )
         
+        # Helper function to get latest figure
+        def get_latest_figure(pattern: str) -> Path | None:
+            """Get the latest figure matching the pattern."""
+            try:
+                files = sorted(
+                    figures_dir.glob(pattern),
+                    key=lambda p: p.stat().st_mtime
+                )
+                return files[-1] if files else None
+            except Exception:
+                return None
+        
         # Key metrics highlight
         if not metrics_df.empty:
             col1, col2, col3, col4 = st.columns(4)
@@ -178,6 +230,69 @@ if metrics_file and metrics_file.exists():
                         st.metric("Precision", f"{metrics_df['precision'].iloc[0]:.4f}")
             except Exception:
                 pass
+            
+            # Bootstrap and Jackknife results (FASE 2)
+            if any(col.startswith('bootstrap_') or col.startswith('jackknife_') for col in metrics_df.columns):
+                st.markdown("---")
+                st.subheader("🎲 FASE 2: Resampling Results (Bootstrap & Jackknife)")
+                
+                # Extract all metrics
+                resampling_metrics = ['auroc', 'auprc', 'accuracy', 'precision', 'recall', 'f1', 'brier']
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("#### 🔄 Bootstrap (1000 iterations)")
+                    
+                    for metric in resampling_metrics:
+                        boot_mean_col = f'bootstrap_{metric}_mean'
+                        boot_std_col = f'bootstrap_{metric}_std'
+                        boot_ci_low_col = f'bootstrap_{metric}_ci_lower'
+                        boot_ci_up_col = f'bootstrap_{metric}_ci_upper'
+                        
+                        if boot_mean_col in metrics_df.columns:
+                            boot_mean = metrics_df[boot_mean_col].iloc[0]
+                            boot_std = metrics_df.get(boot_std_col, pd.Series([0])).iloc[0]
+                            boot_ci_low = metrics_df.get(boot_ci_low_col, pd.Series([0])).iloc[0]
+                            boot_ci_up = metrics_df.get(boot_ci_up_col, pd.Series([0])).iloc[0]
+                            
+                            st.metric(
+                                f"{metric.upper()}", 
+                                f"{boot_mean:.4f}",
+                                delta=f"± {boot_std:.4f}"
+                            )
+                            st.caption(f"95% CI: [{boot_ci_low:.4f}, {boot_ci_up:.4f}]")
+                
+                with col2:
+                    st.markdown("#### 🔪 Jackknife (Leave-One-Out)")
+                    
+                    for metric in resampling_metrics:
+                        jack_mean_col = f'jackknife_{metric}_mean'
+                        jack_std_col = f'jackknife_{metric}_std'
+                        jack_ci_low_col = f'jackknife_{metric}_ci_lower'
+                        jack_ci_up_col = f'jackknife_{metric}_ci_upper'
+                        
+                        if jack_mean_col in metrics_df.columns:
+                            jack_mean = metrics_df[jack_mean_col].iloc[0]
+                            jack_std = metrics_df.get(jack_std_col, pd.Series([0])).iloc[0]
+                            jack_ci_low = metrics_df.get(jack_ci_low_col, pd.Series([0])).iloc[0]
+                            jack_ci_up = metrics_df.get(jack_ci_up_col, pd.Series([0])).iloc[0]
+                            
+                            st.metric(
+                                f"{metric.upper()}", 
+                                f"{jack_mean:.4f}",
+                                delta=f"± {jack_std:.4f}"
+                            )
+                            st.caption(f"95% CI: [{jack_ci_low:.4f}, {jack_ci_up:.4f}]")
+                
+                # Show resampling plot
+                resampling_fig = get_latest_figure(f"resampling_{task}_*.png") or get_latest_figure(f"resampling_{task}.png")
+                if resampling_fig and resampling_fig.exists():
+                    st.markdown("#### Resampling Distributions (AUROC)")
+                    st.image(str(resampling_fig), use_container_width=True)
+                    st.caption("Distribuciones de Bootstrap (izquierda) y Jackknife (derecha) con intervalos de confianza al 95%")
+                else:
+                    st.info("ℹ️ Resampling plot will appear here after evaluation")
     
     except Exception as e:
         st.warning(f"⚠️ Could not load metrics CSV: {e}")
@@ -188,17 +303,6 @@ st.markdown("---")
 
 # Visualization figures
 st.subheader("📉 Evaluation Plots")
-
-def get_latest_figure(pattern: str) -> Path | None:
-    """Get the latest figure matching the pattern."""
-    try:
-        files = sorted(
-            figures_dir.glob(pattern),
-            key=lambda p: p.stat().st_mtime
-        )
-        return files[-1] if files else None
-    except Exception:
-        return None
 
 # Display figures in columns
 col1, col2, col3 = st.columns(3)

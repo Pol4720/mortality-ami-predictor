@@ -163,9 +163,13 @@ def generate_evaluation_report(
 
 
 def evaluate_main(argv: Optional[list] = None) -> None:
-    """Evaluate trained model on test set.
+    """Evaluate trained model on test set with Bootstrap and Jackknife (FASE 2).
     
-    This function provides backward compatibility with the old evaluate.py module.
+    This function performs:
+    1. Standard evaluation metrics (accuracy, AUROC, etc.)
+    2. FASE 2: Bootstrap resampling (1000 iterations)
+    3. FASE 2: Jackknife resampling (leave-one-out)
+    4. Confidence intervals at 95%
     
     Args:
         argv: Command line arguments (for testing)
@@ -204,11 +208,10 @@ def evaluate_main(argv: Optional[list] = None) -> None:
 
     # Prepare features and target
     X = test_df.drop(columns=[target])
-    y = test_df[target].values
+    y = test_df[target]  # Keep as Series, not .values
     
     print(f"  Features shape: {X.shape}")
     print(f"  Target shape: {y.shape}")
-    print(f"  Target column in X: {target in X.columns}")
 
     # Get predictions
     prob = model.predict_proba(X)[:, 1]
@@ -216,18 +219,70 @@ def evaluate_main(argv: Optional[list] = None) -> None:
     
     print(f"  Predictions shape: {prob.shape}")
     print(f"  Probability range: [{prob.min():.4f}, {prob.max():.4f}]")
-    print(f"  Predicted class distribution: {pd.Series(y_pred).value_counts().to_dict()}")
-    print(f"  First 5 probabilities: {prob[:5]}")
-    print(f"  First 5 true labels: {y[:5]}")
 
-    # Compute metrics
-    metrics = compute_classification_metrics(y, prob)
+    # Compute standard metrics (convert to numpy for metrics computation)
+    metrics = compute_classification_metrics(y.values, prob)
     
-    # Generate plots
-    calib_path = plot_calibration_curve(y, prob, name=args.task)
-    dca_path = decision_curve_analysis(y, prob, name=args.task)
-    confusion_path = plot_confusion_matrix(y, prob, name=args.task)
-    roc_path = plot_roc_curve(y, prob, name=args.task)
+    # =========================================================================
+    # FASE 2: Bootstrap and Jackknife Resampling
+    # =========================================================================
+    print(f"\n📊 FASE 2: Resampling Evaluation (Bootstrap + Jackknife)")
+    
+    from .resampling import bootstrap_evaluation, jackknife_evaluation, plot_resampling_results
+    from ..config import RANDOM_SEED
+    
+    # Bootstrap (with replacement)
+    boot_res = bootstrap_evaluation(
+        model=model,
+        X_test=X,  # Pass DataFrame directly
+        y_test=y,  # Pass Series directly
+        n_iterations=1000,
+        confidence_level=0.95,
+        random_state=RANDOM_SEED,
+    )
+    
+    # Jackknife (leave-one-out)
+    jack_res = jackknife_evaluation(
+        model=model,
+        X_test=X,  # Pass DataFrame directly
+        y_test=y,  # Pass Series directly
+        confidence_level=0.95,
+    )
+    
+    # Save resampling plots (plot AUROC by default)
+    fig = plot_resampling_results([boot_res, jack_res], metric='auroc')
+    resampling_path = os.path.join(FIGURES_DIR, f"resampling_{args.task}.png")
+    fig.savefig(resampling_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+    
+    print(f"\n  📊 Resampling plot saved: {resampling_path}")
+    
+    # Add ALL resampling metrics to the metrics dict
+    # Bootstrap metrics
+    for metric_name, mean_val in boot_res.mean_scores.items():
+        metrics[f'bootstrap_{metric_name}_mean'] = mean_val
+        metrics[f'bootstrap_{metric_name}_std'] = boot_res.std_scores[metric_name]
+        metrics[f'bootstrap_{metric_name}_ci_lower'] = boot_res.confidence_intervals[metric_name][0]
+        metrics[f'bootstrap_{metric_name}_ci_upper'] = boot_res.confidence_intervals[metric_name][1]
+    
+    # Jackknife metrics
+    for metric_name, mean_val in jack_res.mean_scores.items():
+        metrics[f'jackknife_{metric_name}_mean'] = mean_val
+        metrics[f'jackknife_{metric_name}_std'] = jack_res.std_scores[metric_name]
+        metrics[f'jackknife_{metric_name}_ci_lower'] = jack_res.confidence_intervals[metric_name][0]
+        metrics[f'jackknife_{metric_name}_ci_upper'] = jack_res.confidence_intervals[metric_name][1]
+    
+    # =========================================================================
+    # Standard Plots
+    # =========================================================================
+    print(f"\n📈 Generating standard evaluation plots...")
+    
+    # Generate plots (convert y to numpy for plotting functions)
+    y_np = y.values
+    calib_path = plot_calibration_curve(y_np, prob, name=args.task)
+    dca_path = decision_curve_analysis(y_np, prob, name=args.task)
+    confusion_path = plot_confusion_matrix(y_np, prob, name=args.task)
+    roc_path = plot_roc_curve(y_np, prob, name=args.task)
 
     # Save report
     csv_path = generate_evaluation_report(
@@ -243,9 +298,16 @@ def evaluate_main(argv: Optional[list] = None) -> None:
     print(f"📉 Decision curve: {dca_path}")
     print(f"🔲 Confusion matrix: {confusion_path}")
     print(f"📊 ROC curve: {roc_path}")
+    print(f"📊 Resampling plot: {resampling_path}")
     
     # Print key metrics
     print("\n## Key Metrics:")
     for key in ["auroc", "auprc", "accuracy", "f1", "brier"]:
         if key in metrics:
             print(f"  {key}: {metrics[key]:.4f}")
+    
+    print("\n## Bootstrap & Jackknife Results (AUROC):")
+    print(f"  Bootstrap:  {boot_res.mean_scores['auroc']:.4f} ± {boot_res.std_scores['auroc']:.4f}")
+    print(f"              95% CI: [{boot_res.confidence_intervals['auroc'][0]:.4f}, {boot_res.confidence_intervals['auroc'][1]:.4f}]")
+    print(f"  Jackknife:  {jack_res.mean_scores['auroc']:.4f} ± {jack_res.std_scores['auroc']:.4f}")
+    print(f"              95% CI: [{jack_res.confidence_intervals['auroc'][0]:.4f}, {jack_res.confidence_intervals['auroc'][1]:.4f}]")

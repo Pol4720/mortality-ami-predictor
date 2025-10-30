@@ -12,11 +12,6 @@ from .trainer import (
 from .cross_validation import nested_cross_validation, rigorous_repeated_cv
 from .hyperparameter_tuning import randomized_search
 from .statistical_tests import compare_all_models, compare_models
-from .resampling import (
-    bootstrap_evaluation,
-    jackknife_evaluation,
-    combined_resampling_evaluation,
-)
 from .learning_curves import generate_learning_curve
 
 # Backward compatibility aliases for old API
@@ -39,10 +34,6 @@ __all__ = [
     # Statistical tests
     "compare_all_models",
     "compare_models",
-    # Resampling
-    "bootstrap_evaluation",
-    "jackknife_evaluation",
-    "combined_resampling_evaluation",
     # Learning curves
     "generate_learning_curve",
     # Backward compatibility
