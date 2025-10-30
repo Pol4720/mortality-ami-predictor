@@ -252,6 +252,51 @@ with st.expander("🔍 Additional Plots"):
         st.markdown("##### Learning Curve")
         st.image(str(learning_fig), width='stretch')
 
+    # Statistical comparison plots
+    st.markdown("##### Statistical Comparison Plots")
+    stat_boxplot = get_latest_figure(f"stat_boxplot_{task}_*.png") or get_latest_figure(f"stat_boxplot_{task}.png")
+    stat_violin = get_latest_figure(f"stat_violin_{task}_*.png") or get_latest_figure(f"stat_violin_{task}.png")
+    stat_hist = get_latest_figure(f"stat_hist_{task}_*.png") or get_latest_figure(f"stat_hist_{task}.png")
+    stat_matrix = get_latest_figure(f"stat_matrix_{task}_*.png") or get_latest_figure(f"stat_matrix_{task}.png")
+
+    stat_cols = st.columns(4)
+    with stat_cols[0]:
+        if stat_boxplot and stat_boxplot.exists():
+            st.image(str(stat_boxplot), caption="Boxplot", width='stretch')
+        else:
+            st.info("No boxplot available")
+    with stat_cols[1]:
+        if stat_violin and stat_violin.exists():
+            st.image(str(stat_violin), caption="Violin Plot", width='stretch')
+        else:
+            st.info("No violin plot available")
+    with stat_cols[2]:
+        if stat_hist and stat_hist.exists():
+            st.image(str(stat_hist), caption="Histogram", width='stretch')
+        else:
+            st.info("No histogram available")
+    with stat_cols[3]:
+        if stat_matrix and stat_matrix.exists():
+            st.image(str(stat_matrix), caption="Comparison Matrix", width='stretch')
+        else:
+            st.info("No comparison matrix available")
+
+    # Resampling results (Bootstrap/Jackknife)
+    st.markdown("##### Resampling Results (Bootstrap/Jackknife)")
+    resample_boot = get_latest_figure(f"bootstrap_{task}_*.png") or get_latest_figure(f"bootstrap_{task}.png")
+    resample_jack = get_latest_figure(f"jackknife_{task}_*.png") or get_latest_figure(f"jackknife_{task}.png")
+    resample_cols = st.columns(2)
+    with resample_cols[0]:
+        if resample_boot and resample_boot.exists():
+            st.image(str(resample_boot), caption="Bootstrap Distribution", width='stretch')
+        else:
+            st.info("No bootstrap plot available")
+    with resample_cols[1]:
+        if resample_jack and resample_jack.exists():
+            st.image(str(resample_jack), caption="Jackknife Distribution", width='stretch')
+        else:
+            st.info("No jackknife plot available")
+
 # Evaluation notes
 with st.expander("ℹ️ About Evaluation Metrics"):
     st.markdown("""

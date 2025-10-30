@@ -15,6 +15,7 @@ from .metadata import VariableMetadata
 from .imputation import ImputationStrategy
 from .outliers import OutlierMethod, OutlierTreatment
 from .encoding import EncodingStrategy
+from .discretization import DiscretizationStrategy, discretize_column
 
 __all__ = [
     # Main classes
@@ -26,6 +27,8 @@ __all__ = [
     "OutlierMethod",
     "OutlierTreatment",
     "EncodingStrategy",
-    # Convenience functions
+    "DiscretizationStrategy",
+    # Functions
+    "discretize_column",
     "quick_clean",
 ]

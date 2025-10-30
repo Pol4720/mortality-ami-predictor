@@ -60,6 +60,20 @@ if task == 'exitus':
 
 # Training settings
 st.sidebar.markdown("---")
+st.sidebar.header("⚙️ Training Configuration")
+
+# Info about the rigorous pipeline (always active)
+st.sidebar.info("""
+🎓 **Pipeline Riguroso Activo**
+
+Este dashboard SIEMPRE usa el pipeline académico completo:
+• ✅ Validación cruzada estratificada repetida (≥30 corridas)
+• ✅ Curvas de aprendizaje
+• ✅ Comparación estadística (Shapiro-Wilk, t-test/Mann-Whitney)
+
+La evaluación final (Bootstrap/Jackknife) se hace en el módulo de **Evaluación**.
+""")
+
 quick, imputer_mode, selected_models = sidebar_training_controls()
 
 # Main content
@@ -89,6 +103,31 @@ st.subheader("Train Models")
 if not selected_models:
     st.error("❌ Please select at least one model from the sidebar")
 else:
+    # Show pipeline info (always rigorous)
+    st.info("""
+    ### 🎓 Pipeline de Experimentación Riguroso
+    
+    Este pipeline seguirá las mejores prácticas académicas:
+    
+    **FASE 1: Train + Validation**
+    - ✅ Validación cruzada estratificada repetida (30+ corridas)
+    - ✅ Estimación de μ (media) y σ (desviación) por modelo
+    - ✅ Curvas de aprendizaje para diagnóstico
+    
+    **FASE 3: Comparación Estadística**
+    - ✅ Prueba de normalidad (Shapiro-Wilk)
+    - ✅ Test paramétrico (t-Student) o no paramétrico (Mann-Whitney)
+    - ✅ Tamaño del efecto (Cohen's d)
+    
+    **FASE 2: Test (Estimado Final)**
+    - ⚠️ Se realizará en el módulo de **Evaluación**
+    - Bootstrap (1000 iteraciones con reemplazo)
+    - Jackknife (eliminando 1 elemento)
+    - Intervalos de confianza al 95%
+    
+    📊 Se generarán gráficos y reportes detallados en `models/`
+    """)
+    
     if st.button("🚀 Start Training", type="primary", width='stretch'):
         try:
             with st.spinner("Training models..."):
@@ -132,18 +171,47 @@ display_model_list(task)
 # Training history/log
 with st.expander("ℹ️ Training Notes"):
     st.markdown("""
+    ### ⚙️ Configuración del Entrenamiento
+    
     **Quick Mode:**
-    - Uses simplified hyperparameter search
-    - Faster iteration for debugging
-    - Recommended for initial exploration
+    - ✅ Búsqueda simplificada de hiperparámetros
+    - ✅ Menos splits en CV (3×3 = 9 corridas en vez de 10×10 = 100)
+    - ✅ Iteración rápida para depuración
+    - ⚠️ Recomendado solo para exploración inicial
     
-    **Imputation Strategies:**
-    - **Iterative**: Uses sklearn's IterativeImputer (MICE)
-    - **KNN**: K-Nearest Neighbors imputation
-    - **Simple**: Mean/median/mode imputation
+    **Estrategias de Imputación:**
+    - **Iterative**: IterativeImputer de sklearn (MICE - Multiple Imputation by Chained Equations)
+    - **KNN**: K-Nearest Neighbors imputation (busca valores similares)
+    - **Simple**: Imputación básica (media/mediana/moda)
     
-    **Model Types:**
-    - Decision Trees, Random Forest, XGBoost
-    - Logistic Regression, SVM
-    - KNN, Naive Bayes
+    **Tipos de Modelos Disponibles:**
+    - 🌳 Decision Trees, Random Forest
+    - 🚀 XGBoost (Gradient Boosting)
+    - 📈 Logistic Regression
+    - 🎯 Support Vector Machine (SVM)
+    - 👥 K-Nearest Neighbors (KNN)
+    - 📊 Naive Bayes
+    
+    ### 📋 Pipeline de Experimentación
+    
+    El **Pipeline Riguroso** implementa el proceso científico completo:
+    
+    1. **Validación Cruzada Estratificada Repetida**: Se entrena y evalúa cada modelo
+       múltiples veces (≥30 corridas) para obtener estimaciones robustas de μ y σ.
+       
+    2. **Curvas de Aprendizaje**: Diagnostican sobreajuste/subajuste y la necesidad
+       de más datos.
+       
+    3. **Comparación Estadística**: Determina si las diferencias entre modelos son
+       estadísticamente significativas usando:
+       - Prueba de normalidad (Shapiro-Wilk)
+       - Test paramétrico (t-Student) si los datos son normales
+       - Test no paramétrico (Mann-Whitney) si no lo son
+       
+    4. **Evaluación Final en Test Set**: Una vez seleccionado el mejor modelo:
+       - Bootstrap (1000 iteraciones con reemplazo)
+       - Jackknife (leave-one-out)
+       - Intervalos de confianza al 95%
+    
+    📚 Ver documentación completa en `Tools/docs/EXPERIMENT_PIPELINE.md`
     """)

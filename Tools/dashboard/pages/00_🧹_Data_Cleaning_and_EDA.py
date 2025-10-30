@@ -338,6 +338,210 @@ def data_cleaning_page():
             drop_constant = st.checkbox("Eliminar columnas constantes", value=True)
             constant_threshold = st.slider("Umbral constante (%)", 50, 100, 95) / 100
     
+    # Configuración personalizada por variable
+    st.markdown("---")
+    with st.expander("🎯 Configuración Personalizada por Variable (Opcional)", expanded=False):
+        st.markdown("""
+        Aquí puedes configurar estrategias específicas de imputación y discretización 
+        para variables individuales. Si no se especifica, se usa la configuración global.
+        """)
+        
+        # Identificar columnas numéricas y categóricas
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        categorical_cols = df.select_dtypes(exclude=[np.number]).columns.tolist()
+        
+        # Tabs para imputación y discretización
+        tab_impute, tab_discretize = st.tabs(["💉 Imputación Personalizada", "📊 Discretización Personalizada"])
+        
+        with tab_impute:
+            st.subheader("Configurar imputación por variable")
+            
+            # Inicializar diccionarios en session_state
+            if 'custom_imputation' not in st.session_state:
+                st.session_state.custom_imputation = {}
+            if 'custom_constant_values' not in st.session_state:
+                st.session_state.custom_constant_values = {}
+            
+            # Seleccionar variable para configurar
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                var_to_config = st.selectbox(
+                    "Selecciona variable para configurar",
+                    [""] + df.columns.tolist(),
+                    key="impute_var_select"
+                )
+            
+            with col2:
+                if st.button("🗑️ Limpiar todas las configuraciones", key="clear_impute_config"):
+                    st.session_state.custom_imputation = {}
+                    st.session_state.custom_constant_values = {}
+                    st.rerun()
+            
+            if var_to_config:
+                is_numeric = var_to_config in numeric_cols
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Estrategias según tipo
+                    if is_numeric:
+                        strategies = ["mean", "median", "knn", "forward", "backward", "constant_numeric"]
+                    else:
+                        strategies = ["mode", "forward", "backward", "constant_categorical"]
+                    
+                    current_strategy = st.session_state.custom_imputation.get(var_to_config, "")
+                    selected_strategy = st.selectbox(
+                        f"Estrategia para {var_to_config}",
+                        ["(usar global)"] + strategies,
+                        index=strategies.index(current_strategy) + 1 if current_strategy in strategies else 0,
+                        key=f"strategy_{var_to_config}"
+                    )
+                
+                with col2:
+                    # Valor constante si aplica
+                    if selected_strategy in ["constant_numeric", "constant_categorical"]:
+                        if is_numeric:
+                            constant_val = st.number_input(
+                                "Valor constante",
+                                value=st.session_state.custom_constant_values.get(var_to_config, 0.0),
+                                key=f"const_{var_to_config}"
+                            )
+                        else:
+                            constant_val = st.text_input(
+                                "Valor constante",
+                                value=st.session_state.custom_constant_values.get(var_to_config, "missing"),
+                                key=f"const_{var_to_config}"
+                            )
+                
+                # Botones de acción
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if st.button("✅ Aplicar configuración", key=f"apply_{var_to_config}"):
+                        if selected_strategy != "(usar global)":
+                            st.session_state.custom_imputation[var_to_config] = selected_strategy
+                            if selected_strategy in ["constant_numeric", "constant_categorical"]:
+                                st.session_state.custom_constant_values[var_to_config] = constant_val
+                            st.success(f"✅ Configuración guardada para {var_to_config}")
+                        else:
+                            # Remover configuración personalizada
+                            if var_to_config in st.session_state.custom_imputation:
+                                del st.session_state.custom_imputation[var_to_config]
+                            if var_to_config in st.session_state.custom_constant_values:
+                                del st.session_state.custom_constant_values[var_to_config]
+                            st.info(f"ℹ️ {var_to_config} usará la configuración global")
+                
+                with col2:
+                    if st.button("🗑️ Eliminar configuración", key=f"remove_{var_to_config}"):
+                        if var_to_config in st.session_state.custom_imputation:
+                            del st.session_state.custom_imputation[var_to_config]
+                        if var_to_config in st.session_state.custom_constant_values:
+                            del st.session_state.custom_constant_values[var_to_config]
+                        st.info(f"ℹ️ Configuración eliminada para {var_to_config}")
+            
+            # Mostrar configuraciones actuales
+            if st.session_state.custom_imputation:
+                st.markdown("---")
+                st.markdown("**Configuraciones personalizadas activas:**")
+                config_df = pd.DataFrame([
+                    {
+                        'Variable': var,
+                        'Estrategia': strategy,
+                        'Valor Constante': st.session_state.custom_constant_values.get(var, '-')
+                    }
+                    for var, strategy in st.session_state.custom_imputation.items()
+                ])
+                st.dataframe(config_df, width='stretch', hide_index=True)
+        
+        with tab_discretize:
+            st.subheader("Configurar discretización por variable")
+            
+            # Inicializar diccionarios en session_state
+            if 'custom_discretization' not in st.session_state:
+                st.session_state.custom_discretization = {}
+            if 'custom_discretization_bins' not in st.session_state:
+                st.session_state.custom_discretization_bins = {}
+            
+            # Seleccionar variable para configurar
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                var_to_disc = st.selectbox(
+                    "Selecciona variable numérica para discretizar",
+                    [""] + numeric_cols,
+                    key="disc_var_select"
+                )
+            
+            with col2:
+                if st.button("🗑️ Limpiar todas las configuraciones", key="clear_disc_config"):
+                    st.session_state.custom_discretization = {}
+                    st.session_state.custom_discretization_bins = {}
+                    st.rerun()
+            
+            if var_to_disc:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    strategies = ["none", "uniform", "quantile", "kmeans", "custom"]
+                    current_strategy = st.session_state.custom_discretization.get(var_to_disc, "")
+                    selected_disc_strategy = st.selectbox(
+                        f"Estrategia para {var_to_disc}",
+                        ["(usar global)"] + strategies,
+                        index=strategies.index(current_strategy) + 1 if current_strategy in strategies else 0,
+                        key=f"disc_strategy_{var_to_disc}"
+                    )
+                
+                with col2:
+                    if selected_disc_strategy not in ["(usar global)", "none", "custom"]:
+                        n_bins = st.number_input(
+                            "Número de bins",
+                            min_value=2,
+                            max_value=20,
+                            value=st.session_state.custom_discretization_bins.get(var_to_disc, 5),
+                            key=f"bins_{var_to_disc}"
+                        )
+                
+                # Botones de acción
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if st.button("✅ Aplicar configuración", key=f"apply_disc_{var_to_disc}"):
+                        if selected_disc_strategy != "(usar global)":
+                            st.session_state.custom_discretization[var_to_disc] = selected_disc_strategy
+                            if selected_disc_strategy not in ["none", "custom"]:
+                                st.session_state.custom_discretization_bins[var_to_disc] = n_bins
+                            st.success(f"✅ Discretización configurada para {var_to_disc}")
+                        else:
+                            # Remover configuración personalizada
+                            if var_to_disc in st.session_state.custom_discretization:
+                                del st.session_state.custom_discretization[var_to_disc]
+                            if var_to_disc in st.session_state.custom_discretization_bins:
+                                del st.session_state.custom_discretization_bins[var_to_disc]
+                            st.info(f"ℹ️ {var_to_disc} usará la configuración global")
+                
+                with col2:
+                    if st.button("🗑️ Eliminar configuración", key=f"remove_disc_{var_to_disc}"):
+                        if var_to_disc in st.session_state.custom_discretization:
+                            del st.session_state.custom_discretization[var_to_disc]
+                        if var_to_disc in st.session_state.custom_discretization_bins:
+                            del st.session_state.custom_discretization_bins[var_to_disc]
+                        st.info(f"ℹ️ Configuración eliminada para {var_to_disc}")
+            
+            # Mostrar configuraciones actuales
+            if st.session_state.custom_discretization:
+                st.markdown("---")
+                st.markdown("**Configuraciones de discretización activas:**")
+                config_df = pd.DataFrame([
+                    {
+                        'Variable': var,
+                        'Estrategia': strategy,
+                        'Bins': st.session_state.custom_discretization_bins.get(var, '-')
+                    }
+                    for var, strategy in st.session_state.custom_discretization.items()
+                ])
+                st.dataframe(config_df, width='stretch', hide_index=True)
+    
     # Crear configuración
     config = CleaningConfig(
         numeric_imputation=numeric_imputation,
@@ -345,6 +549,8 @@ def data_cleaning_page():
         knn_neighbors=knn_neighbors,
         constant_fill_numeric=constant_fill_numeric,
         constant_fill_categorical=constant_fill_categorical,
+        custom_imputation_strategies=st.session_state.get('custom_imputation', {}),
+        custom_constant_values=st.session_state.get('custom_constant_values', {}),
         outlier_method=outlier_method,
         iqr_multiplier=iqr_multiplier,
         zscore_threshold=zscore_threshold,
@@ -352,6 +558,8 @@ def data_cleaning_page():
         categorical_encoding=categorical_encoding,
         discretization_strategy=discretization_strategy,
         discretization_bins=discretization_bins,
+        custom_discretization_strategies=st.session_state.get('custom_discretization', {}),
+        custom_discretization_bins=st.session_state.get('custom_discretization_bins', {}),
         drop_duplicates=drop_duplicates,
         drop_fully_missing=drop_fully_missing,
         drop_constant=drop_constant,

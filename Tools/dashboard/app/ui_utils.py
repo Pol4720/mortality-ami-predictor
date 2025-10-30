@@ -175,12 +175,20 @@ def train_models_with_progress(
     imputer_mode: str,
     selected_models: list[str],
 ) -> dict[str, str]:
-    """Train selected models with progress feedback.
+    """Train selected models using the rigorous experiment pipeline.
+    
+    This function ALWAYS uses the rigorous academic pipeline with:
+    - 30+ repeated CV runs for model selection (FASE 1)
+    - Learning curves for diagnostics
+    - Statistical comparison (Shapiro-Wilk, t-test/Mann-Whitney) (FASE 3)
+    
+    NOTE: Bootstrap and Jackknife evaluation (FASE 2) is done in the 
+    EVALUATION module, not here.
     
     Args:
         data_path: Path to dataset
         task: Task name (mortality/arrhythmia)
-        quick: Whether to use quick mode
+        quick: Whether to use quick mode (fewer CV splits)
         imputer_mode: Imputation strategy
         selected_models: List of model names to train
         
@@ -196,7 +204,7 @@ def train_models_with_progress(
     else:
         target = CONFIG.arrhythmia_column
     
-    # Split data
+    # Split data (80% train, 20% test)
     train_df, test_df = train_test_split(df, stratify_column=target)
     
     # Save test set immediately after split
@@ -211,8 +219,10 @@ def train_models_with_progress(
         raise
     
     # Prepare features
-    X = train_df[safe_feature_columns(train_df, [target])]
-    y = train_df[target]
+    X_train = train_df[safe_feature_columns(train_df, [target])]
+    y_train = train_df[target]
+    X_test = test_df[safe_feature_columns(test_df, [target])]
+    y_test = test_df[target]
     
     # Progress tracking
     progress = st.progress(0.0)
@@ -222,31 +232,57 @@ def train_models_with_progress(
         status.info(msg)
         progress.progress(min(max(frac, 0.0), 1.0))
     
-    # Create preprocessing config from imputer_mode
+    # Create preprocessing config
     preprocessing_config = PreprocessingConfig()
     preprocessing_config.imputer_mode = imputer_mode
     
-    # Train models
-    if selected_models:
-        save_paths = fit_and_save_selected_classifiers(
-            X, y,
-            selected_models=selected_models,
-            quick=quick,
-            task_name=task,
-            preprocessing_config=preprocessing_config,
-            progress_callback=progress_callback,
-        )
-        status.success(f"✅ Models saved: {', '.join(save_paths.keys())}")
-    else:
-        path, _ = fit_and_save_best_classifier(
-            X, y,
-            quick=quick,
-            task_name=task,
-            preprocessing_config=preprocessing_config,
-            progress_callback=progress_callback
-        )
-        save_paths = {"best": path}
-        status.success(f"✅ Model saved at {path}")
+    # Get selected models
+    from src.models import make_classifiers
+    all_models = make_classifiers()
+    models_to_train = {k: v for k, v in all_models.items() if k in selected_models}
+    
+    if not models_to_train:
+        raise ValueError("No models selected for training")
+    
+    # ALWAYS use rigorous pipeline
+    status.info("🚀 Ejecutando pipeline de experimentación riguroso...")
+    
+    # Import rigorous pipeline
+    from src.training import run_rigorous_experiment_pipeline
+    
+    # Set CV parameters based on quick mode
+    n_splits = 3 if quick else 10
+    n_repeats = 3 if quick else 10  # 9 or 100 runs total
+    
+    # Run pipeline (FASE 1 + FASE 3 - train/validation + statistical comparison)
+    experiment_results = run_rigorous_experiment_pipeline(
+        X=X_train,
+        y=y_train,
+        models=models_to_train,
+        preprocessing_config=preprocessing_config,
+        n_splits=n_splits,
+        n_repeats=n_repeats,
+        scoring="roc_auc",
+        test_set=(X_test, y_test),  # Saved for later evaluation
+        output_dir=str(models_dir),
+        progress_callback=progress_callback,
+    )
+    
+    # Extract save paths
+    best_model_name = experiment_results.get('best_model')
+    final_model_path = experiment_results.get('final_model_path')
+    
+    save_paths = {}
+    if final_model_path:
+        save_paths[best_model_name] = final_model_path
+    
+    status.success(
+        f"✅ Pipeline de entrenamiento completado!\n"
+        f"Mejor modelo: {best_model_name}\n"
+        f"Modelo guardado en: {final_model_path}\n"
+        f"Test set guardado en: {test_path}\n"
+        f"⚠️ La evaluación final (Bootstrap/Jackknife) se hará en el módulo de EVALUACIÓN"
+    )
     
     progress.progress(1.0)
     

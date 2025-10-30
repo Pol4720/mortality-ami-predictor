@@ -29,6 +29,10 @@ from .encoding import (
     EncodingStrategy,
     encode_categorical_column,
 )
+from .discretization import (
+    DiscretizationStrategy,
+    discretize_column,
+)
 
 
 @dataclass
@@ -41,6 +45,8 @@ class CleaningConfig:
         knn_neighbors: Number of neighbors for KNN imputation
         constant_fill_numeric: Fill value for constant numeric imputation
         constant_fill_categorical: Fill value for constant categorical imputation
+        custom_imputation_strategies: Dict mapping column names to specific imputation strategies
+        custom_constant_values: Dict mapping column names to specific constant values for imputation
         outlier_method: Method for outlier detection
         iqr_multiplier: Multiplier for IQR method
         zscore_threshold: Threshold for Z-score method
@@ -51,6 +57,8 @@ class CleaningConfig:
         discretization_bins: Number of bins for discretization
         custom_bins: Custom bin edges per variable
         custom_labels: Custom labels for bins per variable
+        custom_discretization_strategies: Dict mapping column names to specific discretization strategies
+        custom_discretization_bins: Dict mapping column names to specific number of bins
         drop_duplicates: Whether to drop duplicate rows
         drop_fully_missing: Whether to drop fully missing columns
         drop_constant: Whether to drop constant columns
@@ -62,6 +70,8 @@ class CleaningConfig:
     knn_neighbors: int = 5
     constant_fill_numeric: float = 0.0
     constant_fill_categorical: str = "missing"
+    custom_imputation_strategies: Dict[str, str] = field(default_factory=dict)
+    custom_constant_values: Dict[str, Any] = field(default_factory=dict)
     
     # Outliers
     outlier_method: str = "iqr"
@@ -78,6 +88,8 @@ class CleaningConfig:
     discretization_bins: int = 5
     custom_bins: Dict[str, List[float]] = field(default_factory=dict)
     custom_labels: Dict[str, List[str]] = field(default_factory=dict)
+    custom_discretization_strategies: Dict[str, str] = field(default_factory=dict)
+    custom_discretization_bins: Dict[str, int] = field(default_factory=dict)
     
     # General
     drop_duplicates: bool = True
@@ -148,13 +160,16 @@ class DataCleaner:
         # 6. Impute missing values
         df_clean = self._impute_missing(df_clean, numeric_cols, categorical_cols)
         
-        # 7. Encode categoricals
+        # 7. Apply discretization (after imputation, before encoding)
+        df_clean = self._apply_discretization(df_clean, numeric_cols)
+        
+        # 8. Encode categoricals
         df_clean = self._encode_categorical(df_clean, categorical_cols)
         
-        # 8. Validate dtypes
+        # 9. Validate dtypes
         df_clean = self._validate_dtypes(df_clean)
         
-        # 9. Update final metadata
+        # 10. Update final metadata
         self._update_final_metadata(df_clean)
         
         # Restore target
@@ -307,46 +322,154 @@ class DataCleaner:
         numeric_cols: List[str],
         categorical_cols: List[str],
     ) -> pd.DataFrame:
-        """Impute missing values."""
+        """Impute missing values.
+        
+        This method supports both global imputation strategies and custom
+        per-variable strategies via custom_imputation_strategies config.
+        """
         df_clean = df.copy()
         
         # Handle KNN imputation separately (needs all columns at once)
+        # Only for columns without custom strategies
+        knn_cols = []
         if self.config.numeric_imputation == "knn":
-            df_clean = impute_knn(df_clean, numeric_cols, self.config.knn_neighbors)
-            for col in numeric_cols:
-                if col in self.metadata:
-                    self.metadata[col].imputation_method = "knn"
-        else:
-            # Impute numeric columns individually
-            for col in numeric_cols:
-                if col not in df_clean.columns or df_clean[col].isna().sum() == 0:
-                    continue
+            knn_cols = [
+                col for col in numeric_cols 
+                if col not in self.config.custom_imputation_strategies
+            ]
+            if knn_cols:
+                df_clean = impute_knn(df_clean, knn_cols, self.config.knn_neighbors)
+                for col in knn_cols:
+                    if col in self.metadata:
+                        self.metadata[col].imputation_method = "knn"
+        
+        # Impute numeric columns individually
+        for col in numeric_cols:
+            if col not in df_clean.columns or df_clean[col].isna().sum() == 0:
+                continue
+            
+            # Skip if already handled by KNN
+            if col in knn_cols:
+                continue
+            
+            # Check for custom strategy for this column
+            if col in self.config.custom_imputation_strategies:
+                strategy_str = self.config.custom_imputation_strategies[col]
+                strategy = ImputationStrategy(strategy_str)
                 
-                strategy = ImputationStrategy(self.config.numeric_imputation)
-                df_clean[col] = impute_numeric_column(
-                    df_clean[col],
-                    strategy=strategy,
-                    fill_value=self.config.constant_fill_numeric,
-                    knn_neighbors=self.config.knn_neighbors,
+                # Check for custom constant value
+                fill_value = self.config.custom_constant_values.get(
+                    col, 
+                    self.config.constant_fill_numeric
                 )
-                
-                if col in self.metadata:
-                    self.metadata[col].imputation_method = strategy.value
+            else:
+                # Use global strategy
+                strategy = ImputationStrategy(self.config.numeric_imputation)
+                fill_value = self.config.constant_fill_numeric
+            
+            df_clean[col] = impute_numeric_column(
+                df_clean[col],
+                strategy=strategy,
+                fill_value=fill_value,
+                knn_neighbors=self.config.knn_neighbors,
+            )
+            
+            if col in self.metadata:
+                self.metadata[col].imputation_method = strategy.value
         
         # Impute categorical columns
         for col in categorical_cols:
             if col not in df_clean.columns or df_clean[col].isna().sum() == 0:
                 continue
             
-            strategy = ImputationStrategy(self.config.categorical_imputation)
+            # Check for custom strategy for this column
+            if col in self.config.custom_imputation_strategies:
+                strategy_str = self.config.custom_imputation_strategies[col]
+                strategy = ImputationStrategy(strategy_str)
+                
+                # Check for custom constant value
+                fill_value = self.config.custom_constant_values.get(
+                    col, 
+                    self.config.constant_fill_categorical
+                )
+            else:
+                # Use global strategy
+                strategy = ImputationStrategy(self.config.categorical_imputation)
+                fill_value = self.config.constant_fill_categorical
+            
             df_clean[col] = impute_categorical_column(
                 df_clean[col],
                 strategy=strategy,
-                fill_value=self.config.constant_fill_categorical,
+                fill_value=fill_value,
             )
             
             if col in self.metadata:
                 self.metadata[col].imputation_method = strategy.value
+        
+        return df_clean
+    
+    def _apply_discretization(
+        self,
+        df: pd.DataFrame,
+        numeric_cols: List[str],
+    ) -> pd.DataFrame:
+        """Apply discretization to numeric columns.
+        
+        This method supports both global discretization strategy and custom
+        per-variable strategies via custom_discretization_strategies config.
+        """
+        # Check if any discretization is needed
+        global_strategy = DiscretizationStrategy(self.config.discretization_strategy)
+        if global_strategy == DiscretizationStrategy.NONE and not self.config.custom_discretization_strategies:
+            return df
+        
+        df_clean = df.copy()
+        
+        for col in numeric_cols:
+            if col not in df_clean.columns:
+                continue
+            
+            # Check for custom strategy for this column
+            if col in self.config.custom_discretization_strategies:
+                strategy_str = self.config.custom_discretization_strategies[col]
+                strategy = DiscretizationStrategy(strategy_str)
+                
+                # Check for custom bins and labels
+                custom_bins = self.config.custom_bins.get(col, None)
+                custom_labels = self.config.custom_labels.get(col, None)
+                n_bins = self.config.custom_discretization_bins.get(col, self.config.discretization_bins)
+                
+            elif global_strategy != DiscretizationStrategy.NONE:
+                # Use global strategy
+                strategy = global_strategy
+                custom_bins = self.config.custom_bins.get(col, None)
+                custom_labels = self.config.custom_labels.get(col, None)
+                n_bins = self.config.discretization_bins
+            else:
+                # No discretization for this column
+                continue
+            
+            # Apply discretization
+            try:
+                discretized, bins, labels = discretize_column(
+                    df_clean[col],
+                    strategy=strategy,
+                    n_bins=n_bins,
+                    custom_bins=custom_bins,
+                    custom_labels=custom_labels,
+                    return_bins=True,
+                )
+                
+                df_clean[col] = discretized
+                
+                # Update metadata
+                if col in self.metadata:
+                    self.metadata[col].discretization_bins = bins
+                    self.metadata[col].discretization_labels = labels
+                    
+            except Exception as e:
+                print(f"⚠️  Could not discretize column {col}: {e}")
+                continue
         
         return df_clean
     
