@@ -544,15 +544,51 @@ class DataCleaner:
                 meta.quality_flags.append("no_missing_values")
     
     def save_metadata(self, filepath: Path) -> None:
-        """Save metadata to JSON file.
+        """Save metadata to JSON file, preserving user-edited fields.
+        
+        If the metadata file already exists, this method will:
+        1. Load the existing metadata
+        2. Preserve user-editable fields (description)
+        3. Update computed fields (stats, types, etc.)
+        4. Save the merged metadata
         
         Args:
             filepath: Output path for JSON file
         """
+        # Load existing metadata if file exists
+        existing_metadata = {}
+        if Path(filepath).exists():
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    existing_metadata = json.load(f)
+            except (json.JSONDecodeError, FileNotFoundError):
+                # If file is corrupted or doesn't exist, start fresh
+                pass
+        
+        # Convert current metadata to dict
         metadata_dict = {
             name: meta.to_dict() 
             for name, meta in self.metadata.items()
         }
+        
+        # Merge with existing metadata, preserving user-editable fields
+        user_editable_fields = ['description']  # Add more fields here if needed
+        
+        for var_name, new_meta in metadata_dict.items():
+            if var_name in existing_metadata:
+                old_meta = existing_metadata[var_name]
+                # Preserve user-editable fields
+                for field in user_editable_fields:
+                    if field in old_meta and old_meta[field]:
+                        # Only preserve if user has added content
+                        new_meta[field] = old_meta[field]
+        
+        # Add informational fields
+        metadata_dict['_readme'] = "Este archivo contiene metadatos de las variables del dataset después de la limpieza."
+        metadata_dict['_instructions'] = "Puedes editar manualmente el campo 'description' para agregar contexto clínico a cada variable."
+        metadata_dict['_auto_generated'] = True
+        metadata_dict['_timestamp'] = datetime.now().isoformat()
+        metadata_dict['_note'] = "Los campos 'description' se preservan al regenerar. Los demás campos se actualizan automáticamente."
         
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(metadata_dict, f, indent=2, ensure_ascii=False)

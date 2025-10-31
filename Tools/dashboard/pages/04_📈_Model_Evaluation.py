@@ -11,16 +11,25 @@ if str(root_dir) not in sys.path:
 
 import pandas as pd
 import streamlit as st
+import joblib
+import numpy as np
 
 from app import (
     get_state,
     initialize_state,
     list_saved_models,
 )
+from app.config import get_plotly_config, MODELS_DIR, TESTSETS_DIR, PLOTS_EVALUATION_DIR
 from src.evaluation import evaluate_main
+from src.evaluation.reporters import plot_confusion_matrix, plot_roc_curve
+from src.evaluation.calibration import plot_calibration_curve
+from src.evaluation.decision_curves import decision_curve_analysis
+from src.config import CONFIG
+from src.data_load import get_latest_testset, save_plot_with_overwrite
 
 # Initialize
 initialize_state()
+plotly_config = get_plotly_config()
 
 # Page config
 st.title("📈 Model Evaluation")
@@ -78,17 +87,25 @@ if st.button("🚀 Run Evaluation", type="primary", width='stretch'):
         # Get the selected model path
         selected_model_path = Path(saved_models[selected_model])
         
-        # Copy the selected model to best_classifier_{task}.joblib for evaluation
-        # This is needed because evaluate_main expects this specific filename
-        models_dir = selected_model_path.parent
-        best_classifier_path = models_dir / f"best_classifier_{task}.joblib"
-        testset_path = models_dir / f"testset_{task}.parquet"
+        # Determine model type from selected model name or path
+        model_type = selected_model  # This should match the model type directory name
+        
+        # Look for the latest testset for this model type
+        testset_path = get_latest_testset(model_type, TESTSETS_DIR)
+        
+        # If not found, try with task name (fallback for old structure)
+        if not testset_path:
+            testset_path = TESTSETS_DIR / f"testset_{task}.parquet"
         
         # Verify testset exists
-        if not testset_path.exists():
-            st.error(f"❌ Test set no encontrado: {testset_path}")
+        if not testset_path or not testset_path.exists():
+            st.error(f"❌ Test set no encontrado para modelo: {model_type}")
             st.warning("⚠️ Por favor, re-entrena los modelos en la página **Model Training** para generar el test set.")
             st.stop()
+        
+        # Copy the selected model to best_classifier_{task}.joblib for evaluation
+        # This is needed because evaluate_main expects this specific filename
+        best_classifier_path = MODELS_DIR / f"best_classifier_{task}.joblib"
         
         import shutil
         shutil.copy2(selected_model_path, best_classifier_path)
@@ -302,45 +319,175 @@ else:
 st.markdown("---")
 
 # Visualization figures
-st.subheader("📉 Evaluation Plots")
+st.subheader("📉 Interactive Evaluation Plots")
 
-# Display figures in columns
-col1, col2, col3 = st.columns(3)
+# Check if we can generate interactive plots from testset
+testset_path = get_latest_testset(selected_model if 'selected_model' in locals() else 'dtree', TESTSETS_DIR)
+if not testset_path:
+    testset_path = TESTSETS_DIR / f"testset_{task}.parquet"
+    
+model_path = MODELS_DIR / f"best_classifier_{task}.joblib"
 
-with col1:
-    st.markdown("#### Calibration Curve")
-    # Try with and without timestamp pattern
-    calib_fig = get_latest_figure(f"calibration_{task}_*.png") or get_latest_figure(f"calibration_{task}.png")
-    if calib_fig and calib_fig.exists():
-        st.image(str(calib_fig), width='stretch')
+can_generate_plots = testset_path and testset_path.exists() and model_path.exists()
+
+if can_generate_plots:
+    try:
+        # Load model and test data
+        model = joblib.load(model_path)
+        test_df = pd.read_parquet(testset_path)
+        
+        target = CONFIG.target_column if task == "mortality" else CONFIG.arrhythmia_column
+        X_test = test_df.drop(columns=[target])
+        y_test = test_df[target].values
+        
+        # Get predictions
+        y_prob = model.predict_proba(X_test)[:, 1]
+        
+        # Generate interactive plots
+        st.info("💡 **Tip**: All plots are interactive! Hover for details, zoom by clicking and dragging, double-click to reset.")
+        
+        # Display figures in tabs for better organization
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "📊 ROC & Calibration", 
+            "🎯 Confusion Matrix",
+            "📉 Decision Curve",
+            "📋 Summary"
+        ])
+        
+        with tab1:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("#### ROC Curve")
+                try:
+                    roc_fig = plot_roc_curve(y_test, y_prob, name=task)
+                    st.plotly_chart(roc_fig, use_container_width=True, config=plotly_config)
+                except Exception as e:
+                    st.error(f"Error generating ROC curve: {e}")
+            
+            with col2:
+                st.markdown("#### Calibration Curve")
+                try:
+                    calib_fig = plot_calibration_curve(y_test, y_prob, name=task)
+                    st.plotly_chart(calib_fig, use_container_width=True, config=plotly_config)
+                except Exception as e:
+                    st.error(f"Error generating calibration curve: {e}")
+        
+        with tab2:
+            st.markdown("#### Confusion Matrix")
+            try:
+                confusion_fig = plot_confusion_matrix(y_test, y_prob, name=task)
+                st.plotly_chart(confusion_fig, use_container_width=True, config=plotly_config)
+                
+                # Add threshold slider
+                st.markdown("---")
+                threshold = st.slider(
+                    "Adjust Classification Threshold",
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=0.5,
+                    step=0.05,
+                    help="Change the probability threshold for classification"
+                )
+                
+                if threshold != 0.5:
+                    custom_fig = plot_confusion_matrix(y_test, y_prob, name=f"{task} (threshold={threshold})", threshold=threshold)
+                    st.plotly_chart(custom_fig, use_container_width=True, config=plotly_config)
+            except Exception as e:
+                st.error(f"Error generating confusion matrix: {e}")
+        
+        with tab3:
+            st.markdown("#### Decision Curve Analysis")
+            st.caption("Evaluates clinical utility across different probability thresholds")
+            try:
+                dca_fig = decision_curve_analysis(y_test, y_prob, name=task)
+                st.plotly_chart(dca_fig, use_container_width=True, config=plotly_config)
+            except Exception as e:
+                st.error(f"Error generating decision curve: {e}")
+        
+        with tab4:
+            st.markdown("#### All Plots Summary")
+            st.caption("Overview of all evaluation metrics")
+            
+            # Show all plots in a grid
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                try:
+                    st.markdown("**ROC Curve**")
+                    roc_fig_small = plot_roc_curve(y_test, y_prob, name=task)
+                    st.plotly_chart(roc_fig_small, use_container_width=True, config=plotly_config, key="roc_summary")
+                except:
+                    pass
+                
+                try:
+                    st.markdown("**Confusion Matrix**")
+                    conf_fig_small = plot_confusion_matrix(y_test, y_prob, name=task)
+                    st.plotly_chart(conf_fig_small, use_container_width=True, config=plotly_config, key="conf_summary")
+                except:
+                    pass
+            
+            with col2:
+                try:
+                    st.markdown("**Calibration Curve**")
+                    cal_fig_small = plot_calibration_curve(y_test, y_prob, name=task)
+                    st.plotly_chart(cal_fig_small, use_container_width=True, config=plotly_config, key="cal_summary")
+                except:
+                    pass
+                
+                try:
+                    st.markdown("**Decision Curve**")
+                    dca_fig_small = decision_curve_analysis(y_test, y_prob, name=task)
+                    st.plotly_chart(dca_fig_small, use_container_width=True, config=plotly_config, key="dca_summary")
+                except:
+                    pass
+        
+    except Exception as e:
+        st.error(f"❌ Error loading model/data for interactive plots: {e}")
+        st.info("ℹ️ Falling back to static images...")
+        can_generate_plots = False
+
+# Fallback to static images if interactive plots can't be generated
+if not can_generate_plots:
+    st.warning("⚠️ Interactive plots unavailable. Showing saved images (if available).")
+    
+    # Display figures in columns
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("#### Calibration Curve")
+        # Try with and without timestamp pattern
+        calib_fig = get_latest_figure(f"calibration_{task}_*.png") or get_latest_figure(f"calibration_{task}.png")
+        if calib_fig and calib_fig.exists():
+            st.image(str(calib_fig), use_container_width=True)
+        else:
+            st.info("No calibration plot available")
+
+    with col2:
+        st.markdown("#### Decision Curve")
+        decision_fig = get_latest_figure(f"decision_curve_{task}_*.png") or get_latest_figure(f"decision_curve_{task}.png")
+        if decision_fig and decision_fig.exists():
+            st.image(str(decision_fig), use_container_width=True)
+        else:
+            st.info("No decision curve available")
+
+    with col3:
+        st.markdown("#### Confusion Matrix")
+        confusion_fig = get_latest_figure(f"confusion_{task}_*.png") or get_latest_figure(f"confusion_{task}.png")
+        if confusion_fig and confusion_fig.exists():
+            st.image(str(confusion_fig), use_container_width=True)
+        else:
+            st.info("No confusion matrix available")
+
+    st.markdown("---")
+
+    # ROC Curve (full width)
+    st.markdown("#### ROC Curve")
+    roc_fig = get_latest_figure(f"roc_{task}_*.png") or get_latest_figure(f"roc_{task}.png")
+    if roc_fig and roc_fig.exists():
+        st.image(str(roc_fig), use_container_width=True)
     else:
-        st.info("No calibration plot available")
-
-with col2:
-    st.markdown("#### Decision Curve")
-    decision_fig = get_latest_figure(f"decision_curve_{task}_*.png") or get_latest_figure(f"decision_curve_{task}.png")
-    if decision_fig and decision_fig.exists():
-        st.image(str(decision_fig), width='stretch')
-    else:
-        st.info("No decision curve available")
-
-with col3:
-    st.markdown("#### Confusion Matrix")
-    confusion_fig = get_latest_figure(f"confusion_{task}_*.png") or get_latest_figure(f"confusion_{task}.png")
-    if confusion_fig and confusion_fig.exists():
-        st.image(str(confusion_fig), width='stretch')
-    else:
-        st.info("No confusion matrix available")
-
-st.markdown("---")
-
-# ROC Curve (full width)
-st.markdown("#### ROC Curve")
-roc_fig = get_latest_figure(f"roc_{task}_*.png") or get_latest_figure(f"roc_{task}.png")
-if roc_fig and roc_fig.exists():
-    st.image(str(roc_fig), width='stretch')
-else:
-    st.info("No ROC curve available")
+        st.info("No ROC curve available")
 
 # Additional figures
 with st.expander("🔍 Additional Plots"):
@@ -422,4 +569,11 @@ with st.expander("ℹ️ About Evaluation Metrics"):
     **Confusion Matrix:**
     - Visual representation of prediction errors
     - True positives, false positives, true negatives, false negatives
+    
+    **Interactive Features:**
+    - 🔍 **Zoom & Pan**: Click and drag to zoom into any region
+    - 🖱️ **Hover**: See exact values for each data point
+    - 🎯 **Threshold Adjustment**: Change classification threshold in Confusion Matrix tab
+    - 💾 **Export**: Use camera icon to download plots as PNG
+    - 🔄 **Reset**: Double-click to restore original view
     """)

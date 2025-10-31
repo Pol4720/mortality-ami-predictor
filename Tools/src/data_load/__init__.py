@@ -5,6 +5,7 @@ This module provides utilities for:
 - Train/test splitting with various strategies
 - Dataset metadata and information
 - Data auditing and summarization
+- Path utilities for managing processed data files
 """
 
 from .loaders import (
@@ -17,6 +18,20 @@ from .loaders import (
 )
 from .splitters import train_test_split, create_temporal_split, create_stratified_split
 from .io_utils import detect_file_format, save_dataset, read_csv_with_encoding
+from .path_utils import (
+    get_timestamp,
+    get_latest_file,
+    get_latest_model,
+    get_latest_testset,
+    get_latest_trainset,
+    get_latest_cleaned_dataset,
+    save_plot_with_overwrite,
+    save_model_with_cleanup,
+    save_dataset_with_timestamp,
+    cleanup_old_testsets,
+    get_all_model_types,
+    extract_timestamp_from_filename,
+)
 
 __all__ = [
     # Loaders
@@ -34,4 +49,17 @@ __all__ = [
     "detect_file_format",
     "save_dataset",
     "read_csv_with_encoding",
+    # Path utilities
+    "get_timestamp",
+    "get_latest_file",
+    "get_latest_model",
+    "get_latest_testset",
+    "get_latest_trainset",
+    "get_latest_cleaned_dataset",
+    "save_plot_with_overwrite",
+    "save_model_with_cleanup",
+    "save_dataset_with_timestamp",
+    "cleanup_old_testsets",
+    "get_all_model_types",
+    "extract_timestamp_from_filename",
 ]

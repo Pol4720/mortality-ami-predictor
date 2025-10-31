@@ -74,13 +74,15 @@ def nested_cross_validation(
                 preprocess = preprocess_pipeline
             
             # Build full pipeline with SMOTE if available
-            if ImbPipeline and SMOTE:
+            try:
+                from imblearn.pipeline import Pipeline as ImbPipeline
+                from imblearn.over_sampling import SMOTE
                 pipeline = ImbPipeline([
                     ("preprocess", preprocess),
                     ("smote", SMOTE(random_state=RANDOM_SEED)),
                     ("classifier", model),
                 ])
-            else:
+            except ImportError:
                 pipeline = Pipeline([
                     ("preprocess", preprocess),
                     ("classifier", model),
@@ -173,11 +175,29 @@ def rigorous_repeated_cv(
         all_scores = []
         
         if progress_callback:
-            progress_callback(f"🔄 Entrenando modelo '{name}' con {total_iterations} corridas (validación cruzada estratificada)...", (model_idx - 1) / total_models)
+            progress_callback(
+                f"Modelo '{name}': Iniciando {total_iterations} corridas (RepeatedStratifiedKFold: {n_splits}×{n_repeats})",
+                (model_idx - 1) / total_models
+            )
         
         for run_idx, (train_idx, val_idx) in enumerate(rskf.split(X, y), 1):
             X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
             y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
+            
+            # Show class distribution only for first run
+            if run_idx == 1 and progress_callback:
+                train_dist = y_train.value_counts(normalize=True).sort_index()
+                val_dist = y_val.value_counts(normalize=True).sort_index()
+                dist_info = " | ".join([f"Clase {label}: Train={train_dist[label]*100:.1f}% Val={val_dist[label]*100:.1f}%" 
+                                       for label in train_dist.index])
+                progress_callback(f"Distribución: {dist_info}", (model_idx - 1) / total_models)
+            
+            # Show progress for each run
+            if progress_callback:
+                progress_callback(
+                    f"⚙️ Modelo '{name}': Entrenando corrida {run_idx}/{total_iterations}...",
+                    (model_idx - 1 + (run_idx - 0.5) / total_iterations) / total_models
+                )
             
             # Build preprocessing pipeline
             preprocess_pipeline, _ = build_preprocessing_pipeline(X_train, preprocessing_config)
@@ -189,23 +209,23 @@ def rigorous_repeated_cv(
                 preprocess = preprocess_pipeline
             
             # Build full pipeline with SMOTE if available
-            if ImbPipeline and SMOTE:
+            try:
+                from imblearn.pipeline import Pipeline as ImbPipeline
+                from imblearn.over_sampling import SMOTE
                 pipeline = ImbPipeline([
                     ("preprocess", preprocess),
                     ("smote", SMOTE(random_state=RANDOM_SEED)),
                     ("classifier", clone(base_model)),
                 ])
-            else:
+            except ImportError:
                 pipeline = Pipeline([
                     ("preprocess", preprocess),
                     ("classifier", clone(base_model)),
                 ])
             
-            # Set hyperparameters if provided
-            if param_grid:
-                # Set fixed parameters (not a grid search)
-                classifier_params = {f"classifier__{k}": v for k, v in param_grid.items()}
-                pipeline.set_params(**classifier_params)
+            # Note: param_grid contains lists of values for search, not single values
+            # In rigorous_repeated_cv, we use the model's default parameters
+            # Hyperparameter tuning should be done separately with RandomizedSearchCV
             
             # Train and evaluate
             try:
@@ -216,16 +236,17 @@ def rigorous_repeated_cv(
                     y_pred_proba = pipeline.decision_function(X_val)
                 score = roc_auc_score(y_val, y_pred_proba)
                 all_scores.append(score)
-                # Show progress every run
-                if progress_callback:
+                
+                # Update progress: every run if ≤20 total runs, else every 5 runs
+                update_frequency = 1 if total_iterations <= 20 else 5
+                if progress_callback and (run_idx % update_frequency == 0 or run_idx == total_iterations):
                     frac = (model_idx - 1 + run_idx / total_iterations) / total_models
-                    msg = (
-                        f"Modelo: {name}\n"
-                        f"Corrida: {run_idx}/{total_iterations}\n"
-                        f"AUROC actual: {score:.3f}\n"
-                        f"Promedio hasta ahora: μ={np.mean(all_scores):.3f}, σ={np.std(all_scores):.3f}"
+                    current_mean = np.mean(all_scores)
+                    current_std = np.std(all_scores)
+                    progress_callback(
+                        f"Modelo '{name}': Corrida {run_idx}/{total_iterations} | AUROC={score:.3f} | μ={current_mean:.3f}, σ={current_std:.3f}",
+                        frac
                     )
-                    progress_callback(msg, frac)
             except Exception as e:
                 print(f"Warning: Error in {name} run {run_idx}: {e}")
                 continue
@@ -241,7 +262,7 @@ def rigorous_repeated_cv(
         
         if progress_callback:
             progress_callback(
-                f"✅ Modelo '{name}' completado: μ={results[name]['mean_score']:.4f}, σ={results[name]['std_score']:.4f} ({len(all_scores)} corridas)",
+                f"✅ Modelo '{name}' COMPLETADO | μ={results[name]['mean_score']:.4f}, σ={results[name]['std_score']:.4f} ({len(all_scores)} corridas exitosas)",
                 model_idx / total_models
             )
     

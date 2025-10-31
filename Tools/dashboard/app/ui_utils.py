@@ -9,10 +9,20 @@ import pandas as pd
 import streamlit as st
 
 from src.config import CONFIG
-from src.data_load import data_audit, load_dataset, summarize_dataframe, train_test_split
+from src.data_load import (
+    data_audit,
+    load_dataset,
+    summarize_dataframe,
+    train_test_split,
+    save_dataset_with_timestamp,
+    cleanup_old_testsets,
+    get_latest_model,
+    get_latest_testset,
+)
 from src.features import safe_feature_columns
 from src.preprocessing import PreprocessingConfig
 from src.training import fit_and_save_best_classifier, fit_and_save_selected_classifiers
+from .config import MODELS_DIR, TESTSETS_DIR, CLEANED_DATASETS_DIR
 
 
 def display_dataframe_info(df: pd.DataFrame, title: str = "Dataset Info"):
@@ -204,18 +214,58 @@ def train_models_with_progress(
     else:
         target = CONFIG.arrhythmia_column
     
-    # Split data (80% train, 20% test)
-    train_df, test_df = train_test_split(df, stratify_column=target)
+    # Split data (80% train, 20% test) with STRATIFICATION
+    train_df, test_df = train_test_split(df, stratify_column=target, test_size=0.2, random_state=42)
     
-    # Save test set immediately after split
-    models_dir = Path(__file__).parents[2] / "models"
-    models_dir.mkdir(parents=True, exist_ok=True)
-    test_path = models_dir / f"testset_{task}.parquet"
+    # Display split information with class distribution
+    st.info(f"""
+    📊 **División de datos (estratificada por {target})**
+    - Train: {len(train_df)} muestras ({len(train_df)/len(df)*100:.1f}%)
+    - Test: {len(test_df)} muestras ({len(test_df)/len(df)*100:.1f}%)
+    """)
+    
+    # Show class distribution to verify stratification
+    col1, col2 = st.columns(2)
+    with col1:
+        train_dist = train_df[target].value_counts(normalize=True).sort_index()
+        st.write("**Distribución Train:**")
+        for label, prop in train_dist.items():
+            st.write(f"  Clase {label}: {prop*100:.2f}%")
+    
+    with col2:
+        test_dist = test_df[target].value_counts(normalize=True).sort_index()
+        st.write("**Distribución Test:**")
+        for label, prop in test_dist.items():
+            st.write(f"  Clase {label}: {prop*100:.2f}%")
+    
+    # Verify stratification
+    max_diff = abs(train_dist - test_dist).max()
+    if max_diff < 0.05:  # Less than 5% difference
+        st.success(f"✅ Estratificación correcta (diferencia máxima: {max_diff*100:.2f}%)")
+    else:
+        st.warning(f"⚠️ Posible desbalance en estratificación (diferencia: {max_diff*100:.2f}%)")
+    
+    # Save test set and train set immediately after split to new location
+    # Model type will be determined later, for now save with task name
+    # This will be updated when individual models are trained
     try:
-        test_df.to_parquet(test_path)
+        # Save both train and test sets with timestamp
+        test_path = save_dataset_with_timestamp(
+            test_df, 
+            TESTSETS_DIR, 
+            prefix=f"testset_{task}",
+            format="parquet"
+        )
+        train_path = save_dataset_with_timestamp(
+            train_df,
+            TESTSETS_DIR,
+            prefix=f"trainset_{task}",
+            format="parquet"
+        )
         st.success(f"✅ Test set guardado: {len(test_df)} muestras en {test_path.name}")
+        st.info(f"ℹ️ Train set guardado: {len(train_df)} muestras en {train_path.name}")
     except Exception as e:
-        st.error(f"❌ Error guardando test set: {e}")
+        st.error(f"❌ Error guardando train/test sets: {e}")
         raise
     
     # Prepare features
@@ -224,13 +274,48 @@ def train_models_with_progress(
     X_test = test_df[safe_feature_columns(test_df, [target])]
     y_test = test_df[target]
     
-    # Progress tracking
-    progress = st.progress(0.0)
-    status = st.empty()
+    # Progress tracking with real-time updates
+    progress_bar = st.progress(0.0)
+    status_text = st.empty()  # For main status message
+    details_text = st.empty()  # For detailed progress info
+    metrics_container = st.empty()  # For metrics display
     
     def progress_callback(msg: str, frac: float):
-        status.info(msg)
-        progress.progress(min(max(frac, 0.0), 1.0))
+        """Callback with real-time progress updates."""
+        # Update progress bar
+        progress_bar.progress(min(max(frac, 0.0), 1.0))
+        
+        # Update status text
+        status_text.info(f"🔄 {msg}")
+        
+        # Parse message to extract metrics if available
+        if "μ=" in msg and "σ=" in msg:
+            try:
+                # Extract mean and std
+                mu_part = msg.split("μ=")[1].split(",")[0].strip()
+                sigma_part = msg.split("σ=")[1].split()[0].strip()
+                
+                # Display metrics only if valid numbers
+                try:
+                    mu_val = float(mu_part)
+                    sigma_val = float(sigma_part)
+                    
+                    with metrics_container.container():
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Progreso", f"{frac*100:.1f}%")
+                        with col2:
+                            st.metric("AUROC Promedio (μ)", f"{mu_val:.4f}")
+                        with col3:
+                            st.metric("Desviación (σ)", f"{sigma_val:.4f}")
+                except ValueError:
+                    pass
+            except:
+                pass
+        else:
+            # If no metrics, just show progress
+            with metrics_container.container():
+                st.metric("Progreso", f"{frac*100:.1f}%")
     
     # Create preprocessing config
     preprocessing_config = PreprocessingConfig()
@@ -245,7 +330,7 @@ def train_models_with_progress(
         raise ValueError("No models selected for training")
     
     # ALWAYS use rigorous pipeline
-    status.info("🚀 Ejecutando pipeline de experimentación riguroso...")
+    status_text.info("🚀 Ejecutando pipeline de experimentación riguroso...")
     
     # Import rigorous pipeline
     from src.training import run_rigorous_experiment_pipeline
@@ -264,19 +349,32 @@ def train_models_with_progress(
         n_repeats=n_repeats,
         scoring="roc_auc",
         test_set=(X_test, y_test),  # Saved for later evaluation
-        output_dir=str(models_dir),
+        output_dir=str(MODELS_DIR),
         progress_callback=progress_callback,
     )
     
     # Extract save paths
     best_model_name = experiment_results.get('best_model')
     final_model_path = experiment_results.get('final_model_path')
+    learning_curves = experiment_results.get('learning_curves', {})
     
     save_paths = {}
     if final_model_path:
         save_paths[best_model_name] = final_model_path
     
-    status.success(
+    # Store learning curve results and figure paths in session state
+    if learning_curves:
+        lc_figure_paths = {}
+        for model_name in learning_curves.keys():
+            lc_path = MODELS_DIR / f"learning_curve_{model_name}.png"
+            if lc_path.exists():
+                lc_figure_paths[model_name] = str(lc_path)
+        
+
+        st.session_state.learning_curve_paths = lc_figure_paths
+        st.session_state.learning_curve_results = learning_curves
+    
+    status_text.success(
         f"✅ Pipeline de entrenamiento completado!\n"
         f"Mejor modelo: {best_model_name}\n"
         f"Modelo guardado en: {final_model_path}\n"
@@ -284,7 +382,7 @@ def train_models_with_progress(
         f"⚠️ La evaluación final (Bootstrap/Jackknife) se hará en el módulo de EVALUACIÓN"
     )
     
-    progress.progress(1.0)
+    progress_bar.progress(1.0)
     
     return save_paths
 
@@ -298,18 +396,19 @@ def list_saved_models(task: str) -> dict[str, str]:
     Returns:
         Dictionary mapping model names to file paths
     """
-    # Path from dashboard/app/ui_utils.py -> Tools/models
-    models_dir = Path(__file__).parents[2] / "models"
     mapping = {}
     
-    if models_dir.exists():
-        # Individual models
-        for p in models_dir.glob(f"model_{task}_*.joblib"):
-            name = p.stem.replace(f"model_{task}_", "")
-            mapping[name] = str(p)
+    if MODELS_DIR.exists():
+        # Look in model type subdirectories for latest models
+        from src.data_load import get_all_model_types, get_latest_model
         
-        # Best classifier
-        best = models_dir / f"best_classifier_{task}.joblib"
+        for model_type in get_all_model_types(MODELS_DIR):
+            latest_model = get_latest_model(model_type, MODELS_DIR)
+            if latest_model:
+                mapping[model_type] = str(latest_model)
+        
+        # Also check for best classifier (legacy format)
+        best = MODELS_DIR / f"best_classifier_{task}.joblib"
         if best.exists():
             mapping["best"] = str(best)
     

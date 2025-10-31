@@ -2,18 +2,19 @@
 from __future__ import annotations
 
 import os
-from typing import Tuple
+from pathlib import Path
+from typing import Tuple, Union, Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 from sklearn.calibration import calibration_curve
 
 
-FIG_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "reports", "figures"
-)
-os.makedirs(FIG_DIR, exist_ok=True)
+# Use new processed/plots structure
+ROOT_DIR = Path(__file__).parents[2]
+FIG_DIR = ROOT_DIR / "processed" / "plots" / "evaluation"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def compute_calibration(
@@ -41,32 +42,71 @@ def plot_calibration_curve(
     y_prob: np.ndarray,
     name: str = "model",
     n_bins: int = 10,
-) -> str:
-    """Plot and save calibration curve.
+    save_path: Optional[str] = None,
+) -> Union[go.Figure, str]:
+    """Plot calibration curve using Plotly for interactivity.
     
     Args:
         y_true: True labels
         y_prob: Predicted probabilities
         name: Model name for filename
         n_bins: Number of bins
+        save_path: Optional path to save as PNG (for backward compatibility)
         
     Returns:
-        Path to saved figure
+        Plotly Figure object (or path if save_path provided)
     """
     frac_pos, mean_pred = calibration_curve(y_true, y_prob, n_bins=n_bins, strategy="quantile")
     
-    plt.figure(figsize=(6, 6))
-    plt.plot(mean_pred, frac_pos, "s-", label="Model", linewidth=2)
-    plt.plot([0, 1], [0, 1], "k--", label="Perfectly calibrated", alpha=0.5)
-    plt.xlabel("Mean predicted probability", fontsize=12)
-    plt.ylabel("Fraction of positives", fontsize=12)
-    plt.title(f"Calibration Curve: {name}", fontsize=14)
-    plt.legend(fontsize=10)
-    plt.grid(alpha=0.3)
-    plt.tight_layout()
+    fig = go.Figure()
     
-    path = os.path.join(FIG_DIR, f"calibration_{name}.png")
-    plt.savefig(path, dpi=150)
-    plt.close()
+    # Model calibration curve
+    fig.add_trace(go.Scatter(
+        x=mean_pred,
+        y=frac_pos,
+        mode='lines+markers',
+        name='Model',
+        line=dict(width=2, color='steelblue'),
+        marker=dict(size=8, symbol='square'),
+        hovertemplate=(
+            'Mean Predicted: %{x:.3f}<br>'
+            'Fraction Positive: %{y:.3f}<br>'
+            '<extra></extra>'
+        )
+    ))
     
-    return path
+    # Perfect calibration line
+    fig.add_trace(go.Scatter(
+        x=[0, 1],
+        y=[0, 1],
+        mode='lines',
+        name='Perfectly calibrated',
+        line=dict(color='black', width=2, dash='dash'),
+        opacity=0.5,
+        hoverinfo='skip'
+    ))
+    
+    fig.update_layout(
+        title=f'Calibration Curve: {name}',
+        xaxis=dict(
+            title='Mean predicted probability',
+            range=[0, 1],
+            gridcolor='lightgray'
+        ),
+        yaxis=dict(
+            title='Fraction of positives',
+            range=[0, 1],
+            gridcolor='lightgray'
+        ),
+        width=600,
+        height=600,
+        template='plotly_white',
+        legend=dict(x=0.05, y=0.95),
+        hovermode='closest'
+    )
+    
+    if save_path:
+        fig.write_image(save_path, width=600, height=600)
+        return save_path
+    
+    return fig

@@ -4,6 +4,63 @@ from __future__ import annotations
 from pathlib import Path
 
 import streamlit as st
+import plotly.io as pio
+
+
+# Path configuration
+ROOT_DIR = Path(__file__).parents[2]  # Points to Tools/
+PROCESSED_DIR = ROOT_DIR / "processed"
+CLEANED_DATASETS_DIR = PROCESSED_DIR / "cleaned_datasets"
+PLOTS_DIR = PROCESSED_DIR / "plots"
+MODELS_DIR = PROCESSED_DIR / "models"
+TESTSETS_DIR = PROCESSED_DIR / "models" / "testsets"
+METADATA_PATH = PROCESSED_DIR / "variable_metadata.json"
+PREPROCESSING_CONFIG_PATH = PROCESSED_DIR / "preprocessing_config.json"
+EDA_CACHE_PATH = PROCESSED_DIR / "eda_cache.pkl"
+
+# Plots subdirectories
+PLOTS_EDA_DIR = PLOTS_DIR / "eda"
+PLOTS_EVALUATION_DIR = PLOTS_DIR / "evaluation"
+PLOTS_EXPLAINABILITY_DIR = PLOTS_DIR / "explainability"
+PLOTS_TRAINING_DIR = PLOTS_DIR / "training"
+
+# Model type directories
+MODEL_TYPES = ["dtree", "knn", "xgb", "logistic", "random_forest", "neural_network"]
+
+
+# Configure Plotly defaults
+PLOTLY_CONFIG = {
+    # Display mode bar
+    "displayModeBar": True,
+    "displaylogo": False,
+    "modeBarButtonsToRemove": ["lasso2d", "select2d"],
+    "modeBarButtonsToAdd": ["drawline", "drawopenpath", "eraseshape"],
+    # Export options
+    "toImageButtonOptions": {
+        "format": "png",
+        "filename": "plot",
+        "height": 800,
+        "width": 1200,
+        "scale": 2,
+    },
+    # Interaction
+    "scrollZoom": True,
+    "doubleClick": "reset",
+    "showAxisDragHandles": True,
+    "showAxisRangeEntryBoxes": True,
+}
+
+# Set Plotly default template
+pio.templates.default = "plotly_white"
+
+
+def get_plotly_config():
+    """Get Plotly configuration dictionary for Streamlit charts.
+    
+    Returns:
+        Dictionary with Plotly display and interaction settings
+    """
+    return PLOTLY_CONFIG
 
 
 def configure_page():
@@ -71,6 +128,12 @@ def apply_custom_css():
         /* Dataframe styling */
         .dataframe {
             font-size: 0.9rem;
+        }
+        
+        /* Plotly chart container */
+        .js-plotly-plot {
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         </style>
     """, unsafe_allow_html=True)

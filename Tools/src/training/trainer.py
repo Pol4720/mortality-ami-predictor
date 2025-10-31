@@ -6,6 +6,7 @@ with nested cross-validation and SMOTE for class imbalance.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Callable
 
 import joblib
@@ -16,9 +17,18 @@ from sklearn.model_selection import StratifiedKFold
 from ..config import RANDOM_SEED
 from ..models import make_classifiers
 from ..preprocessing import build_preprocessing_pipeline, PreprocessingConfig
+from ..data_load import save_model_with_cleanup, save_dataset_with_timestamp, cleanup_old_testsets, get_timestamp
 from .cross_validation import nested_cross_validation, rigorous_repeated_cv
 from .statistical_tests import compare_all_models, plot_model_comparison
 from .learning_curves import generate_learning_curve, plot_learning_curve
+
+# Try to import imbalanced-learn for SMOTE support
+try:
+    from imblearn.over_sampling import SMOTE  # type: ignore
+    from imblearn.pipeline import Pipeline as ImbPipeline  # type: ignore
+except ImportError:
+    SMOTE = None
+    ImbPipeline = None
 
 
 def run_rigorous_experiment_pipeline(
@@ -108,26 +118,43 @@ def run_rigorous_experiment_pipeline(
     
     lc_results = {}
     for idx, (name, (model, param_grid)) in enumerate(models.items(), 1):
-        # Use best params if available
-        if param_grid:
-            from sklearn.base import clone
-            model = clone(model)
-            model.set_params(**param_grid)
+        # Use the base model (without hyperparameter tuning) for learning curves
+        # Learning curves show how model performs with different training sizes,
+        # not different hyperparameters
+        from sklearn.base import clone
+        model_for_lc = clone(model)
         
         if progress_callback:
-            progress_callback(f"Generando curva de aprendizaje: {name}", 0.35 + 0.15 * idx / len(models))
+            progress_callback(f"🔄 Generando curva de aprendizaje: {name} (evaluando 10 tamaños × {n_splits} folds)...", 0.35 + 0.15 * idx / len(models))
         
         lc_result = generate_learning_curve(
-            model,
+            model_for_lc,
             X.values,
             y.values,
             cv=n_splits,
             scoring=scoring,
             n_jobs=-1,
         )
+        
+        if progress_callback:
+            progress_callback(f"✓ Curva generada: {name} (Train={lc_result.train_scores_mean[-1]:.3f}, Val={lc_result.val_scores_mean[-1]:.3f})", 0.35 + 0.15 * (idx + 0.5) / len(models))
+        
         lc_results[name] = lc_result
+        
+        if progress_callback:
+            progress_callback(f"💾 Guardando gráfica de curva de aprendizaje: {name}", 0.35 + 0.15 * (idx + 0.7) / len(models))
+        
         fig = plot_learning_curve(lc_result, title=f"Learning Curve: {name}")
-        fig.savefig(os.path.join(output_dir, f"learning_curve_{name}.png"), dpi=300)
+        # Save as PNG using plotly's write_image (requires kaleido)
+        save_path = os.path.join(output_dir, f"learning_curve_{name}.png")
+        try:
+            fig.write_image(save_path, width=1000, height=600)
+        except Exception as e:
+            # If write_image fails (missing kaleido), save as HTML instead
+            html_path = os.path.join(output_dir, f"learning_curve_{name}.html")
+            fig.write_html(html_path)
+            if progress_callback:
+                progress_callback(f"⚠️ Guardado como HTML (instalar kaleido para PNG): {html_path}", 0.35 + 0.15 * idx / len(models))
     results['learning_curves'] = lc_results
     
     # 3. Select best model
@@ -155,7 +182,19 @@ def run_rigorous_experiment_pipeline(
     
     for (m1, m2), stat_res in stat_results.items():
         fig = plot_model_comparison(stat_res)
-        fig.savefig(os.path.join(output_dir, f"comparison_{m1}_vs_{m2}.png"), dpi=300)
+        save_path = os.path.join(output_dir, f"comparison_{m1}_vs_{m2}.png")
+        try:
+            # Check if it's a Plotly figure
+            if hasattr(fig, 'write_image'):
+                fig.write_image(save_path, width=1000, height=600)
+            else:
+                # Matplotlib figure
+                fig.savefig(save_path, dpi=300, bbox_inches='tight')
+        except Exception as e:
+            # If save fails, try HTML for Plotly
+            if hasattr(fig, 'write_html'):
+                html_path = os.path.join(output_dir, f"comparison_{m1}_vs_{m2}.html")
+                fig.write_html(html_path)
         
         # Log statistical results
         if progress_callback:
@@ -170,7 +209,16 @@ def run_rigorous_experiment_pipeline(
     # Create comparison matrix
     from .statistical_tests import create_comparison_matrix
     fig_matrix = create_comparison_matrix(stat_results)
-    fig_matrix.savefig(os.path.join(output_dir, "comparison_matrix.png"), dpi=300)
+    matrix_path = os.path.join(output_dir, "comparison_matrix.png")
+    try:
+        if hasattr(fig_matrix, 'write_image'):
+            fig_matrix.write_image(matrix_path, width=1000, height=600)
+        else:
+            fig_matrix.savefig(matrix_path, dpi=300, bbox_inches='tight')
+    except Exception as e:
+        if hasattr(fig_matrix, 'write_html'):
+            html_path = os.path.join(output_dir, "comparison_matrix.html")
+            fig_matrix.write_html(html_path)
     
     # =========================================================================
     # FASE 2: TEST (Estimado final con Bootstrap y Jackknife)
@@ -185,8 +233,10 @@ def run_rigorous_experiment_pipeline(
     best_model, best_params = models[best_name]
     from sklearn.base import clone
     best_model = clone(best_model)
-    if best_params:
-        best_model.set_params(**best_params)
+    
+    # Note: best_params is a param_grid for search, not a single set of params
+    # For the final model, we train with default params (which are already tuned in the model definition)
+    # If you want to use specific params, you would need to do hyperparameter search first
     
     # Build preprocessing pipeline for the best model
     preprocess_pipeline, _ = build_preprocessing_pipeline(X, preprocessing_config)
@@ -196,7 +246,7 @@ def run_rigorous_experiment_pipeline(
         preprocess = preprocess_pipeline
     
     # Build full pipeline with SMOTE if available
-    if ImbPipeline and SMOTE:
+    try:
         from imblearn.pipeline import Pipeline as ImbPipeline
         from imblearn.over_sampling import SMOTE
         final_pipeline = ImbPipeline([
@@ -204,7 +254,7 @@ def run_rigorous_experiment_pipeline(
             ("smote", SMOTE(random_state=RANDOM_SEED)),
             ("classifier", best_model),
         ])
-    else:
+    except ImportError:
         from sklearn.pipeline import Pipeline
         final_pipeline = Pipeline([
             ("preprocess", preprocess),
@@ -214,37 +264,67 @@ def run_rigorous_experiment_pipeline(
     # Fit on all training data
     final_pipeline.fit(X, y)
     
-    # Save the final trained model
-    import joblib
-    final_model_path = os.path.join(output_dir, f"best_classifier_{best_name}.joblib")
-    joblib.dump(final_pipeline, final_model_path)
-    results['final_model_path'] = final_model_path
+    # Extract model type from best_name for proper directory organization
+    # Map model names to directory names
+    model_type_map = {
+        'logistic': 'logistic',
+        'dtree': 'dtree',
+        'knn': 'knn',
+        'xgb': 'xgb',
+        'random_forest': 'random_forest',
+        'neural_network': 'neural_network',
+    }
+    model_type = model_type_map.get(best_name, best_name)
+    
+    # Save the final trained model using new structure
+    from pathlib import Path
+    models_dir = Path(output_dir)
+    final_model_path = save_model_with_cleanup(
+        final_pipeline,
+        model_type,
+        models_dir,
+        keep_n_latest=1  # Keep only the latest model for each type
+    )
+    results['final_model_path'] = str(final_model_path)
     
     if progress_callback:
-        progress_callback(f"� Modelo final guardado: {final_model_path}", 0.9)
+        progress_callback(f"Modelo final guardado: {final_model_path}", 0.9)
     
-    # If test set provided, save it for later evaluation
+    # If test set provided, save it for later evaluation with proper naming
     if test_set is not None:
         X_test, y_test = test_set
         test_df = pd.concat([X_test, y_test], axis=1)
-        test_path = os.path.join(output_dir, "testset_for_evaluation.parquet")
-        test_df.to_parquet(test_path)
-        results['test_set_path'] = test_path
+        testsets_dir = models_dir / "testsets"
+        
+        # Save testset and trainset with timestamp
+        test_path = save_dataset_with_timestamp(
+            test_df,
+            testsets_dir,
+            prefix=f"testset_{model_type}",
+            format="parquet"
+        )
+        results['test_set_path'] = str(test_path)
+        
+        # Also save the training set
+        train_df = pd.concat([X, y], axis=1)
+        train_path = save_dataset_with_timestamp(
+            train_df,
+            testsets_dir,
+            prefix=f"trainset_{model_type}",
+            format="parquet"
+        )
+        results['train_set_path'] = str(train_path)
+        
+        # Clean up old testsets/trainsets (keep only latest)
+        cleanup_old_testsets(model_type, testsets_dir, keep_n_latest=1)
         
         if progress_callback:
-            progress_callback(f"💾 Test set guardado para evaluación: {test_path}", 0.95)
+            progress_callback(f"Test/Train sets guardados en: {testsets_dir}", 0.95)
     
     if progress_callback:
         progress_callback("✅ Pipeline de entrenamiento completado exitosamente!", 1.0)
     
     return results
-
-try:
-    from imblearn.over_sampling import SMOTE  # type: ignore
-    from imblearn.pipeline import Pipeline as ImbPipeline  # type: ignore
-except ImportError:
-    SMOTE = None
-    ImbPipeline = None
 
 
 MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models")
@@ -325,13 +405,16 @@ def train_best_classifier(
         preprocess = preprocess_pipeline
     
     # Build full pipeline with SMOTE if available
-    if ImbPipeline and SMOTE:
+    try:
+        from imblearn.pipeline import Pipeline as ImbPipeline
+        from imblearn.over_sampling import SMOTE
         pipeline = ImbPipeline([
             ("preprocess", preprocess),
             ("smote", SMOTE(random_state=RANDOM_SEED)),
             ("classifier", best_model),
         ])
-    else:
+    except ImportError:
+        from sklearn.pipeline import Pipeline
         pipeline = Pipeline([
             ("preprocess", preprocess),
             ("classifier", best_model),
@@ -422,11 +505,19 @@ def train_selected_classifiers(
             preprocess = preprocess_pipeline
         
         if ImbPipeline and SMOTE:
-            pipeline = ImbPipeline([
-                ("preprocess", preprocess),
-                ("smote", SMOTE(random_state=RANDOM_SEED)),
-                ("classifier", model),
-            ])
+            try:
+                from imblearn.pipeline import Pipeline as ImbPipeline
+                from imblearn.over_sampling import SMOTE
+                pipeline = ImbPipeline([
+                    ("preprocess", preprocess),
+                    ("smote", SMOTE(random_state=RANDOM_SEED)),
+                    ("classifier", model),
+                ])
+            except ImportError:
+                pipeline = Pipeline([
+                    ("preprocess", preprocess),
+                    ("classifier", model),
+                ])
         else:
             pipeline = Pipeline([
                 ("preprocess", preprocess),

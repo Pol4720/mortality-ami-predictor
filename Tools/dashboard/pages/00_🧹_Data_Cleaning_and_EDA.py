@@ -27,7 +27,10 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-# Updated imports to use correct module paths
+# Import dashboard config for absolute paths
+from dashboard.app.config import CLEANED_DATASETS_DIR, PLOTS_EDA_DIR
+
+# Import src modules
 from src.config import CONFIG
 from src.cleaning import CleaningConfig, DataCleaner, quick_clean
 from src.eda import EDAAnalyzer, quick_eda
@@ -153,7 +156,8 @@ def load_data_page():
     st.markdown("---")
     st.subheader("Cargar dataset limpio existente")
     
-    cleaned_dir = Path(CONFIG.cleaned_data_dir)
+    # Use absolute path from dashboard config
+    cleaned_dir = CLEANED_DATASETS_DIR
     if cleaned_dir.exists():
         cleaned_files = sorted(cleaned_dir.glob("cleaned_dataset_*.csv"), 
                               key=lambda p: p.stat().st_mtime, reverse=True)
@@ -665,9 +669,10 @@ def data_cleaning_page():
                 )
             
             with col2:
-                if st.button("💾 Guardar en DATA/cleaned", width='stretch'):
+                if st.button("💾 Guardar en Cleaned Datasets", width='stretch'):
                     try:
-                        cleaned_dir = Path(CONFIG.cleaned_data_dir)
+                        # Use absolute path from dashboard config
+                        cleaned_dir = CLEANED_DATASETS_DIR
                         cleaned_dir.mkdir(parents=True, exist_ok=True)
                         
                         save_path = cleaned_dir / f"cleaned_dataset_{timestamp}.csv"
@@ -830,15 +835,15 @@ def univariate_analysis_page():
         
         with tab1:
             fig = analyzer.plot_distribution(selected_var, plot_type='histogram')
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
         
         with tab2:
             fig = analyzer.plot_distribution(selected_var, plot_type='box')
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
         
         with tab3:
             fig = analyzer.plot_distribution(selected_var, plot_type='violin')
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
     
     else:
         # Estadísticas categóricas
@@ -868,11 +873,11 @@ def univariate_analysis_page():
         
         with tab1:
             fig = analyzer.plot_distribution(selected_var, plot_type='bar')
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
         
         with tab2:
             fig = analyzer.plot_distribution(selected_var, plot_type='pie')
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
 
 
 def bivariate_analysis_page():
@@ -959,7 +964,7 @@ def bivariate_analysis_page():
                     except (ImportError, ModuleNotFoundError):
                         # Si statsmodels no está instalado, mostrar sin trendline
                         fig = analyzer.plot_scatter(var1, var2, add_trendline=False)
-                    st.plotly_chart(fig, width='stretch')
+                    st.plotly_chart(fig, use_container_width=True)
                 
                 elif result.relationship_type == "cat-cat":
                     col1, col2, col3 = st.columns(3)
@@ -1054,7 +1059,7 @@ def multivariate_analysis_page():
                         
                         # Visualización
                         fig = analyzer.plot_correlation_matrix(method=corr_method)
-                        st.plotly_chart(fig, width='stretch')
+                        st.plotly_chart(fig, use_container_width=True)
                         
                         # Tabla de correlaciones más altas
                         st.subheader("Top Correlaciones")
@@ -1226,7 +1231,7 @@ def multivariate_analysis_page():
                         with tab1:
                             st.subheader("Gráfico de Scree (Varianza Explicada)")
                             fig = analyzer.plot_pca_scree()
-                            st.plotly_chart(fig, width='stretch')
+                            st.plotly_chart(fig, use_container_width=True)
                         
                         with tab2:
                             st.subheader("Biplot de PCA")
@@ -1244,7 +1249,7 @@ def multivariate_analysis_page():
                             
                             if pc_x != pc_y:
                                 fig = analyzer.plot_pca_biplot(pc_x=pc_x, pc_y=pc_y, n_features=n_features_show)
-                                st.plotly_chart(fig, width='stretch')
+                                st.plotly_chart(fig, use_container_width=True)
                             else:
                                 st.warning("⚠️ Selecciona diferentes componentes para X e Y")
                         
@@ -1272,14 +1277,15 @@ def multivariate_analysis_page():
                                 labels={'index': 'Feature', 'importance': 'Importancia'}
                             )
                             fig.update_layout(yaxis={'categoryorder':'total ascending'})
-                            st.plotly_chart(fig, width='stretch')
+                            st.plotly_chart(fig, use_container_width=True)
                         
                         # Opción de guardar resultados transformados
                         st.markdown("---")
                         if st.button("💾 Guardar Datos Transformados (PCA)"):
                             try:
                                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                pca_data_path = Path(CONFIG.cleaned_data_dir) / f"pca_transformed_{timestamp}.csv"
+                                # Use absolute path from dashboard config
+                                pca_data_path = CLEANED_DATASETS_DIR / f"pca_transformed_{timestamp}.csv"
                                 pca_data_path.parent.mkdir(parents=True, exist_ok=True)
                                 
                                 pca_results.transformed_data.to_csv(pca_data_path, index=False)
@@ -1380,7 +1386,7 @@ def quality_report_page():
             color_continuous_scale='Reds'
         )
         fig.update_layout(yaxis={'categoryorder':'total ascending'})
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True)
         
         # Tabla detallada
         st.dataframe(missing_df, width='stretch', height=300)
@@ -1484,7 +1490,7 @@ def quality_report_page():
                 color_continuous_scale='Oranges'
             )
             fig.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
         else:
             st.success("✅ No se detectaron outliers significativos (método IQR)")
     

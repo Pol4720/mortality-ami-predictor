@@ -13,23 +13,20 @@ mlruns/
 .mlruns/
 mlartifacts/
 
-# Models and artifacts
-models/*.joblib
-models/*.pkl
-models/*.pt
-models/*.h5
-models/*.onnx
-*.model
-*.weights
+# Processed data and outputs - NEW STRUCTURE
+processed/
+processed/cleaned_datasets/*.csv
+processed/models/**/*.joblib
+processed/models/testsets/*.parquet
+processed/plots/**/*.png
+processed/plots/**/*.html
+processed/plots/**/*.jpg
+processed/plots/**/*.svg
+processed/*.pkl
+processed/*.json
 
-
-
-# Reports
-reports/*.pdf
-reports/*.csv
-reports/figures/*.png
-reports/figures/*.jpg
-reports/figures/*.svg
+# Backup directories (created during migration)
+backup_old_structure_*/
 
 # Notebooks
 *.ipynb_checkpoints/

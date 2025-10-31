@@ -8,17 +8,24 @@ import pandas as pd
 import streamlit as st
 
 from src.data_load import read_csv_with_encoding
+from .config import MODELS_DIR, CLEANED_DATASETS_DIR, TESTSETS_DIR, PROCESSED_DIR
 
 
 def initialize_state():
     """Initialize session state variables if not already set."""
     
-    # Data paths
+    # Data paths - using new structure
     if "data_dir" not in st.session_state:
-        st.session_state.data_dir = Path(__file__).parents[2] / "DATA"
+        st.session_state.data_dir = PROCESSED_DIR
     
     if "models_dir" not in st.session_state:
-        st.session_state.models_dir = Path(__file__).parents[1] / "models"
+        st.session_state.models_dir = MODELS_DIR
+    
+    if "testsets_dir" not in st.session_state:
+        st.session_state.testsets_dir = TESTSETS_DIR
+    
+    if "cleaned_datasets_dir" not in st.session_state:
+        st.session_state.cleaned_datasets_dir = CLEANED_DATASETS_DIR
     
     # Raw and cleaned data
     if "raw_data" not in st.session_state:

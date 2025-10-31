@@ -12,6 +12,7 @@ End-to-end ML project for predicting in-hospital mortality and ventricular arrhy
 - ✅ **Extensibility**: Easy to add new models, strategies, and features via registry pattern
 - ✅ **Better Organization**: No file > 500 lines, average ~100 lines per file
 - ✅ **Comprehensive Documentation**: 4+ guides including architecture, migration, and structure docs
+- ✅ **New Organized Structure**: All processed data, models, and plots centralized in `processed/` directory
 
 ### 📚 Documentation
 
@@ -22,6 +23,43 @@ End-to-end ML project for predicting in-hospital mortality and ventricular arrhy
 - **[Modularization Guide](src/MODULARIZATION_GUIDE.md)** - Deep dive into design decisions
 
 ---
+
+## 📁 New Directory Structure (v2.1)
+
+All processed outputs are now organized in the `processed/` directory with automatic timestamp management:
+
+```
+Tools/processed/
+├── cleaned_datasets/              # Cleaned datasets
+│   └── cleaned_dataset_YYYYMMDD_HHMMSS.csv
+├── plots/                         # All visualizations organized by type
+│   ├── eda/                       # Exploratory data analysis plots
+│   ├── evaluation/                # Model evaluation plots
+│   ├── explainability/            # SHAP, PDP, permutation plots
+│   └── training/                  # Learning curves, CV results
+├── models/                        # Trained models by type
+│   ├── dtree/                     # Decision tree models
+│   │   └── model_dtree_YYYYMMDD_HHMMSS.joblib
+│   ├── knn/                       # KNN models
+│   ├── xgb/                       # XGBoost models
+│   ├── logistic/                  # Logistic regression models
+│   ├── random_forest/             # Random forest models
+│   ├── neural_network/            # Neural network models
+│   └── testsets/                  # Test and train sets
+│       ├── testset_dtree_YYYYMMDD_HHMMSS.parquet
+│       └── trainset_dtree_YYYYMMDD_HHMMSS.parquet
+├── variable_metadata.json         # Variable metadata
+└── preprocessing_config.json      # Preprocessing configuration
+```
+
+### Key Features:
+- **Timestamp Management**: All files saved with `YYYYMMDD_HHMMSS` format for version tracking
+- **Automatic Cleanup**: Only latest model per type is kept (old versions auto-deleted)
+- **Plot Organization**: Plots organized by section (eda, evaluation, explainability, training)
+- **Model Organization**: Models organized by type in separate directories
+- **Overwrite Logic**: Plots of same type/model are overwritten to avoid accumulation
+
+
 
 ## Quick Start
 
@@ -95,23 +133,39 @@ pytest -q
 
 - `src/` código modular:
 	- `config.py`: configuración global (incluye `DATASET_PATH`), semillas y nombres de columnas objetivo.
-	- `data.py`: carga de datos (CSV/Parquet/Feather), resumen EDA, gráficos y split (estratificado o temporal).
-	- `preprocess.py`: imputación (IterativeImputer/KNNImputer), codificación One-Hot, escalado, selección opcional de variables.
+	- `data_load/`: utilidades de carga y gestión de archivos
+		- `loaders.py`: carga de datos (CSV/Parquet/Feather)
+		- `path_utils.py`: utilidades para gestión de rutas y archivos con timestamps
+		- `splitters.py`: división de datos (estratificada o temporal)
+	- `cleaning/`: módulos de limpieza de datos
+		- `cleaner.py`: orquestador principal de limpieza
+		- `imputation.py`, `encoding.py`, `discretization.py`, `outliers.py`: estrategias específicas
+	- `eda/`: análisis exploratorio de datos con visualizaciones interactivas
+	- `preprocessing/`: pipelines de preprocesamiento (imputación, escalado, selección)
 	- `features.py`: utilidades para seleccionar columnas seguras (excluye identificadores/objetivos).
-	- `models.py`: modelos KNN, Regresión Logística (L1/L2 + calibración), Árbol de Decisión, XGBoost, LightGBM, Red Neuronal (PyTorch con focal loss opcional), KMeans y Regresión Lineal.
-	- `train.py`: validación cruzada anidada, RandomizedSearchCV, SMOTE (si disponible), logging en MLflow (opcional), y guardado de artefactos.
-	- `evaluate.py`: métricas (AUROC, AUPRC, Accuracy, Precision, Recall, F1, Brier), curvas de calibración, Decision Curve Analysis, matriz de confusión, comparación con GRACE/TIMI (si existen columnas), perfiles KMeans y `final_evaluation.pdf`.
-	- `explain.py`: explicabilidad global/local con SHAP (importación perezosa), importancia por permutación y PDP.
-	- `predict.py`: recarga un modelo guardado y genera predicciones por lotes.
-- `notebooks/`:
-	- `eda.ipynb`: EDA (resúmenes, faltantes, correlaciones, distribución del objetivo) y guarda gráficos en `reports/figures/`.
-	- `modeling.ipynb`: entrenamiento rápido de un modelo base.
-	- `explainability.ipynb`: resumen SHAP global del mejor modelo.
-- `reports/`: figuras y `final_evaluation.pdf` tras evaluar.
-- `models/`: artefactos guardados (`.joblib`) y el conjunto de test hold-out (`.parquet`).
-- `tests/`: pruebas con pytest (carga/preproceso, entrenamiento rápido, guardado/carga de modelo).
-- `run_experiments.ps1` y `run_experiments.sh`: scripts para ejecutar experimentos y registrar métricas (MLflow opcional).
-- `.github/workflows/ci.yml`: skeleton de CI (instala dependencias y corre pruebas).
+	- `models/`: definiciones de modelos (KNN, Logistic, Tree, XGBoost, LightGBM, Neural Network)
+	- `training/`: entrenamiento con validación cruzada anidada, RandomizedSearchCV, SMOTE, logging MLflow
+	- `evaluation/`: métricas (AUROC, AUPRC, etc.), curvas de calibración, Decision Curve Analysis
+	- `explainability/`: SHAP, importancia por permutación, PDP
+	- `prediction/`: recarga modelos y genera predicciones por lotes
+	- `scoring/`: cálculo de scores clínicos (GRACE, TIMI)
+- `dashboard/`: aplicación Streamlit multi-página
+	- `pages/`: páginas individuales para limpieza, entrenamiento, evaluación, explicabilidad
+	- `app/`: configuración, estado y utilidades UI
+- `notebooks/`: análisis interactivos en Jupyter
+	- `eda.ipynb`: EDA completo con visualizaciones
+	- `modeling.ipynb`: entrenamiento rápido de modelos base
+	- `explainability.ipynb`: análisis SHAP global
+- `processed/`: **NUEVO - todos los outputs organizados**
+	- `cleaned_datasets/`: datasets limpios con timestamps
+	- `plots/`: visualizaciones organizadas por sección
+	- `models/`: modelos entrenados organizados por tipo
+	- `variable_metadata.json`: metadatos de variables
+- `tests/`: pruebas con pytest (carga/preproceso, entrenamiento, guardado/carga de modelo)
+- `run_experiments.ps1` y `run_experiments.sh`: scripts para ejecutar experimentos
+- `.github/workflows/ci.yml`: integración continua
+
+**Nota**: Los directorios `reports/`, `dashboard/DATA/`, `dashboard/models/` y `Tools/models/` son legacy y serán eliminados. Usa `processed/` para todos los nuevos outputs.
 
 ## Cómo entrenar y evaluar
 

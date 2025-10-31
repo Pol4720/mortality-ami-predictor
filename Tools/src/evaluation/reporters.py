@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import argparse
 import os
-from typing import Dict, Optional
+from pathlib import Path
+from typing import Dict, Optional, Union
 
 import joblib
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+import plotly.figure_factory as ff
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 
 from ..config import CONFIG
@@ -17,97 +20,146 @@ from .calibration import plot_calibration_curve
 from .decision_curves import decision_curve_analysis
 
 
-REPORTS_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "reports"
-)
-os.makedirs(REPORTS_DIR, exist_ok=True)
+# Use new processed structure
+ROOT_DIR = Path(__file__).parents[2]
+REPORTS_DIR = ROOT_DIR / "processed" / "plots" / "evaluation"
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-FIGURES_DIR = os.path.join(REPORTS_DIR, "figures")
-os.makedirs(FIGURES_DIR, exist_ok=True)
-
-MODELS_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "models"
-)
+FIGURES_DIR = REPORTS_DIR  # Plots go directly in evaluation directory
+MODELS_DIR = ROOT_DIR / "processed" / "models"
 
 
-def plot_confusion_matrix(y_true: np.ndarray, y_prob: np.ndarray, name: str = "model", threshold: float = 0.5) -> str:
-    """Plot and save confusion matrix.
+def plot_confusion_matrix(
+    y_true: np.ndarray, 
+    y_prob: np.ndarray, 
+    name: str = "model", 
+    threshold: float = 0.5,
+    save_path: Optional[str] = None
+) -> Union[go.Figure, str]:
+    """Plot confusion matrix using Plotly for interactivity.
     
     Args:
         y_true: True labels
         y_prob: Predicted probabilities
         name: Model name for filename
         threshold: Classification threshold
+        save_path: Optional path to save as PNG (for backward compatibility)
         
     Returns:
-        Path to saved figure
+        Plotly Figure object (or path if save_path provided)
     """
     y_pred = (y_prob >= threshold).astype(int)
     cm = confusion_matrix(y_true, y_pred)
     
-    plt.figure(figsize=(6, 5))
-    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-    plt.title(f'Confusion Matrix: {name}', fontsize=14)
-    plt.colorbar()
-    
+    # Create annotated heatmap
     classes = ['Negative', 'Positive']
-    tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, fontsize=11)
-    plt.yticks(tick_marks, classes, fontsize=11)
     
-    # Add text annotations
-    thresh = cm.max() / 2.
-    for i in range(cm.shape[0]):
-        for j in range(cm.shape[1]):
-            plt.text(j, i, format(cm[i, j], 'd'),
-                    ha="center", va="center",
-                    color="white" if cm[i, j] > thresh else "black",
-                    fontsize=14)
+    # Create text annotations
+    z_text = [[f"{cm[i, j]}<br>({cm[i, j]/cm[i].sum()*100:.1f}%)" 
+               for j in range(cm.shape[1])] 
+              for i in range(cm.shape[0])]
     
-    plt.ylabel('True label', fontsize=12)
-    plt.xlabel('Predicted label', fontsize=12)
-    plt.tight_layout()
+    fig = ff.create_annotated_heatmap(
+        z=cm,
+        x=classes,
+        y=classes,
+        annotation_text=z_text,
+        colorscale='Blues',
+        showscale=True,
+        hovertemplate='True: %{y}<br>Predicted: %{x}<br>Count: %{z}<extra></extra>'
+    )
     
-    path = os.path.join(FIGURES_DIR, f"confusion_{name}.png")
-    plt.savefig(path, dpi=150)
-    plt.close()
+    fig.update_layout(
+        title=f'Confusion Matrix: {name}',
+        xaxis=dict(title='Predicted label', side='bottom'),
+        yaxis=dict(title='True label'),
+        width=600,
+        height=550,
+        template='plotly_white'
+    )
     
-    return path
+    # Reverse y-axis to match matplotlib convention
+    fig['layout']['yaxis']['autorange'] = "reversed"
+    
+    if save_path:
+        fig.write_image(save_path, width=600, height=550)
+        return save_path
+    
+    return fig
 
 
-def plot_roc_curve(y_true: np.ndarray, y_prob: np.ndarray, name: str = "model") -> str:
-    """Plot and save ROC curve.
+def plot_roc_curve(
+    y_true: np.ndarray, 
+    y_prob: np.ndarray, 
+    name: str = "model",
+    save_path: Optional[str] = None
+) -> Union[go.Figure, str]:
+    """Plot ROC curve using Plotly for interactivity.
     
     Args:
         y_true: True labels
         y_prob: Predicted probabilities
         name: Model name for filename
+        save_path: Optional path to save as PNG (for backward compatibility)
         
     Returns:
-        Path to saved figure
+        Plotly Figure object (or path if save_path provided)
     """
-    fpr, tpr, _ = roc_curve(y_true, y_prob)
+    fpr, tpr, thresholds = roc_curve(y_true, y_prob)
     roc_auc = auc(fpr, tpr)
     
-    plt.figure(figsize=(7, 6))
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.3f})')
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate', fontsize=12)
-    plt.ylabel('True Positive Rate', fontsize=12)
-    plt.title(f'ROC Curve: {name}', fontsize=14)
-    plt.legend(loc="lower right", fontsize=10)
-    plt.grid(alpha=0.3)
-    plt.tight_layout()
+    fig = go.Figure()
     
-    path = os.path.join(FIGURES_DIR, f"roc_{name}.png")
-    plt.savefig(path, dpi=150)
-    plt.close()
+    # ROC curve
+    fig.add_trace(go.Scatter(
+        x=fpr,
+        y=tpr,
+        mode='lines',
+        name=f'ROC curve (AUC = {roc_auc:.3f})',
+        line=dict(color='darkorange', width=2),
+        hovertemplate=(
+            'FPR: %{x:.3f}<br>'
+            'TPR: %{y:.3f}<br>'
+            'Threshold: %{customdata:.3f}<br>'
+            '<extra></extra>'
+        ),
+        customdata=thresholds
+    ))
     
-    return path
+    # Random classifier line
+    fig.add_trace(go.Scatter(
+        x=[0, 1],
+        y=[0, 1],
+        mode='lines',
+        name='Random',
+        line=dict(color='navy', width=2, dash='dash'),
+        hoverinfo='skip'
+    ))
+    
+    fig.update_layout(
+        title=f'ROC Curve: {name}',
+        xaxis=dict(
+            title='False Positive Rate',
+            range=[0, 1],
+            gridcolor='lightgray'
+        ),
+        yaxis=dict(
+            title='True Positive Rate',
+            range=[0, 1.05],
+            gridcolor='lightgray'
+        ),
+        width=700,
+        height=600,
+        template='plotly_white',
+        legend=dict(x=0.6, y=0.1),
+        hovermode='closest'
+    )
+    
+    if save_path:
+        fig.write_image(save_path, width=700, height=600)
+        return save_path
+    
+    return fig
 
 
 
@@ -279,10 +331,35 @@ def evaluate_main(argv: Optional[list] = None) -> None:
     
     # Generate plots (convert y to numpy for plotting functions)
     y_np = y.values
-    calib_path = plot_calibration_curve(y_np, prob, name=args.task)
-    dca_path = decision_curve_analysis(y_np, prob, name=args.task)
-    confusion_path = plot_confusion_matrix(y_np, prob, name=args.task)
-    roc_path = plot_roc_curve(y_np, prob, name=args.task)
+    
+    # Create Plotly figures and save as PNG for backward compatibility
+    calib_fig = plot_calibration_curve(y_np, prob, name=args.task)
+    calib_path = os.path.join(FIGURES_DIR, f"calibration_{args.task}.png")
+    if isinstance(calib_fig, go.Figure):
+        calib_fig.write_image(calib_path)
+    else:
+        calib_path = calib_fig  # Already a path
+    
+    dca_fig = decision_curve_analysis(y_np, prob, name=args.task)
+    dca_path = os.path.join(FIGURES_DIR, f"decision_curve_{args.task}.png")
+    if isinstance(dca_fig, go.Figure):
+        dca_fig.write_image(dca_path)
+    else:
+        dca_path = dca_fig  # Already a path
+    
+    confusion_fig = plot_confusion_matrix(y_np, prob, name=args.task)
+    confusion_path = os.path.join(FIGURES_DIR, f"confusion_{args.task}.png")
+    if isinstance(confusion_fig, go.Figure):
+        confusion_fig.write_image(confusion_path)
+    else:
+        confusion_path = confusion_fig  # Already a path
+    
+    roc_fig = plot_roc_curve(y_np, prob, name=args.task)
+    roc_path = os.path.join(FIGURES_DIR, f"roc_{args.task}.png")
+    if isinstance(roc_fig, go.Figure):
+        roc_fig.write_image(roc_path)
+    else:
+        roc_path = roc_fig  # Already a path
 
     # Save report
     csv_path = generate_evaluation_report(

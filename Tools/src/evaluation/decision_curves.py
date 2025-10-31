@@ -2,16 +2,18 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+from typing import Union, Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 
-FIG_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "reports", "figures"
-)
-os.makedirs(FIG_DIR, exist_ok=True)
+# Use new processed/plots structure
+ROOT_DIR = Path(__file__).parents[2]
+FIG_DIR = ROOT_DIR / "processed" / "plots" / "evaluation"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def decision_curve_analysis(
@@ -19,8 +21,9 @@ def decision_curve_analysis(
     y_prob: np.ndarray,
     name: str = "model",
     n_thresholds: int = 50,
-) -> str:
-    """Perform decision curve analysis and plot.
+    save_path: Optional[str] = None,
+) -> Union[go.Figure, str]:
+    """Perform decision curve analysis using Plotly for interactivity.
     
     Decision curve analysis assesses the clinical utility of a prediction model
     by calculating the net benefit across different probability thresholds.
@@ -30,9 +33,10 @@ def decision_curve_analysis(
         y_prob: Predicted probabilities
         name: Model name for filename
         n_thresholds: Number of threshold points to evaluate
+        save_path: Optional path to save as PNG (for backward compatibility)
         
     Returns:
-        Path to saved figure
+        Plotly Figure object (or path if save_path provided)
     """
     thresholds = np.linspace(0.01, 0.99, n_thresholds)
     net_benefits = []
@@ -56,20 +60,70 @@ def decision_curve_analysis(
     # Treat none strategy
     treat_none_nb = np.zeros_like(thresholds)
     
-    # Plot
-    plt.figure(figsize=(8, 6))
-    plt.plot(thresholds, net_benefits, label="Model", linewidth=2, color="blue")
-    plt.plot(thresholds, treat_all_nb, label="Treat All", linestyle="--", color="green")
-    plt.plot(thresholds, treat_none_nb, label="Treat None", linestyle=":", color="red")
-    plt.xlabel("Threshold Probability", fontsize=12)
-    plt.ylabel("Net Benefit", fontsize=12)
-    plt.title(f"Decision Curve Analysis: {name}", fontsize=14)
-    plt.legend(fontsize=10)
-    plt.grid(alpha=0.3)
-    plt.tight_layout()
+    # Create Plotly figure
+    fig = go.Figure()
     
-    path = os.path.join(FIG_DIR, f"decision_curve_{name}.png")
-    plt.savefig(path, dpi=150)
-    plt.close()
+    # Model curve
+    fig.add_trace(go.Scatter(
+        x=thresholds,
+        y=net_benefits,
+        mode='lines',
+        name='Model',
+        line=dict(width=2, color='blue'),
+        hovertemplate=(
+            'Threshold: %{x:.3f}<br>'
+            'Net Benefit: %{y:.4f}<br>'
+            '<extra></extra>'
+        )
+    ))
     
-    return path
+    # Treat all
+    fig.add_trace(go.Scatter(
+        x=thresholds,
+        y=treat_all_nb,
+        mode='lines',
+        name='Treat All',
+        line=dict(width=2, color='green', dash='dash'),
+        hovertemplate=(
+            'Threshold: %{x:.3f}<br>'
+            'Net Benefit: %{y:.4f}<br>'
+            '<extra></extra>'
+        )
+    ))
+    
+    # Treat none
+    fig.add_trace(go.Scatter(
+        x=thresholds,
+        y=treat_none_nb,
+        mode='lines',
+        name='Treat None',
+        line=dict(width=2, color='red', dash='dot'),
+        hovertemplate=(
+            'Threshold: %{x:.3f}<br>'
+            'Net Benefit: %{y:.4f}<br>'
+            '<extra></extra>'
+        )
+    ))
+    
+    fig.update_layout(
+        title=f'Decision Curve Analysis: {name}',
+        xaxis=dict(
+            title='Threshold Probability',
+            gridcolor='lightgray'
+        ),
+        yaxis=dict(
+            title='Net Benefit',
+            gridcolor='lightgray'
+        ),
+        width=800,
+        height=600,
+        template='plotly_white',
+        legend=dict(x=0.7, y=0.95),
+        hovermode='x unified'
+    )
+    
+    if save_path:
+        fig.write_image(save_path, width=800, height=600)
+        return save_path
+    
+    return fig

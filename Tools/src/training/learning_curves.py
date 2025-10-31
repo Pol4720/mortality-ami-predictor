@@ -6,10 +6,12 @@ to assess model performance as training size varies.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from sklearn.base import clone
 from sklearn.model_selection import learning_curve as sklearn_learning_curve
 
@@ -106,65 +108,124 @@ def plot_learning_curve(
     result: LearningCurveResult,
     title: str = "Learning Curve",
     save_path: Optional[str] = None,
-) -> plt.Figure:
-    """Plot learning curve.
+) -> Union[go.Figure, plt.Figure]:
+    """Plot learning curve using Plotly for interactivity.
     
     Args:
         result: LearningCurveResult object
         title: Plot title
-        save_path: Optional path to save figure
+        save_path: Optional path to save figure (saves as PNG)
         
     Returns:
-        Matplotlib figure
+        Plotly Figure object
     """
-    fig, ax = plt.subplots(figsize=(10, 6))
+    train_sizes = np.array(result.train_sizes)
+    train_mean = np.array(result.train_scores_mean)
+    train_std = np.array(result.train_scores_std)
+    val_mean = np.array(result.val_scores_mean)
+    val_std = np.array(result.val_scores_std)
     
-    train_sizes = result.train_sizes
-    train_mean = result.train_scores_mean
-    train_std = result.train_scores_std
-    val_mean = result.val_scores_mean
-    val_std = result.val_scores_std
+    fig = go.Figure()
     
-    # Plot training scores
-    ax.plot(train_sizes, train_mean, 'o-', color='blue', 
-            label='Training score', linewidth=2, markersize=8)
-    ax.fill_between(train_sizes, 
-                     np.array(train_mean) - np.array(train_std),
-                     np.array(train_mean) + np.array(train_std),
-                     alpha=0.2, color='blue')
+    # Training scores with confidence band
+    fig.add_trace(go.Scatter(
+        x=train_sizes,
+        y=train_mean,
+        mode='lines+markers',
+        name='Training score',
+        line=dict(color='blue', width=2),
+        marker=dict(size=8),
+        hovertemplate=(
+            'Training Size: %{x}<br>'
+            'Score: %{y:.4f}<br>'
+            '<extra></extra>'
+        )
+    ))
     
-    # Plot validation scores
-    ax.plot(train_sizes, val_mean, 'o-', color='green', 
-            label='Validation score', linewidth=2, markersize=8)
-    ax.fill_between(train_sizes,
-                     np.array(val_mean) - np.array(val_std),
-                     np.array(val_mean) + np.array(val_std),
-                     alpha=0.2, color='green')
+    # Training confidence band
+    fig.add_trace(go.Scatter(
+        x=np.concatenate([train_sizes, train_sizes[::-1]]),
+        y=np.concatenate([train_mean + train_std, (train_mean - train_std)[::-1]]),
+        fill='toself',
+        fillcolor='rgba(0, 0, 255, 0.2)',
+        line=dict(color='rgba(255,255,255,0)'),
+        showlegend=False,
+        hoverinfo='skip',
+        name='Training ± std'
+    ))
     
-    # Labels and formatting
-    ax.set_xlabel('Training Set Size', fontsize=12)
-    ax.set_ylabel('Score (AUROC)', fontsize=12)
-    ax.set_title(title, fontsize=14, fontweight='bold')
-    ax.legend(loc='best', fontsize=10)
-    ax.grid(True, alpha=0.3)
+    # Validation scores with confidence band
+    fig.add_trace(go.Scatter(
+        x=train_sizes,
+        y=val_mean,
+        mode='lines+markers',
+        name='Validation score',
+        line=dict(color='green', width=2),
+        marker=dict(size=8),
+        hovertemplate=(
+            'Training Size: %{x}<br>'
+            'Score: %{y:.4f}<br>'
+            '<extra></extra>'
+        )
+    ))
     
-    # Add annotations for final scores
+    # Validation confidence band
+    fig.add_trace(go.Scatter(
+        x=np.concatenate([train_sizes, train_sizes[::-1]]),
+        y=np.concatenate([val_mean + val_std, (val_mean - val_std)[::-1]]),
+        fill='toself',
+        fillcolor='rgba(0, 255, 0, 0.2)',
+        line=dict(color='rgba(255,255,255,0)'),
+        showlegend=False,
+        hoverinfo='skip',
+        name='Validation ± std'
+    ))
+    
+    # Calculate final scores for annotation
     final_train = train_mean[-1]
     final_val = val_mean[-1]
     gap = abs(final_train - final_val)
     
-    textstr = f'Final Train: {final_train:.3f}\n' \
-              f'Final Val: {final_val:.3f}\n' \
-              f'Gap: {gap:.3f}'
+    # Add annotation box
+    annotation_text = (
+        f"Final Train: {final_train:.3f}<br>"
+        f"Final Val: {final_val:.3f}<br>"
+        f"Gap: {gap:.3f}"
+    )
     
-    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    ax.text(0.05, 0.05, textstr, transform=ax.transAxes, fontsize=10,
-            verticalalignment='bottom', bbox=props)
+    fig.add_annotation(
+        x=0.05,
+        y=0.05,
+        xref='paper',
+        yref='paper',
+        text=annotation_text,
+        showarrow=False,
+        bgcolor='wheat',
+        bordercolor='black',
+        borderwidth=1,
+        font=dict(size=10),
+        align='left'
+    )
     
-    plt.tight_layout()
+    fig.update_layout(
+        title=title,
+        xaxis=dict(
+            title='Training Set Size',
+            gridcolor='lightgray'
+        ),
+        yaxis=dict(
+            title='Score (AUROC)',
+            gridcolor='lightgray'
+        ),
+        template='plotly_white',
+        hovermode='x unified',
+        width=1000,
+        height=600,
+        legend=dict(x=0.7, y=0.1)
+    )
     
     if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        fig.write_image(save_path, width=1000, height=600)
     
     return fig
 
@@ -173,8 +234,8 @@ def plot_multiple_learning_curves(
     results: dict[str, LearningCurveResult],
     title: str = "Learning Curves Comparison",
     save_path: Optional[str] = None,
-) -> plt.Figure:
-    """Plot multiple learning curves for model comparison.
+) -> Union[go.Figure, plt.Figure]:
+    """Plot multiple learning curves for model comparison using Plotly.
     
     Args:
         results: Dictionary mapping model_name -> LearningCurveResult
@@ -182,49 +243,127 @@ def plot_multiple_learning_curves(
         save_path: Optional path to save figure
         
     Returns:
-        Matplotlib figure
+        Plotly Figure object
     """
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    # Create subplots
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=('Training Curves', 'Validation Curves'),
+        horizontal_spacing=0.1
+    )
     
-    colors = plt.cm.tab10(np.linspace(0, 1, len(results)))
+    colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
     
-    # Plot 1: All training curves
-    for (name, result), color in zip(results.items(), colors):
-        ax1.plot(result.train_sizes, result.train_scores_mean, 
-                'o-', color=color, label=name, linewidth=2, markersize=6)
-        ax1.fill_between(result.train_sizes,
-                         np.array(result.train_scores_mean) - np.array(result.train_scores_std),
-                         np.array(result.train_scores_mean) + np.array(result.train_scores_std),
-                         alpha=0.15, color=color)
+    # Plot training curves (left)
+    for idx, (name, result) in enumerate(results.items()):
+        color = colors[idx % len(colors)]
+        train_sizes = np.array(result.train_sizes)
+        train_mean = np.array(result.train_scores_mean)
+        train_std = np.array(result.train_scores_std)
+        
+        # Training line
+        fig.add_trace(go.Scatter(
+            x=train_sizes,
+            y=train_mean,
+            mode='lines+markers',
+            name=name,
+            line=dict(color=color, width=2),
+            marker=dict(size=6),
+            legendgroup=name,
+            showlegend=True,
+            hovertemplate=(
+                f'<b>{name}</b><br>'
+                'Size: %{x}<br>'
+                'Score: %{y:.4f}<br>'
+                '<extra></extra>'
+            )
+        ), row=1, col=1)
+        
+        # Training confidence band
+        fig.add_trace(go.Scatter(
+            x=np.concatenate([train_sizes, train_sizes[::-1]]),
+            y=np.concatenate([train_mean + train_std, (train_mean - train_std)[::-1]]),
+            fill='toself',
+            fillcolor=f'rgba({",".join(map(str, _hex_to_rgb(color)))}, 0.15)',
+            line=dict(color='rgba(255,255,255,0)'),
+            showlegend=False,
+            legendgroup=name,
+            hoverinfo='skip'
+        ), row=1, col=1)
     
-    ax1.set_xlabel('Training Set Size', fontsize=12)
-    ax1.set_ylabel('Training Score (AUROC)', fontsize=12)
-    ax1.set_title('Training Curves', fontsize=13, fontweight='bold')
-    ax1.legend(loc='best', fontsize=9)
-    ax1.grid(True, alpha=0.3)
+    # Plot validation curves (right)
+    for idx, (name, result) in enumerate(results.items()):
+        color = colors[idx % len(colors)]
+        train_sizes = np.array(result.train_sizes)
+        val_mean = np.array(result.val_scores_mean)
+        val_std = np.array(result.val_scores_std)
+        
+        # Validation line
+        fig.add_trace(go.Scatter(
+            x=train_sizes,
+            y=val_mean,
+            mode='lines+markers',
+            name=name,
+            line=dict(color=color, width=2),
+            marker=dict(size=6),
+            legendgroup=name,
+            showlegend=False,
+            hovertemplate=(
+                f'<b>{name}</b><br>'
+                'Size: %{x}<br>'
+                'Score: %{y:.4f}<br>'
+                '<extra></extra>'
+            )
+        ), row=1, col=2)
+        
+        # Validation confidence band
+        fig.add_trace(go.Scatter(
+            x=np.concatenate([train_sizes, train_sizes[::-1]]),
+            y=np.concatenate([val_mean + val_std, (val_mean - val_std)[::-1]]),
+            fill='toself',
+            fillcolor=f'rgba({",".join(map(str, _hex_to_rgb(color)))}, 0.15)',
+            line=dict(color='rgba(255,255,255,0)'),
+            showlegend=False,
+            legendgroup=name,
+            hoverinfo='skip'
+        ), row=1, col=2)
     
-    # Plot 2: All validation curves
-    for (name, result), color in zip(results.items(), colors):
-        ax2.plot(result.train_sizes, result.val_scores_mean, 
-                'o-', color=color, label=name, linewidth=2, markersize=6)
-        ax2.fill_between(result.train_sizes,
-                         np.array(result.val_scores_mean) - np.array(result.val_scores_std),
-                         np.array(result.val_scores_mean) + np.array(result.val_scores_std),
-                         alpha=0.15, color=color)
+    # Update axes
+    fig.update_xaxes(title_text='Training Set Size', row=1, col=1, gridcolor='lightgray')
+    fig.update_xaxes(title_text='Training Set Size', row=1, col=2, gridcolor='lightgray')
+    fig.update_yaxes(title_text='Training Score (AUROC)', row=1, col=1, gridcolor='lightgray')
+    fig.update_yaxes(title_text='Validation Score (AUROC)', row=1, col=2, gridcolor='lightgray')
     
-    ax2.set_xlabel('Training Set Size', fontsize=12)
-    ax2.set_ylabel('Validation Score (AUROC)', fontsize=12)
-    ax2.set_title('Validation Curves', fontsize=13, fontweight='bold')
-    ax2.legend(loc='best', fontsize=9)
-    ax2.grid(True, alpha=0.3)
-    
-    fig.suptitle(title, fontsize=15, fontweight='bold', y=1.02)
-    plt.tight_layout()
+    fig.update_layout(
+        title=title,
+        template='plotly_white',
+        height=600,
+        width=1600,
+        hovermode='x unified',
+        legend=dict(x=1.05, y=0.5)
+    )
     
     if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        fig.write_image(save_path, width=1600, height=600)
     
     return fig
+
+
+def _hex_to_rgb(color_name: str) -> Tuple[int, int, int]:
+    """Convert color name to RGB tuple."""
+    color_map = {
+        'blue': (0, 0, 255),
+        'red': (255, 0, 0),
+        'green': (0, 255, 0),
+        'orange': (255, 165, 0),
+        'purple': (128, 0, 128),
+        'brown': (165, 42, 42),
+        'pink': (255, 192, 203),
+        'gray': (128, 128, 128),
+        'olive': (128, 128, 0),
+        'cyan': (0, 255, 255),
+    }
+    return color_map.get(color_name, (0, 0, 0))
 
 
 def diagnose_learning_curve(result: LearningCurveResult) -> dict:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Dict
 
 import numpy as np
@@ -9,11 +10,10 @@ import matplotlib.pyplot as plt
 from sklearn.inspection import permutation_importance
 
 
-FIG_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "reports", "figures"
-)
-os.makedirs(FIG_DIR, exist_ok=True)
+# Use new processed/plots structure
+ROOT_DIR = Path(__file__).parents[2]
+FIG_DIR = ROOT_DIR / "processed" / "plots" / "explainability"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def compute_permutation_importance(

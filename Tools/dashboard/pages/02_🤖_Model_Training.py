@@ -62,17 +62,7 @@ if task == 'exitus':
 st.sidebar.markdown("---")
 st.sidebar.header("⚙️ Training Configuration")
 
-# Info about the rigorous pipeline (always active)
-st.sidebar.info("""
-🎓 **Pipeline Riguroso Activo**
 
-Este dashboard SIEMPRE usa el pipeline académico completo:
-• ✅ Validación cruzada estratificada repetida (≥30 corridas)
-• ✅ Curvas de aprendizaje
-• ✅ Comparación estadística (Shapiro-Wilk, t-test/Mann-Whitney)
-
-La evaluación final (Bootstrap/Jackknife) se hace en el módulo de **Evaluación**.
-""")
 
 quick, imputer_mode, selected_models = sidebar_training_controls()
 
@@ -103,61 +93,158 @@ st.subheader("Train Models")
 if not selected_models:
     st.error("❌ Please select at least one model from the sidebar")
 else:
-    # Show pipeline info (always rigorous)
-    st.info("""
-    ### 🎓 Pipeline de Experimentación Riguroso
+    # Initialize training state
+    if 'is_training' not in st.session_state:
+        st.session_state.is_training = False
     
-    Este pipeline seguirá las mejores prácticas académicas:
+    # Show button or training message
+    if not st.session_state.is_training:
+        start_button = st.button("🚀 Start Training", type="primary", use_container_width=True)
+    else:
+        st.info("⏳ **Training in progress, please wait...**")
     
-    **FASE 1: Train + Validation**
-    - ✅ Validación cruzada estratificada repetida (30+ corridas)
-    - ✅ Estimación de μ (media) y σ (desviación) por modelo
-    - ✅ Curvas de aprendizaje para diagnóstico
-    
-    **FASE 3: Comparación Estadística**
-    - ✅ Prueba de normalidad (Shapiro-Wilk)
-    - ✅ Test paramétrico (t-Student) o no paramétrico (Mann-Whitney)
-    - ✅ Tamaño del efecto (Cohen's d)
-    
-    **FASE 2: Test (Estimado Final)**
-    - ⚠️ Se realizará en el módulo de **Evaluación**
-    - Bootstrap (1000 iteraciones con reemplazo)
-    - Jackknife (eliminando 1 elemento)
-    - Intervalos de confianza al 95%
-    
-    📊 Se generarán gráficos y reportes detallados en `models/`
-    """)
-    
-    if st.button("🚀 Start Training", type="primary", width='stretch'):
+    if not st.session_state.is_training and 'start_button' in locals() and start_button:
+        # Set training flag
+        st.session_state.is_training = True
+        
         try:
-            with st.spinner("Training models..."):
-                save_paths = train_models_with_progress(
-                    data_path=data_path,
-                    task=task,
-                    quick=quick,
-                    imputer_mode=imputer_mode,
-                    selected_models=selected_models,
-                )
+            # Create containers for progress display
+            progress_container = st.empty()
+            status_container = st.empty()
+            
+            # Capture stdout to show progress
+            import io
+            from contextlib import redirect_stdout
+            
+            with status_container.container():
+                st.markdown("### 📊 Progreso del Entrenamiento")
+                progress_area = st.empty()
+                
+                # Redirect stdout
+                output_buffer = io.StringIO()
+                
+                with redirect_stdout(output_buffer):
+                    save_paths = train_models_with_progress(
+                        data_path=data_path,
+                        task=task,
+                        quick=quick,
+                        imputer_mode=imputer_mode,
+                        selected_models=selected_models,
+                    )
+                
+                # Get the output
+                output = output_buffer.getvalue()
+                
+                # Display in expander
+                with st.expander("📋 Ver detalles completos del entrenamiento", expanded=False):
+                    st.code(output, language="text")
             
             # Update session state
             set_state("is_trained", True)
             set_state("last_train_task", task)
             set_state("last_train_models", list(save_paths.keys()))
             
-            st.success(f"✅ Successfully trained {len(save_paths)} model(s)")
+            st.success(f"""
+            ✅ **Entrenamiento completado exitosamente**
+            
+            - {len(save_paths)} modelo(s) entrenado(s)
+            - Validación cruzada estratificada completada
+            - Curvas de aprendizaje generadas
+            - Comparación estadística realizada
+            - Modelos guardados en `models/`
+            """)
             
             # Display saved models
-            with st.expander("View saved model paths"):
+            with st.expander("📁 Ver rutas de modelos guardados"):
                 for name, path in save_paths.items():
                     st.code(f"{name}: {path}", language="text")
+            
+            # Display learning curves if available
+            if hasattr(st.session_state, 'learning_curve_paths') and st.session_state.learning_curve_paths:
+                st.markdown("---")
+                st.subheader("📈 Curvas de Aprendizaje")
+                st.info("Las curvas de aprendizaje muestran cómo el rendimiento del modelo mejora con más datos de entrenamiento.")
+                
+                lc_paths = st.session_state.learning_curve_paths
+                lc_results = st.session_state.get('learning_curve_results', {})
+                
+                # Create tabs for each model
+                if len(lc_paths) > 0:
+                    tabs = st.tabs([f"📊 {model}" for model in lc_paths.keys()])
+                    
+                    for tab, (model_name, img_path) in zip(tabs, lc_paths.items()):
+                        with tab:
+                            # Display image if PNG exists
+                            if Path(img_path).exists():
+                                st.image(img_path, use_container_width=True)
+                            else:
+                                # Try HTML version
+                                html_path = img_path.replace('.png', '.html')
+                                if Path(html_path).exists():
+                                    with open(html_path, 'r', encoding='utf-8') as f:
+                                        html_content = f.read()
+                                    st.components.v1.html(html_content, height=650, scrolling=True)
+                            
+                            # Display statistics
+                            if model_name in lc_results:
+                                lc_res = lc_results[model_name]
+                                col1, col2, col3 = st.columns(3)
+                                
+                                with col1:
+                                    final_train = lc_res.train_scores_mean[-1]
+                                    st.metric("Score Final (Train)", f"{final_train:.4f}")
+                                
+                                with col2:
+                                    final_val = lc_res.val_scores_mean[-1]
+                                    st.metric("Score Final (Val)", f"{final_val:.4f}")
+                                
+                                with col3:
+                                    gap = abs(final_train - final_val)
+                                    st.metric("Gap Train-Val", f"{gap:.4f}")
+                                
+                                # Interpretation
+                                if gap < 0.05:
+                                    st.success("✅ **Buen ajuste**: Gap pequeño entre train y validación")
+                                elif gap < 0.10:
+                                    st.warning("⚠️ **Ligero sobreajuste**: Gap moderado")
+                                else:
+                                    st.error("🔴 **Sobreajuste significativo**: Gap grande, considerar regularización")
+            
+            # 🎉 Success! Show balloons
+            st.balloons()
+            st.success("🎉 **¡Entrenamiento completado exitosamente!**")
         
         except FileNotFoundError as e:
             st.error(f"❌ Dataset file not found: {e}")
         except Exception as e:
             st.error(f"❌ Error during training: {e}")
             st.exception(e)
+        finally:
+            # Reset training flag
+            st.session_state.is_training = False
 
 st.markdown("---")
+
+# Display learning curves from previous training if available
+if not get_state("is_trained") and hasattr(st.session_state, 'learning_curve_paths'):
+    if st.session_state.learning_curve_paths:
+        st.subheader("📈 Curvas de Aprendizaje (del último entrenamiento)")
+        
+        lc_paths = st.session_state.learning_curve_paths
+        tabs = st.tabs([f"📊 {model}" for model in lc_paths.keys()])
+        
+        for tab, (model_name, img_path) in zip(tabs, lc_paths.items()):
+            with tab:
+                if Path(img_path).exists():
+                    st.image(img_path, use_container_width=True)
+                else:
+                    html_path = img_path.replace('.png', '.html')
+                    if Path(html_path).exists():
+                        with open(html_path, 'r', encoding='utf-8') as f:
+                            html_content = f.read()
+                        st.components.v1.html(html_content, height=650, scrolling=True)
+        
+        st.markdown("---")
 
 # Display saved models section
 st.subheader("Saved Models")

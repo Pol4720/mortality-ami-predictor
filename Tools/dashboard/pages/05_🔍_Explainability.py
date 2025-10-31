@@ -17,6 +17,7 @@ from app import (
     initialize_state,
     list_saved_models,
 )
+from app.config import get_plotly_config
 from src.config import CONFIG
 from src.explainability import (
     compute_shap_values,
@@ -150,13 +151,16 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
         "🌊 Waterfall Plot"
     ])
     
+    # Get Plotly configuration
+    plotly_config = get_plotly_config()
+    
     with tab1:
         st.markdown("### Beeswarm Plot")
         st.caption("Shows the distribution of SHAP values for each feature across all samples")
         
         try:
             fig = plot_shap_beeswarm(shap_values, max_display=20)
-            st.pyplot(fig)
+            st.plotly_chart(fig, use_container_width=True, config=plotly_config)
         
         except Exception as e:
             st.error(f"Error creating beeswarm plot: {e}")
@@ -167,7 +171,7 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
         
         try:
             fig = plot_shap_bar(shap_values, max_display=20)
-            st.pyplot(fig)
+            st.plotly_chart(fig, use_container_width=True, config=plotly_config)
         
         except Exception as e:
             st.error(f"Error creating bar plot: {e}")
@@ -176,16 +180,33 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
         st.markdown("### Force Plot")
         st.caption("Visualize predictions for individual samples")
         
-        sample_idx = st.slider(
-            "Select sample index",
-            min_value=0,
-            max_value=len(shap_values) - 1,
-            value=0
-        )
+        # Add controls for force plot
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            sample_idx = st.slider(
+                "Select sample index",
+                min_value=0,
+                max_value=len(shap_values) - 1,
+                value=0
+            )
+        
+        with col2:
+            max_features = st.slider(
+                "Features to display",
+                min_value=10,
+                max_value=50,
+                value=20,
+                step=5,
+                help="Number of top features to show"
+            )
         
         try:
-            fig = plot_shap_force(shap_values, sample_idx=sample_idx)
-            st.pyplot(fig)
+            fig = plot_shap_force(shap_values, sample_idx=sample_idx, max_display=max_features)
+            st.plotly_chart(fig, use_container_width=True, config=plotly_config)
+            
+            # Add info about interactivity
+            st.info("💡 **Tip**: Hover over bars to see feature values and SHAP contributions. Use zoom and pan tools to explore the plot. Click the camera icon to export as PNG.")
         
         except Exception as e:
             st.error(f"Error creating force plot: {e}")
@@ -201,17 +222,32 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
         st.markdown("### Waterfall Plot")
         st.caption("Shows how each feature contributes to push the model output from the base value")
         
-        sample_idx = st.slider(
-            "Select sample index",
-            min_value=0,
-            max_value=len(shap_values) - 1,
-            value=0,
-            key="waterfall_slider"
-        )
+        # Add controls for waterfall plot
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            sample_idx = st.slider(
+                "Select sample index",
+                min_value=0,
+                max_value=len(shap_values) - 1,
+                value=0,
+                key="waterfall_slider"
+            )
+        
+        with col2:
+            max_features_waterfall = st.slider(
+                "Features to display",
+                min_value=10,
+                max_value=30,
+                value=20,
+                step=5,
+                key="waterfall_features",
+                help="Number of top features to show"
+            )
         
         try:
-            fig = plot_shap_waterfall(shap_values, sample_idx=sample_idx)
-            st.pyplot(fig)
+            fig = plot_shap_waterfall(shap_values, sample_idx=sample_idx, max_display=max_features_waterfall)
+            st.plotly_chart(fig, use_container_width=True, config=plotly_config)
         
         except Exception as e:
             st.error(f"Error creating waterfall plot: {e}")
@@ -245,8 +281,14 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
         **Visualizations:**
         - **Beeswarm**: Overall feature importance and value distribution
         - **Bar**: Simple feature importance ranking
-        - **Force**: Individual prediction explanation
+        - **Force**: Individual prediction explanation (optimized for many features)
         - **Waterfall**: Step-by-step contribution breakdown
+        
+        **Interactive Features:**
+        - 🔍 **Zoom & Pan**: Click and drag to zoom, double-click to reset
+        - 🖱️ **Hover**: See detailed values for each feature
+        - 📊 **Adjustable**: Use sliders to control number of features displayed
+        - 💾 **Export**: Use the camera icon to download as PNG
         
         SHAP values are based on game theory and provide consistent, locally accurate explanations.
         """)
