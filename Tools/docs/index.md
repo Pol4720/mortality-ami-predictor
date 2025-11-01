@@ -136,9 +136,9 @@ streamlit run dashboard/Dashboard.py
 <div markdown>
 
 ### For Developers
-- [**Architecture**](architecture/patterns.md) - Design patterns and structure
-- [**Developer Guide**](developer/contributing.md) - Contributing guidelines
-- [**Testing**](developer/testing.md) - Testing strategies
+- [**Architecture**](architecture/index.md) - Design patterns and structure
+- [**Developer Guide**](developer/index.md) - Contributing guidelines
+- [**Testing**](developer/index.md#testing) - Testing strategies
 
 </div>
 
@@ -168,7 +168,7 @@ graph TB
     style I fill:#f39c12,color:#fff
 ```
 
-👉 Learn more about the [Architecture](architecture/patterns.md) and [Module Structure](architecture/structure.md)
+👉 Learn more about the [Architecture](architecture/index.md) and [Module Organization](architecture/index.md#module-organization)
 
 ## 🎨 Technology Stack
 
@@ -226,7 +226,7 @@ analyzer.plot_waterfall(patient_data, save_path="explanation.png")
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](developer/contributing.md) for details on:
+We welcome contributions! Please see our [Developer Guide](developer/index.md) for details on:
 
 - Code style and standards
 - Testing requirements

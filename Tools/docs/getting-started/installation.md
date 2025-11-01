@@ -168,7 +168,7 @@ Navigate to `http://localhost:5000` to view experiments.
 
 If you encounter issues:
 
-1. Check the [FAQ](../developer/contributing.md#faq)
+1. Check the [Developer Guide](../developer/index.md)
 2. Search [existing issues](https://github.com/Pol4720/mortality-ami-predictor/issues)
 3. Open a [new issue](https://github.com/Pol4720/mortality-ami-predictor/issues/new)
 

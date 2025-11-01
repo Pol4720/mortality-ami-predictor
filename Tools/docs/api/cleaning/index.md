@@ -178,5 +178,6 @@ df_capped = detector.cap_outliers(df, columns=["age", "heart_rate"])
 ## See Also
 
 - [EDA Module](../eda/index.md) - Analyze data quality
-- [Preprocessing Module](../preprocessing/index.md) - Transform cleaned data
+- [Preprocessing Module](../preprocessing/pipelines.md) - Transform cleaned data
 - [Data Cleaning Guide](../../user-guide/data-cleaning.md) - User-friendly guide
+

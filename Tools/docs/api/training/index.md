@@ -391,8 +391,8 @@ See [Custom Integration Guide](custom_integration.md) for details.
 
 - **[Models Module](../models/index.md)**: Access pre-configured models
 - **[Evaluation Module](../evaluation/index.md)**: Evaluate trained models
-- **[Preprocessing](../preprocessing/index.md)**: Prepare data before training
-- **[Explainability](../explainability/index.md)**: Interpret trained models
+- **[Preprocessing](../preprocessing/pipelines.md)**: Prepare data before training
+- **[Explainability](../explainability/shap_analysis.md)**: Interpret trained models
 
 ## Related Documentation
 

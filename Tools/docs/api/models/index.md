@@ -347,8 +347,8 @@ best_model, best_params = optimize_hyperparameters(
 
 - **[Training Module](../training/index.md)**: Train and tune models
 - **[Evaluation Module](../evaluation/index.md)**: Evaluate model performance
-- **[Explainability](../explainability/index.md)**: Interpret model predictions
-- **[Prediction](../prediction/index.md)**: Make predictions with trained models
+- **[Explainability](../explainability/shap_analysis.md)**: Interpret model predictions
+- **[Prediction](../prediction/predictor.md)**: Make predictions with trained models
 
 ## Related Documentation
 

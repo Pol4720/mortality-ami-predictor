@@ -10,18 +10,18 @@ The project is organized into specialized modules, each handling a specific aspe
 
 | Module | Description | Key Components |
 |--------|-------------|----------------|
-| [`data_load`](data-load/index.md) | Data loading and splitting utilities | Loaders, Splitters, I/O |
+| [`data_load`](data_load/loaders.md) | Data loading and splitting utilities | Loaders, Splitters, I/O |
 | [`cleaning`](cleaning/index.md) | Data cleaning and preprocessing | Cleaner, Imputation, Encoding |
 | [`eda`](eda/index.md) | Exploratory data analysis | Analyzer, Visualizations, Reports |
-| [`preprocessing`](preprocessing/index.md) | Feature preprocessing pipelines | Scalers, Transformers |
-| [`features`](features/index.md) | Feature engineering | Selection, Creation, Extraction |
+| [`preprocessing`](preprocessing/pipelines.md) | Feature preprocessing pipelines | Scalers, Transformers |
+| [`features`](features/selectors.md) | Feature engineering | Selection, Creation, Extraction |
 | [`models`](models/index.md) | Model definitions and factories | Model Registry, Custom Models |
 | [`training`](training/index.md) | Model training orchestration | Trainers, Cross-validation |
-| [`prediction`](prediction/index.md) | Prediction and inference | Predictors, Batch Processing |
+| [`prediction`](prediction/predictor.md) | Prediction and inference | Predictors, Batch Processing |
 | [`evaluation`](evaluation/index.md) | Model evaluation and metrics | Metrics, Calibration, Validation |
-| [`explainability`](explainability/index.md) | Model interpretation | SHAP, PDP, Permutation |
-| [`scoring`](scoring/index.md) | Clinical scoring systems | GRACE, TIMI, Killip |
-| [`reporting`](reporting/index.md) | Report generation | PDF Reports, Summaries |
+| [`explainability`](explainability/shap_analysis.md) | Model interpretation | SHAP, PDP, Permutation |
+| [`scoring`](scoring/grace.md) | Clinical scoring systems | GRACE, TIMI, Killip |
+| [`reporting`](reporting/pdf_generator.md) | Report generation | PDF Reports, Summaries |
 
 ## 🚀 Quick Navigation
 
@@ -141,8 +141,8 @@ src/
 ## 🔗 Related Resources
 
 - [User Guide](../user-guide/dashboard.md) - High-level feature explanations
-- [Architecture](../architecture/patterns.md) - Design patterns and structure
-- [Developer Guide](../developer/contributing.md) - Contributing guidelines
+- [Architecture](../architecture/index.md) - Design patterns and structure
+- [Developer Guide](../developer/index.md) - Contributing guidelines
 
 ---
 
@@ -150,7 +150,7 @@ src/
 
 <div class="grid cards" markdown>
 
--   :material-database:{ .lg .middle } [**Data Loading**](data-load/index.md)
+-   :material-database:{ .lg .middle } [**Data Loading**](data_load/loaders.md)
     
     Load datasets, split data, and handle I/O operations
 
@@ -162,11 +162,11 @@ src/
     
     Explore and visualize data patterns
 
--   :material-cog:{ .lg .middle } [**Preprocessing**](preprocessing/index.md)
+-   :material-cog:{ .lg .middle } [**Preprocessing**](preprocessing/pipelines.md)
     
     Transform features for model input
 
--   :material-auto-fix:{ .lg .middle } [**Features**](features/index.md)
+-   :material-auto-fix:{ .lg .middle } [**Features**](features/selectors.md)
     
     Engineer and select features
 
@@ -178,7 +178,7 @@ src/
     
     Train and optimize models
 
--   :material-crystal-ball:{ .lg .middle } [**Prediction**](prediction/index.md)
+-   :material-crystal-ball:{ .lg .middle } [**Prediction**](prediction/predictor.md)
     
     Make predictions on new data
 
@@ -186,15 +186,15 @@ src/
     
     Assess model performance
 
--   :material-lightbulb:{ .lg .middle } [**Explainability**](explainability/index.md)
+-   :material-lightbulb:{ .lg .middle } [**Explainability**](explainability/shap_analysis.md)
     
     Interpret model decisions
 
--   :material-clipboard-pulse:{ .lg .middle } [**Scoring**](scoring/index.md)
+-   :material-clipboard-pulse:{ .lg .middle } [**Scoring**](scoring/grace.md)
     
     Calculate clinical scores
 
--   :material-file-document:{ .lg .middle } [**Reporting**](reporting/index.md)
+-   :material-file-document:{ .lg .middle } [**Reporting**](reporting/pdf_generator.md)
     
     Generate reports and summaries
 

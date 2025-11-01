@@ -168,7 +168,7 @@ This project is licensed under the MIT License. See the [LICENSE](https://github
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](developer/contributing.md) for details on:
+We welcome contributions! Please see our [Developer Guide](developer/index.md) for details on:
 
 - Code of conduct
 - Development workflow

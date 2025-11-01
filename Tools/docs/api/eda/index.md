@@ -139,7 +139,7 @@ Reports include:
 The EDA module integrates seamlessly with:
 
 - **[Cleaning Module](../cleaning/index.md)**: Use insights to guide data cleaning
-- **[Feature Engineering](../features/index.md)**: Identify important features
+- **[Feature Engineering](../features/selectors.md)**: Identify important features
 - **[Training Module](../training/index.md)**: Select features for modeling
 
 ## Best Practices

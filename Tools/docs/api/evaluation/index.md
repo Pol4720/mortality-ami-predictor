@@ -262,8 +262,8 @@ significance = comparison.statistical_test(
 
 - **[Training Module](../training/index.md)**: Evaluate models during/after training
 - **[Models Module](../models/index.md)**: Evaluate custom models
-- **[Explainability](../explainability/index.md)**: Combine with model interpretation
-- **[Reporting](../reporting/index.md)**: Generate comprehensive reports
+- **[Explainability](../explainability/shap_analysis.md)**: Combine with model interpretation
+- **[Reporting](../reporting/pdf_generator.md)**: Generate comprehensive reports
 
 ## Related Documentation
 
