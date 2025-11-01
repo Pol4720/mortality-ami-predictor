@@ -231,11 +231,60 @@ def variable_selection_page():
     """Sección para descartar variables irrelevantes antes de la limpieza."""
     st.header("🎯 Selección de Variables")
     
-    if st.session_state.raw_data is None:
+    # Verificar si hay datos disponibles (crudos o limpios)
+    if st.session_state.raw_data is None and st.session_state.cleaned_data is None:
         st.warning("⚠️ Primero carga un dataset en la pestaña 'Carga de Datos'")
         return
     
-    df = st.session_state.raw_data.copy()
+    # Usar datos disponibles (priorizar raw_data si existe)
+    if st.session_state.raw_data is not None:
+        df = st.session_state.raw_data.copy()
+        data_source = "datos crudos"
+        data_key = "raw_data"
+    else:
+        df = st.session_state.cleaned_data.copy()
+        data_source = "datos limpios"
+        data_key = "cleaned_data"
+    
+    # Mostrar información del origen de datos
+    col_info1, col_info2 = st.columns([3, 1])
+    
+    with col_info1:
+        st.info(f"📊 Trabajando con: **{data_source}** ({df.shape[0]:,} filas × {df.shape[1]:,} columnas)")
+    
+    with col_info2:
+        # Botón para cargar selección guardada
+        if st.button("📂 Cargar Selección", use_container_width=True):
+            try:
+                config_dir = Path(CONFIG.preprocessing_config_path).parent
+                selection_path = config_dir / "variable_selection.json"
+                
+                if selection_path.exists():
+                    with open(selection_path, 'r', encoding='utf-8') as f:
+                        selection_config = json.load(f)
+                    
+                    # Verificar que las variables existan en el dataset actual
+                    vars_to_keep = set(selection_config['variables_to_keep'])
+                    available_vars = set(df.columns)
+                    
+                    # Solo mantener variables que existen en el dataset actual
+                    valid_vars = vars_to_keep.intersection(available_vars)
+                    
+                    if valid_vars:
+                        st.session_state.variables_to_keep = valid_vars
+                        st.session_state.variables_to_drop = available_vars - valid_vars
+                        st.success(f"✅ Selección cargada: {len(valid_vars)} variables")
+                        
+                        if len(vars_to_keep - available_vars) > 0:
+                            st.warning(f"⚠️ {len(vars_to_keep - available_vars)} variables de la selección guardada no existen en el dataset actual")
+                        
+                        st.rerun()
+                    else:
+                        st.error("❌ Ninguna variable de la selección guardada existe en el dataset actual")
+                else:
+                    st.warning("⚠️ No hay selección guardada previamente")
+            except Exception as e:
+                st.error(f"❌ Error al cargar selección: {e}")
     
     # Inicializar variables en session_state
     if 'variables_to_keep' not in st.session_state:
@@ -561,9 +610,14 @@ def variable_selection_page():
                 else:
                     # Aplicar los cambios al dataframe
                     df_filtered = df[sorted(st.session_state.variables_to_keep)].copy()
-                    st.session_state.raw_data = df_filtered
                     
-                    st.success(f"✅ Variables aplicadas: {df_filtered.shape[1]} columnas seleccionadas")
+                    # Actualizar el session_state correcto según el origen de datos
+                    if data_key == "raw_data":
+                        st.session_state.raw_data = df_filtered
+                    else:
+                        st.session_state.cleaned_data = df_filtered
+                    
+                    st.success(f"✅ Variables aplicadas a {data_source}: {df_filtered.shape[1]} columnas seleccionadas")
                     st.balloons()
                     
                     # Mostrar resultado
@@ -590,8 +644,12 @@ def variable_selection_page():
                     selection_config = {
                         'variables_to_keep': sorted(list(st.session_state.variables_to_keep)),
                         'variables_to_drop': sorted(list(st.session_state.variables_to_drop)),
+                        'data_source': data_source,
+                        'data_key': data_key,
                         'timestamp': datetime.now().isoformat(),
-                        'total_variables': len(df.columns)
+                        'total_variables': len(df.columns),
+                        'selected_variables': len(st.session_state.variables_to_keep),
+                        'dropped_variables': len(st.session_state.variables_to_drop)
                     }
                     
                     config_dir = Path(CONFIG.preprocessing_config_path).parent
