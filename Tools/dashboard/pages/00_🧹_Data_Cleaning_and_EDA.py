@@ -227,6 +227,386 @@ def load_data_page():
         st.dataframe(df.head(100), width='stretch', height=300)
 
 
+def variable_selection_page():
+    """Sección para descartar variables irrelevantes antes de la limpieza."""
+    st.header("🎯 Selección de Variables")
+    
+    if st.session_state.raw_data is None:
+        st.warning("⚠️ Primero carga un dataset en la pestaña 'Carga de Datos'")
+        return
+    
+    df = st.session_state.raw_data.copy()
+    
+    # Inicializar variables en session_state
+    if 'variables_to_keep' not in st.session_state:
+        st.session_state.variables_to_keep = set(df.columns.tolist())
+    
+    if 'variables_to_drop' not in st.session_state:
+        st.session_state.variables_to_drop = set()
+    
+    # Información general
+    st.info("""
+    **👉 Instrucciones:** Selecciona las variables que deseas **mantener** para el análisis y limpieza. 
+    Las variables no seleccionadas serán descartadas antes de iniciar la limpieza de datos.
+    """)
+    
+    # Estadísticas de variables
+    col1, col2, col3, col4 = st.columns(4)
+    total_vars = len(df.columns)
+    vars_to_keep = len(st.session_state.variables_to_keep)
+    vars_to_drop = len(st.session_state.variables_to_drop)
+    
+    col1.metric("📊 Variables Totales", total_vars)
+    col2.metric("✅ Variables Seleccionadas", vars_to_keep, delta=None)
+    col3.metric("🗑️ Variables a Descartar", vars_to_drop, delta=None, delta_color="inverse")
+    col4.metric("📈 % Seleccionadas", f"{(vars_to_keep/total_vars*100):.1f}%")
+    
+    st.markdown("---")
+    
+    # Tabs para diferentes métodos de selección
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "🎨 Selección Visual", 
+        "🔍 Búsqueda y Filtrado",
+        "📊 Análisis de Calidad",
+        "💾 Aplicar Cambios"
+    ])
+    
+    # Tab 1: Selección visual con multiselect mejorado
+    with tab1:
+        st.subheader("Selección Visual de Variables")
+        
+        # Mostrar información de las variables
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.markdown("**Selecciona las variables a mantener:**")
+            
+            # Multiselect con todas las variables
+            selected_vars = st.multiselect(
+                "Variables disponibles",
+                options=sorted(df.columns.tolist()),
+                default=sorted(list(st.session_state.variables_to_keep)),
+                help="Selecciona múltiples variables usando Ctrl/Cmd + Click",
+                key="multiselect_vars"
+            )
+            
+            # Actualizar selección
+            if st.button("🔄 Actualizar Selección", key="update_visual"):
+                st.session_state.variables_to_keep = set(selected_vars)
+                st.session_state.variables_to_drop = set(df.columns) - set(selected_vars)
+                st.success(f"✅ Selección actualizada: {len(selected_vars)} variables seleccionadas")
+                st.rerun()
+        
+        with col2:
+            st.markdown("**Acciones rápidas:**")
+            
+            if st.button("✅ Seleccionar todas", key="select_all", use_container_width=True):
+                st.session_state.variables_to_keep = set(df.columns.tolist())
+                st.session_state.variables_to_drop = set()
+                st.rerun()
+            
+            if st.button("❌ Deseleccionar todas", key="deselect_all", use_container_width=True):
+                st.session_state.variables_to_keep = set()
+                st.session_state.variables_to_drop = set(df.columns.tolist())
+                st.rerun()
+            
+            if st.button("🔄 Invertir selección", key="invert_selection", use_container_width=True):
+                old_keep = st.session_state.variables_to_keep.copy()
+                st.session_state.variables_to_keep = st.session_state.variables_to_drop.copy()
+                st.session_state.variables_to_drop = old_keep
+                st.rerun()
+    
+    # Tab 2: Búsqueda y filtrado
+    with tab2:
+        st.subheader("Búsqueda y Filtrado Avanzado")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            # Búsqueda por nombre
+            search_term = st.text_input(
+                "🔍 Buscar variables por nombre",
+                placeholder="Ejemplo: edad, presion, colesterol...",
+                help="Busca variables que contengan el texto ingresado"
+            )
+            
+            if search_term:
+                matching_vars = [col for col in df.columns if search_term.lower() in col.lower()]
+                st.info(f"📊 Se encontraron {len(matching_vars)} variables que coinciden")
+                
+                if matching_vars:
+                    col_a, col_b = st.columns(2)
+                    
+                    with col_a:
+                        if st.button("✅ Seleccionar coincidencias", key="select_matching"):
+                            st.session_state.variables_to_keep.update(matching_vars)
+                            st.session_state.variables_to_drop -= set(matching_vars)
+                            st.success(f"✅ {len(matching_vars)} variables añadidas a la selección")
+                            st.rerun()
+                    
+                    with col_b:
+                        if st.button("❌ Descartar coincidencias", key="drop_matching"):
+                            st.session_state.variables_to_drop.update(matching_vars)
+                            st.session_state.variables_to_keep -= set(matching_vars)
+                            st.warning(f"🗑️ {len(matching_vars)} variables marcadas para descarte")
+                            st.rerun()
+                    
+                    # Mostrar variables encontradas
+                    with st.expander("Ver variables encontradas", expanded=True):
+                        for var in matching_vars:
+                            status = "✅" if var in st.session_state.variables_to_keep else "❌"
+                            st.text(f"{status} {var}")
+        
+        with col2:
+            # Filtro por tipo de dato
+            st.markdown("**Filtrar por tipo:**")
+            
+            var_types = st.multiselect(
+                "Tipo de dato",
+                ["Numérico", "Categórico", "Datetime", "Booleano"],
+                default=[],
+                key="type_filter"
+            )
+            
+            if var_types:
+                filtered_vars = []
+                
+                if "Numérico" in var_types:
+                    filtered_vars.extend(df.select_dtypes(include=[np.number]).columns.tolist())
+                if "Categórico" in var_types:
+                    filtered_vars.extend(df.select_dtypes(include=['object', 'category']).columns.tolist())
+                if "Datetime" in var_types:
+                    filtered_vars.extend(df.select_dtypes(include=['datetime64']).columns.tolist())
+                if "Booleano" in var_types:
+                    filtered_vars.extend(df.select_dtypes(include=['bool']).columns.tolist())
+                
+                filtered_vars = list(set(filtered_vars))
+                st.info(f"📊 {len(filtered_vars)} variables del tipo seleccionado")
+                
+                if st.button("✅ Seleccionar por tipo", key="select_by_type", use_container_width=True):
+                    st.session_state.variables_to_keep.update(filtered_vars)
+                    st.session_state.variables_to_drop -= set(filtered_vars)
+                    st.rerun()
+                
+                if st.button("❌ Descartar por tipo", key="drop_by_type", use_container_width=True):
+                    st.session_state.variables_to_drop.update(filtered_vars)
+                    st.session_state.variables_to_keep -= set(filtered_vars)
+                    st.rerun()
+    
+    # Tab 3: Análisis de calidad
+    with tab3:
+        st.subheader("Análisis de Calidad de Variables")
+        
+        # Calcular métricas de calidad
+        quality_metrics = []
+        
+        for col in df.columns:
+            missing_pct = df[col].isna().sum() / len(df) * 100
+            unique_count = df[col].nunique()
+            unique_pct = unique_count / len(df) * 100
+            dtype = str(df[col].dtype)
+            is_selected = col in st.session_state.variables_to_keep
+            
+            # Para numéricas, calcular varianza
+            if pd.api.types.is_numeric_dtype(df[col]):
+                variance = df[col].var()
+                is_constant = variance == 0 or unique_count == 1
+            else:
+                variance = None
+                is_constant = unique_count == 1
+            
+            quality_metrics.append({
+                'Variable': col,
+                'Tipo': dtype,
+                'Valores Únicos': unique_count,
+                '% Únicos': f"{unique_pct:.1f}",
+                '% Faltantes': f"{missing_pct:.1f}",
+                'Constante': '⚠️' if is_constant else '✓',
+                'Estado': '✅ Seleccionada' if is_selected else '❌ Descartada'
+            })
+        
+        quality_df = pd.DataFrame(quality_metrics)
+        
+        # Filtros de calidad
+        st.markdown("**Filtros de calidad automática:**")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            max_missing = st.slider(
+                "% Máximo de faltantes",
+                0, 100, 95,
+                help="Descartar variables con más de este % de valores faltantes"
+            )
+        
+        with col2:
+            include_constants = st.checkbox(
+                "Mantener constantes",
+                value=False,
+                help="Si está desactivado, descarta variables con un único valor"
+            )
+        
+        with col3:
+            min_unique_pct = st.slider(
+                "% Mínimo de valores únicos",
+                0.0, 100.0, 0.0,
+                help="Descartar variables con menos de este % de valores únicos"
+            )
+        
+        if st.button("🎯 Aplicar Filtros de Calidad", key="apply_quality_filters", type="primary"):
+            vars_filtered = []
+            
+            for _, row in quality_df.iterrows():
+                var_name = row['Variable']
+                missing_pct = float(row['% Faltantes'])
+                unique_pct = float(row['% Únicos'])
+                is_constant = row['Constante'] == '⚠️'
+                
+                # Aplicar filtros
+                keep_var = True
+                
+                if missing_pct > max_missing:
+                    keep_var = False
+                
+                if is_constant and not include_constants:
+                    keep_var = False
+                
+                if unique_pct < min_unique_pct:
+                    keep_var = False
+                
+                if keep_var:
+                    vars_filtered.append(var_name)
+            
+            st.session_state.variables_to_keep = set(vars_filtered)
+            st.session_state.variables_to_drop = set(df.columns) - set(vars_filtered)
+            
+            st.success(f"✅ Filtros aplicados: {len(vars_filtered)} variables seleccionadas")
+            st.rerun()
+        
+        # Mostrar tabla de calidad
+        st.markdown("---")
+        st.markdown("**Tabla de Calidad de Variables:**")
+        
+        # Añadir filtro de vista
+        view_filter = st.radio(
+            "Mostrar:",
+            ["Todas", "Solo Seleccionadas", "Solo Descartadas"],
+            horizontal=True,
+            key="quality_view_filter"
+        )
+        
+        if view_filter == "Solo Seleccionadas":
+            display_df = quality_df[quality_df['Estado'] == '✅ Seleccionada']
+        elif view_filter == "Solo Descartadas":
+            display_df = quality_df[quality_df['Estado'] == '❌ Descartada']
+        else:
+            display_df = quality_df
+        
+        # Mostrar con colores
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            height=400,
+            hide_index=True
+        )
+        
+        # Descargar reporte
+        csv = display_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Descargar Reporte de Calidad",
+            data=csv,
+            file_name=f"quality_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv"
+        )
+    
+    # Tab 4: Aplicar cambios
+    with tab4:
+        st.subheader("Aplicar Cambios y Continuar")
+        
+        # Resumen de cambios
+        st.markdown("### 📋 Resumen de Cambios")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**✅ Variables Seleccionadas:**")
+            if st.session_state.variables_to_keep:
+                for var in sorted(st.session_state.variables_to_keep):
+                    st.text(f"✓ {var}")
+            else:
+                st.warning("⚠️ No hay variables seleccionadas")
+        
+        with col2:
+            st.markdown("**❌ Variables a Descartar:**")
+            if st.session_state.variables_to_drop:
+                for var in sorted(st.session_state.variables_to_drop):
+                    st.text(f"✗ {var}")
+            else:
+                st.info("ℹ️ No se descartarán variables")
+        
+        st.markdown("---")
+        
+        # Confirmación y aplicación
+        if st.session_state.variables_to_drop:
+            st.warning(f"⚠️ Se descartarán **{len(st.session_state.variables_to_drop)}** variables del dataset")
+        else:
+            st.info("ℹ️ No se realizarán cambios en las variables")
+        
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            if st.button("✅ Aplicar y Continuar", type="primary", use_container_width=True):
+                if len(st.session_state.variables_to_keep) == 0:
+                    st.error("❌ Debes seleccionar al menos una variable")
+                else:
+                    # Aplicar los cambios al dataframe
+                    df_filtered = df[sorted(st.session_state.variables_to_keep)].copy()
+                    st.session_state.raw_data = df_filtered
+                    
+                    st.success(f"✅ Variables aplicadas: {df_filtered.shape[1]} columnas seleccionadas")
+                    st.balloons()
+                    
+                    # Mostrar resultado
+                    st.markdown("---")
+                    st.markdown("**Vista previa del dataset filtrado:**")
+                    
+                    col_a, col_b = st.columns(2)
+                    col_a.metric("Filas", f"{df_filtered.shape[0]:,}")
+                    col_b.metric("Columnas", f"{df_filtered.shape[1]:,}")
+                    
+                    st.dataframe(df_filtered.head(20), use_container_width=True, height=300)
+        
+        with col2:
+            if st.button("🔄 Restablecer Todo", use_container_width=True):
+                st.session_state.variables_to_keep = set(df.columns.tolist())
+                st.session_state.variables_to_drop = set()
+                st.info("ℹ️ Selección restablecida a todas las variables")
+                st.rerun()
+        
+        with col3:
+            if st.button("💾 Guardar Selección", use_container_width=True):
+                try:
+                    # Guardar configuración de variables
+                    selection_config = {
+                        'variables_to_keep': sorted(list(st.session_state.variables_to_keep)),
+                        'variables_to_drop': sorted(list(st.session_state.variables_to_drop)),
+                        'timestamp': datetime.now().isoformat(),
+                        'total_variables': len(df.columns)
+                    }
+                    
+                    config_dir = Path(CONFIG.preprocessing_config_path).parent
+                    config_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    selection_path = config_dir / "variable_selection.json"
+                    
+                    with open(selection_path, 'w', encoding='utf-8') as f:
+                        json.dump(selection_config, f, indent=2, ensure_ascii=False)
+                    
+                    st.success(f"✅ Selección guardada en {selection_path}")
+                except Exception as e:
+                    st.error(f"❌ Error al guardar: {e}")
+
+
 def data_cleaning_page():
     """Sección de limpieza de datos."""
     st.header("🧹 Limpieza de Datos")
@@ -1644,7 +2024,9 @@ def main():
     **Sistema completo de limpieza y análisis de datos para el predictor de mortalidad por IAM**
     
     Utiliza las pestañas siguientes para:
-    - Cargar y preprocesar datos
+    - Cargar datos desde múltiples fuentes
+    - Seleccionar variables relevantes para el análisis
+    - Limpiar y preprocesar datos con configuraciones avanzadas
     - Realizar análisis exploratorio completo
     - Generar reportes de calidad
     """)
@@ -1652,6 +2034,7 @@ def main():
     # Tabs principales
     tabs = st.tabs([
         "📂 Carga de Datos",
+        "🎯 Selección de Variables",
         "🧹 Limpieza de Datos",
         "📈 Análisis Univariado",
         "📊 Análisis Bivariado",
@@ -1663,18 +2046,21 @@ def main():
         load_data_page()
     
     with tabs[1]:
-        data_cleaning_page()
+        variable_selection_page()
     
     with tabs[2]:
-        univariate_analysis_page()
+        data_cleaning_page()
     
     with tabs[3]:
-        bivariate_analysis_page()
+        univariate_analysis_page()
     
     with tabs[4]:
-        multivariate_analysis_page()
+        bivariate_analysis_page()
     
     with tabs[5]:
+        multivariate_analysis_page()
+    
+    with tabs[6]:
         quality_report_page()
 
 

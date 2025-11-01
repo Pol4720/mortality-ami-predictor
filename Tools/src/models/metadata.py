@@ -155,7 +155,79 @@ class ModelMetadata:
         if self.performance:
             data['performance'] = self.performance.to_dict()
         
+        # Make hyperparameters JSON-serializable
+        data['hyperparameters'] = self._make_serializable(data['hyperparameters'])
+        
+        # Make statistical_comparison JSON-serializable if present
+        if data.get('statistical_comparison'):
+            data['statistical_comparison'] = self._make_serializable(data['statistical_comparison'])
+        
         return data
+    
+    @staticmethod
+    def _make_serializable(obj: Any) -> Any:
+        """Convert object to JSON-serializable format.
+        
+        Args:
+            obj: Object to convert
+            
+        Returns:
+            JSON-serializable version of object
+        """
+        import numpy as np
+        
+        # Handle None
+        if obj is None:
+            return None
+        
+        # Handle basic types
+        if isinstance(obj, (str, int, float, bool)):
+            return obj
+        
+        # Handle numpy types
+        if isinstance(obj, (np.integer, np.int64, np.int32)):
+            return int(obj)
+        if isinstance(obj, (np.floating, np.float64, np.float32)):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        
+        # Handle dictionaries
+        if isinstance(obj, dict):
+            return {str(k): ModelMetadata._make_serializable(v) for k, v in obj.items()}
+        
+        # Handle lists and tuples
+        if isinstance(obj, (list, tuple)):
+            return [ModelMetadata._make_serializable(item) for item in obj]
+        
+        # Handle objects with __dict__ (like sklearn estimators)
+        if hasattr(obj, '__class__'):
+            # For sklearn objects and other classes, return string representation
+            class_name = obj.__class__.__name__
+            module_name = obj.__class__.__module__
+            
+            # Try to get a simple string representation
+            if hasattr(obj, 'get_params'):
+                # For sklearn-like objects
+                try:
+                    params = obj.get_params()
+                    # Recursively make params serializable
+                    serialized_params = ModelMetadata._make_serializable(params)
+                    return {
+                        '__class__': class_name,
+                        '__module__': module_name,
+                        'params': serialized_params
+                    }
+                except Exception:
+                    pass
+            
+            # Fallback to string representation
+            return f"{module_name}.{class_name}"
+        
+        # Fallback: convert to string
+        return str(obj)
     
     @classmethod
     def from_dict(cls, data: Dict) -> ModelMetadata:
