@@ -1,7 +1,7 @@
 """Evaluation module for model assessment.
 
 This module provides utilities for computing metrics, calibration curves,
-decision curves, resampling methods, and generating reports.
+decision curves, resampling methods, custom models evaluation, and generating reports.
 """
 
 from .metrics import compute_classification_metrics, compute_regression_metrics
@@ -14,6 +14,15 @@ from .resampling import (
     combined_resampling_evaluation,
     plot_resampling_results,
     ResamplingResult,
+)
+from .pdf_reports import generate_evaluation_pdf
+from .custom_integration import (
+    evaluate_custom_classifier,
+    evaluate_custom_regressor,
+    evaluate_model_universal,
+    batch_evaluate_mixed_models,
+    compare_model_performance,
+    create_evaluation_summary,
 )
 
 __all__ = [
@@ -29,4 +38,12 @@ __all__ = [
     "combined_resampling_evaluation",
     "plot_resampling_results",
     "ResamplingResult",
+    "generate_evaluation_pdf",
+    # Custom models evaluation
+    "evaluate_custom_classifier",
+    "evaluate_custom_regressor",
+    "evaluate_model_universal",
+    "batch_evaluate_mixed_models",
+    "compare_model_performance",
+    "create_evaluation_summary",
 ]

@@ -5,6 +5,7 @@ This module provides comprehensive tools for exploring datasets:
 - Bivariate relationships and correlations
 - Multivariate analysis (PCA)
 - Interactive visualizations
+- PDF report generation
 """
 
 from .analyzer import EDAAnalyzer, quick_eda
@@ -23,6 +24,11 @@ from .visualizations import (
     plot_pairwise_scatter,
     plot_pca_scree,
     plot_pca_biplot,
+)
+from .pdf_reports import (
+    generate_univariate_pdf,
+    generate_bivariate_pdf,
+    generate_multivariate_pdf,
 )
 
 __all__ = [
@@ -50,4 +56,8 @@ __all__ = [
     "plot_pairwise_scatter",
     "plot_pca_scree",
     "plot_pca_biplot",
+    # PDF report generation
+    "generate_univariate_pdf",
+    "generate_bivariate_pdf",
+    "generate_multivariate_pdf",
 ]

@@ -234,13 +234,23 @@ def evaluate_main(argv: Optional[list] = None) -> None:
     if not args.data:
         raise ValueError("DATASET_PATH not provided.")
 
-    model_path = os.path.join(MODELS_DIR, f"best_classifier_{args.task}.joblib")
-    test_path = os.path.join(MODELS_DIR, f"testset_{args.task}.parquet")
+    # Import helper function to get latest files
+    from ..data_load import get_latest_model_by_task, get_latest_testset
     
-    if not (os.path.exists(model_path) and os.path.exists(test_path)):
+    # Try to find the latest model and testset for this task
+    model_path = get_latest_model_by_task(args.task, MODELS_DIR)
+    test_path = get_latest_testset(args.task, ROOT_DIR / "processed" / "testsets")
+    
+    if not model_path or not model_path.exists():
         raise FileNotFoundError(
-            f"Model or test set not found. Train first.\n"
-            f"Expected: {model_path} and {test_path}"
+            f"Model not found for task '{args.task}'.\n"
+            f"Train a model first. Looking in: {MODELS_DIR}"
+        )
+    
+    if not test_path or not test_path.exists():
+        raise FileNotFoundError(
+            f"Test set not found for task '{args.task}'.\n"
+            f"Train a model first. Looking in: {ROOT_DIR / 'processed' / 'testsets'}"
         )
 
     # Load model and test data
@@ -248,6 +258,8 @@ def evaluate_main(argv: Optional[list] = None) -> None:
     test_df = pd.read_parquet(test_path)
     
     print(f"\n🔍 Debugging Info:")
+    print(f"Model loaded from: {model_path}")
+    print(f"Test set loaded from: {test_path}")
     print(f"  Test set shape: {test_df.shape}")
     print(f"  Test set columns (first 10): {test_df.columns.tolist()[:10]}")
 

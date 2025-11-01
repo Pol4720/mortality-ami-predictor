@@ -27,7 +27,9 @@ from src.explainability import (
     plot_shap_force,
     get_feature_importance,
     get_sample_shap_values,
+    generate_explainability_pdf,
 )
+from src.reporting import pdf_export_section
 
 # Initialize
 initialize_state()
@@ -292,6 +294,48 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
         
         SHAP values are based on game theory and provide consistent, locally accurate explanations.
         """)
+    
+    # Exportación PDF
+    st.markdown("---")
+    st.subheader("📄 Exportar Reporte de Explicabilidad")
+    
+    if st.session_state.get('shap_values') and st.session_state.get('selected_model_obj'):
+        try:
+            importance_df = get_feature_importance(st.session_state.shap_values)
+            top_features = importance_df.head(10).index.tolist()
+            
+            explainability_data = {
+                'feature_importance': {
+                    'builtin': importance_df
+                },
+                'shap_values': st.session_state.shap_values,
+                'feature_names': feature_cols,
+                'top_features': top_features,
+                'plots': {}
+            }
+            
+            def generate_explainability_report():
+                """Generate explainability PDF report."""
+                from pathlib import Path
+                output_path = Path("reports") / "explainability_report.pdf"
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                return generate_explainability_pdf(
+                    model_name=selected_model_name,
+                    explainability_data=explainability_data,
+                    output_path=output_path
+                )
+            
+            pdf_export_section(
+                generate_explainability_report,
+                section_title="Reporte de Explicabilidad",
+                default_filename="explainability_report.pdf",
+                key_prefix="explainability_report"
+            )
+        
+        except Exception as e:
+            st.error(f"Error preparando datos para PDF: {e}")
+    else:
+        st.info("ℹ️ Calcula valores SHAP primero para generar el reporte PDF")
 
 else:
     st.info("👆 Click 'Compute SHAP Values' to generate explainability visualizations")

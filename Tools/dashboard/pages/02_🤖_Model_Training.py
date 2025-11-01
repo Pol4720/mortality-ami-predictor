@@ -10,6 +10,7 @@ if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
 import streamlit as st
+import pandas as pd
 
 from app import (
     display_model_list,
@@ -19,6 +20,10 @@ from app import (
     sidebar_training_controls,
     train_models_with_progress,
 )
+from app.config import PLOTS_TRAINING_DIR
+from src.data_load import get_latest_plot
+from src.training import generate_training_pdf
+from src.reporting import pdf_export_section
 
 # Initialize
 initialize_state()
@@ -57,6 +62,38 @@ if not data_path or not Path(data_path).exists():
 task = st.session_state.get('target_column', 'mortality')
 if task == 'exitus':
     task = 'mortality'
+
+# Custom models section
+st.sidebar.markdown("---")
+st.sidebar.header("🔧 Custom Models")
+
+use_custom_models = st.sidebar.checkbox(
+    "Include Custom Models",
+    value=False,
+    help="Include custom models in training"
+)
+
+custom_models_list = []
+if use_custom_models:
+    from src.models.persistence import list_saved_models
+    custom_models_dir = root_dir / "models" / "custom"
+    custom_models_dir.mkdir(parents=True, exist_ok=True)
+    
+    available_custom = list_saved_models(custom_models_dir, include_info=True)
+    
+    if available_custom:
+        st.sidebar.markdown(f"**Available: {len(available_custom)} model(s)**")
+        
+        custom_models_list = st.sidebar.multiselect(
+            "Select Custom Models",
+            [m["name"] for m in available_custom],
+            help="Select which custom models to include"
+        )
+        
+        if custom_models_list:
+            st.sidebar.success(f"✅ {len(custom_models_list)} custom model(s) selected")
+    else:
+        st.sidebar.info("No custom models available. Upload in Custom Models page.")
 
 # Training settings
 st.sidebar.markdown("---")
@@ -124,7 +161,7 @@ else:
                 output_buffer = io.StringIO()
                 
                 with redirect_stdout(output_buffer):
-                    save_paths = train_models_with_progress(
+                    save_paths, experiment_results = train_models_with_progress(
                         data_path=data_path,
                         task=task,
                         quick=quick,
@@ -213,6 +250,71 @@ else:
             # 🎉 Success! Show balloons
             st.balloons()
             st.success("🎉 **¡Entrenamiento completado exitosamente!**")
+            
+            # Show statistical comparison if available
+            st.markdown("---")
+            st.subheader("📊 Comparación Estadística de Modelos")
+            
+            # Get statistical results
+            stat_results = experiment_results.get('statistical_comparison', {})
+            
+            if stat_results and len(selected_models) > 1:
+                st.info("""
+                **Análisis Estadístico:**
+                - 🧪 Prueba de normalidad (Shapiro-Wilk) para verificar distribución
+                - 📊 Test paramétrico (t-Student) si los datos son normales
+                - 📈 Test no paramétrico (Mann-Whitney U) si no son normales
+                - ⚖️ Determina si las diferencias entre modelos son estadísticamente significativas (p < 0.05)
+                """)
+                
+                # Display comparison matrix
+                from src.data_load import get_latest_plot
+                matrix_plot = get_latest_plot(PLOTS_TRAINING_DIR, "comparison_matrix")
+                
+                if matrix_plot and matrix_plot.exists():
+                    st.markdown("### Matriz de Comparaciones")
+                    if matrix_plot.suffix == '.png':
+                        st.image(str(matrix_plot), use_container_width=True)
+                    elif matrix_plot.suffix == '.html':
+                        with open(matrix_plot, 'r', encoding='utf-8') as f:
+                            st.components.v1.html(f.read(), height=600, scrolling=True)
+                
+                # Display pairwise comparisons
+                st.markdown("### Comparaciones por Pares")
+                
+                # Create dataframe with results
+                comparison_data = []
+                for (m1, m2), res in stat_results.items():
+                    comparison_data.append({
+                        "Modelo 1": m1,
+                        "Modelo 2": m2,
+                        "Test Usado": res.test_used,
+                        "p-value": f"{res.p_value:.4f}",
+                        "Significativo (p<0.05)": "✅ SÍ" if res.significant else "❌ NO",
+                        "Diferencia de medias": f"{res.mean_diff:.4f}",
+                        "Normalidad M1": "✓" if res.normality_p1 > 0.05 else "✗",
+                        "Normalidad M2": "✓" if res.normality_p2 > 0.05 else "✗"
+                    })
+                
+                if comparison_data:
+                    comparison_df = pd.DataFrame(comparison_data)
+                    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+                    
+                    # Show individual comparison plots
+                    with st.expander("📈 Ver gráficos de comparación individual"):
+                        for (m1, m2), res in stat_results.items():
+                            comp_plot = get_latest_plot(PLOTS_TRAINING_DIR, f"comparison_{m1}_vs_{m2}")
+                            if comp_plot and comp_plot.exists():
+                                st.markdown(f"**{m1} vs {m2}**")
+                                if comp_plot.suffix == '.png':
+                                    st.image(str(comp_plot), use_container_width=True)
+                                elif comp_plot.suffix == '.html':
+                                    with open(comp_plot, 'r', encoding='utf-8') as f:
+                                        st.components.v1.html(f.read(), height=500, scrolling=True)
+            elif len(selected_models) == 1:
+                st.info("ℹ️ Selecciona al menos 2 modelos para ver la comparación estadística.")
+            else:
+                st.warning("⚠️ No se encontraron resultados de comparación estadística.")
         
         except FileNotFoundError as e:
             st.error(f"❌ Dataset file not found: {e}")
@@ -302,3 +404,42 @@ with st.expander("ℹ️ Training Notes"):
     
     📚 Ver documentación completa en `Tools/docs/EXPERIMENT_PIPELINE.md`
     """)
+
+# Exportación PDF
+st.markdown("---")
+st.subheader("📄 Exportar Reporte de Entrenamiento")
+
+if st.session_state.get('training_results'):
+    
+    def generate_training_report():
+        """Generate training PDF report."""
+        from pathlib import Path
+        output_path = Path("reports") / "training_report.pdf"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Get models metadata from trained models or create empty dict
+        models_metadata = {}
+        if 'trained_models' in st.session_state:
+            for model_name, model in st.session_state.trained_models.items():
+                # Create basic metadata from model
+                from src.models.metadata import ModelMetadata
+                models_metadata[model_name] = ModelMetadata(
+                    model_name=model_name,
+                    model_type=type(model).__name__,
+                    hyperparameters=model.get_params() if hasattr(model, 'get_params') else {}
+                )
+        
+        return generate_training_pdf(
+            training_results=st.session_state.training_results,
+            models_metadata=models_metadata,
+            output_path=output_path
+        )
+    
+    pdf_export_section(
+        generate_training_report,
+        section_title="Reporte de Entrenamiento",
+        default_filename="training_report.pdf",
+        key_prefix="training_report"
+    )
+else:
+    st.info("ℹ️ Entrena modelos primero para generar el reporte PDF")

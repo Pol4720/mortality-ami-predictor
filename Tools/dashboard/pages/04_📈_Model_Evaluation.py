@@ -20,16 +20,29 @@ from app import (
     list_saved_models,
 )
 from app.config import get_plotly_config, MODELS_DIR, TESTSETS_DIR, PLOTS_EVALUATION_DIR
-from src.evaluation import evaluate_main
+from src.evaluation import evaluate_main, generate_evaluation_pdf
 from src.evaluation.reporters import plot_confusion_matrix, plot_roc_curve
 from src.evaluation.calibration import plot_calibration_curve
 from src.evaluation.decision_curves import decision_curve_analysis
 from src.config import CONFIG
 from src.data_load import get_latest_testset, save_plot_with_overwrite
+from src.reporting import pdf_export_section
 
 # Initialize
 initialize_state()
 plotly_config = get_plotly_config()
+
+# Helper function to get latest figure (defined at module level)
+def get_latest_figure(pattern: str, figures_dir: Path = PLOTS_EVALUATION_DIR) -> Path | None:
+    """Get the latest figure matching the pattern."""
+    try:
+        files = sorted(
+            figures_dir.glob(pattern),
+            key=lambda p: p.stat().st_mtime
+        )
+        return files[-1] if files else None
+    except Exception:
+        return None
 
 # Page config
 st.title("📈 Model Evaluation")
@@ -69,94 +82,181 @@ if task == 'exitus':
 st.sidebar.markdown("---")
 st.sidebar.header("📊 Evaluation Settings")
 
-saved_models = list_saved_models(task)
-
-if not saved_models:
-    st.error(f"❌ No trained models found for task '{task}'. Please train models first.")
-    st.stop()
-
-selected_model = st.sidebar.selectbox(
-    "Model to Evaluate",
-    list(saved_models.keys()),
-    help="Select a model to evaluate on the test set"
+# Model type selection
+model_source = st.sidebar.radio(
+    "Model Source",
+    ["Standard Models", "Custom Models"],
+    help="Choose between standard trained models or custom uploaded models"
 )
+
+if model_source == "Standard Models":
+    saved_models = list_saved_models(task)
+
+    if not saved_models:
+        st.error(f"❌ No trained models found for task '{task}'. Please train models first.")
+        st.stop()
+
+    selected_model = st.sidebar.selectbox(
+        "Model to Evaluate",
+        list(saved_models.keys()),
+        help="Select a model to evaluate on the test set"
+    )
+    selected_model_path = Path(saved_models[selected_model])
+    is_custom = False
+
+else:  # Custom Models
+    from src.models.persistence import list_saved_models as list_custom_models
+    custom_models_dir = root_dir / "models" / "custom"
+    custom_models_dir.mkdir(parents=True, exist_ok=True)
+    
+    custom_models = list_custom_models(custom_models_dir, include_info=True)
+    
+    if not custom_models:
+        st.error("❌ No custom models found. Please upload models in the Custom Models page.")
+        st.stop()
+    
+    selected_custom = st.sidebar.selectbox(
+        "Custom Model to Evaluate",
+        [m["name"] for m in custom_models],
+        help="Select a custom model to evaluate"
+    )
+    
+    selected_model = selected_custom
+    selected_model_path = custom_models_dir / selected_custom
+    is_custom = True
 
 # Evaluation button
 if st.button("🚀 Run Evaluation", type="primary", width='stretch'):
     try:
-        # Get the selected model path
-        selected_model_path = Path(saved_models[selected_model])
-        
-        # Determine model type from selected model name or path
-        model_type = selected_model  # This should match the model type directory name
-        
-        # Look for the latest testset for this model type
-        testset_path = get_latest_testset(model_type, TESTSETS_DIR)
-        
-        # If not found, try with task name (fallback for old structure)
-        if not testset_path:
-            testset_path = TESTSETS_DIR / f"testset_{task}.parquet"
-        
-        # Verify testset exists
-        if not testset_path or not testset_path.exists():
-            st.error(f"❌ Test set no encontrado para modelo: {model_type}")
-            st.warning("⚠️ Por favor, re-entrena los modelos en la página **Model Training** para generar el test set.")
-            st.stop()
-        
-        # Copy the selected model to best_classifier_{task}.joblib for evaluation
-        # This is needed because evaluate_main expects this specific filename
-        best_classifier_path = MODELS_DIR / f"best_classifier_{task}.joblib"
-        
-        import shutil
-        shutil.copy2(selected_model_path, best_classifier_path)
-        
-        st.info(f"""
-        📋 **Evaluando modelo: {selected_model}**
-        
-        Se ejecutará:
-        - Métricas estándar (AUROC, AUPRC, Accuracy, Precision, Recall, F1, Brier)
-        - **FASE 2: Bootstrap** (1000 iteraciones con reemplazo)
-        - **FASE 2: Jackknife** (leave-one-out)
-        - Intervalos de confianza al 95% para todas las métricas
-        """)
-        
-        # Create a progress container
-        progress_container = st.empty()
-        status_container = st.empty()
-        
-        # Capture stdout to show progress
-        import sys
-        import io
-        from contextlib import redirect_stdout
-        
-        progress_text = []
-        
-        with status_container.container():
-            st.markdown("### 📊 Progreso de la Evaluación")
-            progress_area = st.empty()
+        # Handle custom models differently
+        if is_custom:
+            st.info(f"📋 **Evaluando custom model: {selected_model}**")
             
-            # Redirect stdout
-            output_buffer = io.StringIO()
+            # Load custom model
+            from src.models.persistence import load_custom_model
+            from src.evaluation.custom_integration import evaluate_custom_model
             
-            with redirect_stdout(output_buffer):
-                evaluate_main(["--data", str(data_path), "--task", task])
+            with st.spinner("Loading custom model..."):
+                model_data = load_custom_model(selected_model_path, validate=True)
+                model = model_data["model"]
+                preprocessing = model_data.get("preprocessing")
             
-            # Get the output
-            output = output_buffer.getvalue()
+            st.success("✅ Custom model loaded successfully")
             
-            # Display in expander
-            with st.expander("📋 Ver detalles completos de la evaluación", expanded=False):
-                st.code(output, language="text")
-        
-        st.success(f"""
-        ✅ **Evaluación completada para {selected_model}**
-        
-        - Todas las métricas calculadas (AUROC, AUPRC, Accuracy, Precision, Recall, F1, Brier)
-        - Bootstrap y Jackknife ejecutados con todas las métricas
-        - Intervalos de confianza al 95% disponibles
-        - Gráficos generados
-        """)
-        st.session_state.is_evaluated = True
+            # Prepare test data
+            testset_path = get_latest_testset("custom", TESTSETS_DIR)
+            if not testset_path or not testset_path.exists():
+                testset_path = TESTSETS_DIR / f"testset_{task}.parquet"
+            
+            if not testset_path.exists():
+                st.error("❌ Test set not found. Please train models first.")
+                st.stop()
+            
+            # Load test data
+            import pandas as pd
+            testset_df = pd.read_parquet(testset_path)
+            
+            # Assuming last column is target
+            X_test = testset_df.iloc[:, :-1]
+            y_test = testset_df.iloc[:, -1]
+            
+            # Evaluate custom model
+            with st.spinner("Evaluating custom model..."):
+                eval_results = evaluate_custom_model(
+                    model=model,
+                    X_test=X_test,
+                    y_test=y_test,
+                    preprocessing=preprocessing,
+                    model_name=selected_model
+                )
+            
+            # Display results
+            st.success("✅ Evaluation complete!")
+            
+            st.subheader("📊 Metrics")
+            metrics_df = pd.DataFrame([eval_results["metrics"]])
+            st.dataframe(metrics_df, use_container_width=True)
+            
+            # Display plots if available
+            if "plots" in eval_results:
+                st.subheader("📈 Visualizations")
+                for plot_name, fig in eval_results["plots"].items():
+                    st.plotly_chart(fig, use_container_width=True)
+            
+        else:
+            # Original standard model evaluation code
+            # Get the selected model path (already set above)
+            
+            # Determine model type from selected model name or path
+            model_type = selected_model  # This should match the model type directory name
+            
+            # Look for the latest testset for this model type
+            testset_path = get_latest_testset(model_type, TESTSETS_DIR)
+            
+            # If not found, try with task name (fallback for old structure)
+            if not testset_path:
+                testset_path = TESTSETS_DIR / f"testset_{task}.parquet"
+            
+            # Verify testset exists
+            if not testset_path or not testset_path.exists():
+                st.error(f"❌ Test set no encontrado para modelo: {model_type}")
+                st.warning("⚠️ Por favor, re-entrena los modelos en la página **Model Training** para generar el test set.")
+                st.stop()
+            
+            # Copy the selected model to best_classifier_{task}.joblib for evaluation
+            # This is needed because evaluate_main expects this specific filename
+            best_classifier_path = MODELS_DIR / f"best_classifier_{task}.joblib"
+            
+            import shutil
+            shutil.copy2(selected_model_path, best_classifier_path)
+            
+            st.info(f"""
+            📋 **Evaluando modelo: {selected_model}**
+            
+            Se ejecutará:
+            - Métricas estándar (AUROC, AUPRC, Accuracy, Precision, Recall, F1, Brier)
+            - **FASE 2: Bootstrap** (1000 iteraciones con reemplazo)
+            - **FASE 2: Jackknife** (leave-one-out)
+            - Intervalos de confianza al 95% para todas las métricas
+            """)
+            
+            # Create a progress container
+            progress_container = st.empty()
+            status_container = st.empty()
+            
+            # Capture stdout to show progress
+            import sys
+            import io
+            from contextlib import redirect_stdout
+            
+            progress_text = []
+            
+            with status_container.container():
+                st.markdown("### 📊 Progreso de la Evaluación")
+                progress_area = st.empty()
+                
+                # Redirect stdout
+                output_buffer = io.StringIO()
+                
+                with redirect_stdout(output_buffer):
+                    evaluate_main(["--data", str(data_path), "--task", task])
+                
+                # Get the output
+                output = output_buffer.getvalue()
+                
+                # Display in expander
+                with st.expander("📋 Ver detalles completos de la evaluación", expanded=False):
+                    st.code(output, language="text")
+            
+            st.success(f"""
+            ✅ **Evaluación completada para {selected_model}**
+            
+            - Todas las métricas calculadas (AUROC, AUPRC, Accuracy, Precision, Recall, F1, Brier)
+            - Bootstrap y Jackknife ejecutados con todas las métricas
+            - Intervalos de confianza al 95% disponibles
+            - Gráficos generados
+            """)
+            st.session_state.is_evaluated = True
         
     except Exception as e:
         st.error(f"❌ Evaluation error: {e}")
@@ -213,18 +313,6 @@ if metrics_file and metrics_file.exists():
             width='stretch',
             hide_index=True
         )
-        
-        # Helper function to get latest figure
-        def get_latest_figure(pattern: str) -> Path | None:
-            """Get the latest figure matching the pattern."""
-            try:
-                files = sorted(
-                    figures_dir.glob(pattern),
-                    key=lambda p: p.stat().st_mtime
-                )
-                return files[-1] if files else None
-            except Exception:
-                return None
         
         # Key metrics highlight
         if not metrics_df.empty:
@@ -577,3 +665,51 @@ with st.expander("ℹ️ About Evaluation Metrics"):
     - 💾 **Export**: Use camera icon to download plots as PNG
     - 🔄 **Reset**: Double-click to restore original view
     """)
+
+# Exportación PDF
+st.markdown("---")
+st.subheader("📄 Exportar Reporte de Evaluación")
+
+if st.session_state.get('evaluation_results'):
+    eval_results = st.session_state.evaluation_results
+    
+    # Preparar datos para el PDF
+    models_data = {}
+    for model_name, results in eval_results.items():
+        if isinstance(results, dict):
+            models_data[model_name] = {
+                'metrics': results.get('metrics', {}),
+                'y_true': results.get('y_true'),
+                'y_pred': results.get('y_pred'),
+                'y_proba': results.get('y_proba'),
+                'plots': {}
+            }
+            
+            # Agregar paths de plots si existen
+            for plot_type in ['roc_curve', 'pr_curve', 'calibration_curve', 'decision_curve']:
+                fig_path = get_latest_figure(f"{model_name}_{plot_type}*.png")
+                if fig_path:
+                    models_data[model_name]['plots'][plot_type] = str(fig_path)
+    
+    if models_data:
+        
+        def generate_evaluation_report():
+            """Generate evaluation PDF report."""
+            from pathlib import Path
+            output_path = Path("reports") / "evaluation_report.pdf"
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            return generate_evaluation_pdf(
+                models_data=models_data,
+                output_path=output_path
+            )
+        
+        pdf_export_section(
+            generate_evaluation_report,
+            section_title="Reporte de Evaluación",
+            default_filename="evaluation_report.pdf",
+            key_prefix="evaluation_report"
+        )
+    else:
+        st.info("ℹ️ No hay resultados de evaluación completos para exportar")
+else:
+    st.info("ℹ️ Evalúa modelos primero para generar el reporte PDF")

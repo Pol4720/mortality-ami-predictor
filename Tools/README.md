@@ -13,6 +13,7 @@ End-to-end ML project for predicting in-hospital mortality and ventricular arrhy
 - ✅ **Better Organization**: No file > 500 lines, average ~100 lines per file
 - ✅ **Comprehensive Documentation**: 4+ guides including architecture, migration, and structure docs
 - ✅ **New Organized Structure**: All processed data, models, and plots centralized in `processed/` directory
+- ✅ **Custom Models System**: 🆕 Create, train, and deploy custom sklearn-compatible models with full dashboard integration
 
 ### 📚 Documentation
 
@@ -21,6 +22,7 @@ End-to-end ML project for predicting in-hospital mortality and ventricular arrhy
 - **[Migration Guide](src/MIGRATION_GUIDE.md)** - How to migrate from v1.0 to v2.0
 - **[Project Structure](src/PROJECT_STRUCTURE.md)** - Visual diagrams and architecture
 - **[Modularization Guide](src/MODULARIZATION_GUIDE.md)** - Deep dive into design decisions
+- **[Custom Models Guide](docs/CUSTOM_MODELS_GUIDE.md)** - 🆕 Create and integrate custom ML models
 
 ---
 
@@ -188,6 +190,67 @@ python -m src.evaluate --data $env:DATASET_PATH --task mortality
 ```
 
 Salidas: `reports/final_metrics_mortality.csv`, `reports/final_evaluation.pdf` y figuras en `reports/figures/`.
+
+---
+
+## 🔧 Custom Models System
+
+Create and integrate your own sklearn-compatible models! The system provides full support for:
+- Custom model architectures (ensembles, neural networks, etc.)
+- Seamless training integration with cross-validation
+- Evaluation with standard metrics (ROC-AUC, AUPRC, etc.)
+- SHAP explanations and feature importance
+- Dashboard UI for model management
+
+### Quick Example
+
+```python
+from src.models.custom_base import BaseCustomClassifier
+import numpy as np
+
+class MyCustomClassifier(BaseCustomClassifier):
+    def __init__(self, n_layers=3, learning_rate=0.01):
+        super().__init__(name="MyCustomClassifier")
+        self.n_layers = n_layers
+        self.learning_rate = learning_rate
+        
+    def fit(self, X, y):
+        self.classes_ = np.unique(y)
+        # Your training logic here
+        return self
+    
+    def predict(self, X):
+        # Your prediction logic here
+        return predictions
+    
+    def predict_proba(self, X):
+        # Your probability prediction logic here
+        return probabilities
+
+# Train it
+model = MyCustomClassifier(n_layers=5)
+model.fit(X_train, y_train)
+
+# Save it
+from src.models.persistence import save_custom_model
+save_custom_model(
+    model=model,
+    path="models/custom/my_classifier",
+    feature_names=list(X.columns),
+    metadata={"description": "My custom neural network"}
+)
+```
+
+### Dashboard Integration
+
+1. Navigate to **Custom Models** page (🔧) in the dashboard
+2. Upload your saved model or create new ones
+3. Use in **Model Training** page alongside standard models
+4. Evaluate in **Model Evaluation** page with full metrics
+
+📖 **Complete guide:** [Custom Models Guide](docs/CUSTOM_MODELS_GUIDE.md)
+
+---
 
 ## Dashboard (Streamlit)
 

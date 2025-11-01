@@ -93,16 +93,31 @@ def get_latest_model(model_type: str, models_dir: Path) -> Optional[Path]:
 
 
 def get_latest_testset(model_type: str, testsets_dir: Path) -> Optional[Path]:
-    """Get the most recent testset for a specific model type.
+    """Get the most recent testset for a specific model type or task.
     
     Args:
-        model_type: Model type (e.g., "dtree", "knn", "xgb")
+        model_type: Model type (e.g., "dtree", "knn", "xgb") or task name (e.g., "mortality")
         testsets_dir: Testsets directory (e.g., Tools/processed/models/testsets)
         
     Returns:
         Path to latest testset file, or None if not found
     """
-    return get_latest_file(testsets_dir, f"testset_{model_type}_*.parquet")
+    # Try exact match first (model_type or task)
+    result = get_latest_file(testsets_dir, f"testset_{model_type}_*.parquet")
+    if result:
+        return result
+    
+    # If not found, return the most recent testset file regardless of type
+    if testsets_dir.exists():
+        all_testsets = sorted(
+            testsets_dir.glob("testset_*.parquet"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True
+        )
+        if all_testsets:
+            return all_testsets[0]
+    
+    return None
 
 
 def get_latest_trainset(model_type: str, testsets_dir: Path) -> Optional[Path]:
@@ -116,6 +131,113 @@ def get_latest_trainset(model_type: str, testsets_dir: Path) -> Optional[Path]:
         Path to latest trainset file, or None if not found
     """
     return get_latest_file(testsets_dir, f"trainset_{model_type}_*.parquet")
+
+
+def get_latest_model_by_task(task: str, models_dir: Path) -> Optional[Path]:
+    """Get the most recent model for any model type trained on a specific task.
+    
+    Searches across all model type subdirectories (dtree, knn, xgb, etc.) and
+    returns the most recently saved model. Since models are saved without task name,
+    it returns the most recent model file found across all types.
+    
+    Args:
+        task: Task name (e.g., "mortality", "arrhythmia") - currently not used in filename
+        models_dir: Base models directory (e.g., Tools/processed/models)
+        
+    Returns:
+        Path to latest model file for the task, or None if not found
+    """
+    all_models = []
+    
+    # Search in all model type subdirectories
+    if models_dir.exists():
+        for model_dir in models_dir.iterdir():
+            if model_dir.is_dir() and not model_dir.name.startswith('.'):
+                # Look for all model files (format: model_{type}_{timestamp}.joblib)
+                for model_file in model_dir.glob("model_*.joblib"):
+                    all_models.append(model_file)
+    
+    if not all_models:
+        return None
+    
+    # Return the most recent one based on modification time
+    return max(all_models, key=lambda p: p.stat().st_mtime)
+
+
+def get_model_metadata(model_path: Path) -> Optional[Path]:
+    """Get the metadata file associated with a model.
+    
+    Args:
+        model_path: Path to model file (.joblib)
+        
+    Returns:
+        Path to metadata file if exists, None otherwise
+    """
+    metadata_path = model_path.with_suffix('.metadata.json')
+    return metadata_path if metadata_path.exists() else None
+
+
+def load_model_with_metadata(model_path: Path):
+    """Load a model and its metadata.
+    
+    Args:
+        model_path: Path to model file
+        
+    Returns:
+        Tuple of (model, metadata) where metadata is ModelMetadata or None
+    """
+    import joblib
+    from ..models.metadata import ModelMetadata
+    
+    # Load model
+    model = joblib.load(model_path)
+    
+    # Try to load metadata
+    metadata_path = get_model_metadata(model_path)
+    metadata = None
+    if metadata_path:
+        try:
+            metadata = ModelMetadata.load(metadata_path)
+        except Exception as e:
+            print(f"Warning: Could not load metadata: {e}")
+    
+    return model, metadata
+
+
+def get_latest_plot(plots_dir: Path, base_name: str) -> Optional[Path]:
+    """Get the most recent plot file (PNG or HTML) matching a base name.
+    
+    Args:
+        plots_dir: Directory containing plots
+        base_name: Base name of the plot (e.g., "comparison_matrix", "roc_curve")
+        
+    Returns:
+        Path to latest plot file (.png or .html), or None if not found
+    """
+    if not plots_dir.exists():
+        return None
+    
+    # Try PNG first
+    png_file = get_latest_file(plots_dir, f"{base_name}_*.png")
+    if png_file:
+        return png_file
+    
+    # Try exact match PNG
+    png_exact = plots_dir / f"{base_name}.png"
+    if png_exact.exists():
+        return png_exact
+    
+    # Try HTML
+    html_file = get_latest_file(plots_dir, f"{base_name}_*.html")
+    if html_file:
+        return html_file
+    
+    # Try exact match HTML
+    html_exact = plots_dir / f"{base_name}.html"
+    if html_exact.exists():
+        return html_exact
+    
+    return None
 
 
 def get_latest_cleaned_dataset(cleaned_datasets_dir: Path) -> Optional[Path]:
@@ -206,15 +328,17 @@ def save_model_with_cleanup(
     model,
     model_type: str,
     models_dir: Path,
-    keep_n_latest: int = 1
+    keep_n_latest: int = 1,
+    metadata = None
 ) -> Path:
-    """Save model and optionally clean up old versions.
+    """Save model with metadata and optionally clean up old versions.
     
     Args:
         model: Model object to save (must be joblib-serializable)
         model_type: Model type (e.g., "dtree", "knn", "xgb")
         models_dir: Base models directory (e.g., Tools/processed/models)
         keep_n_latest: Number of latest models to keep (default: 1)
+        metadata: Optional ModelMetadata object to save alongside the model
         
     Returns:
         Path where model was saved
@@ -229,7 +353,13 @@ def save_model_with_cleanup(
     save_path = model_dir / f"model_{model_type}_{timestamp}.joblib"
     joblib.dump(model, save_path)
     
-    # Clean up old models
+    # Save metadata if provided
+    if metadata is not None:
+        metadata_path = model_dir / f"model_{model_type}_{timestamp}.metadata.json"
+        metadata.model_file_path = str(save_path)
+        metadata.save(metadata_path, format="json")
+    
+    # Clean up old models and their metadata
     if keep_n_latest > 0:
         old_models = sorted(
             model_dir.glob(f"model_{model_type}_*.joblib"),
@@ -241,6 +371,10 @@ def save_model_with_cleanup(
         for old_model in old_models[keep_n_latest:]:
             try:
                 old_model.unlink()
+                # Also delete associated metadata file
+                metadata_file = old_model.with_suffix('.metadata.json')
+                if metadata_file.exists():
+                    metadata_file.unlink()
             except Exception:
                 pass  # Ignore errors
     

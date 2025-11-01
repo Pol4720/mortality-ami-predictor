@@ -276,25 +276,14 @@ def run_rigorous_experiment_pipeline(
     }
     model_type = model_type_map.get(best_name, best_name)
     
-    # Save the final trained model using new structure
+    # Save test/train sets first to get paths for metadata
     from pathlib import Path
     models_dir = Path(output_dir)
-    final_model_path = save_model_with_cleanup(
-        final_pipeline,
-        model_type,
-        models_dir,
-        keep_n_latest=1  # Keep only the latest model for each type
-    )
-    results['final_model_path'] = str(final_model_path)
+    testsets_dir = models_dir / "testsets"
     
-    if progress_callback:
-        progress_callback(f"Modelo final guardado: {final_model_path}", 0.9)
-    
-    # If test set provided, save it for later evaluation with proper naming
     if test_set is not None:
         X_test, y_test = test_set
         test_df = pd.concat([X_test, y_test], axis=1)
-        testsets_dir = models_dir / "testsets"
         
         # Save testset and trainset with timestamp
         test_path = save_dataset_with_timestamp(
@@ -319,7 +308,74 @@ def run_rigorous_experiment_pipeline(
         cleanup_old_testsets(model_type, testsets_dir, keep_n_latest=1)
         
         if progress_callback:
-            progress_callback(f"Test/Train sets guardados en: {testsets_dir}", 0.95)
+            progress_callback(f"Test/Train sets guardados en: {testsets_dir}", 0.92)
+    else:
+        # If no test set, create dummy paths
+        test_path = None
+        train_path = None
+        test_df = None
+        train_df = pd.concat([X, y], axis=1)
+    
+    # Create and save metadata
+    if progress_callback:
+        progress_callback("💾 Guardando metadatos del modelo...", 0.94)
+    
+    from ..models import create_metadata_from_training
+    import time
+    
+    # Get model type string
+    model_type_str = str(type(best_model).__name__)
+    
+    # Get hyperparameters
+    if hasattr(best_model, 'get_params'):
+        model_params = best_model.get_params()
+    else:
+        model_params = {}
+    
+    # Training configuration
+    training_config = {
+        'duration': results.get('training_duration', 0.0),
+        'cv_strategy': f"RepeatedStratifiedKFold(n_splits={n_splits}, n_repeats={n_repeats})",
+        'n_splits': n_splits,
+        'n_repeats': n_repeats,
+        'total_runs': n_splits * n_repeats,
+        'scoring': scoring,
+        'preprocessing': preprocessing_config.__dict__ if preprocessing_config else {},
+        'random_seed': RANDOM_SEED
+    }
+    
+    # Create metadata
+    metadata = create_metadata_from_training(
+        model_name=best_name,
+        model_type=model_type_str,
+        task=y.name if hasattr(y, 'name') else 'unknown',
+        model_file_path='',  # Will be set when saving
+        train_set_path=str(train_path) if train_path else '',
+        test_set_path=str(test_path) if test_path else '',
+        train_df=train_df,
+        test_df=test_df if test_df is not None else train_df.head(0),
+        target_column=y.name if hasattr(y, 'name') else 'target',
+        hyperparameters=model_params,
+        cv_results=cv_results[best_name],
+        training_config=training_config,
+        learning_curve_path=results.get('learning_curves_paths', {}).get(best_name),
+        statistical_comparison=results.get('statistical_comparison'),
+        notes=f"Best model selected from {len(models)} candidates"
+    )
+    
+    # Save the final trained model with metadata
+    final_model_path = save_model_with_cleanup(
+        final_pipeline,
+        model_type,
+        models_dir,
+        keep_n_latest=1,
+        metadata=metadata
+    )
+    results['final_model_path'] = str(final_model_path)
+    results['metadata_path'] = str(final_model_path.with_suffix('.metadata.json'))
+    
+    if progress_callback:
+        progress_callback(f"✅ Modelo y metadatos guardados: {final_model_path}", 0.96)
     
     if progress_callback:
         progress_callback("✅ Pipeline de entrenamiento completado exitosamente!", 1.0)

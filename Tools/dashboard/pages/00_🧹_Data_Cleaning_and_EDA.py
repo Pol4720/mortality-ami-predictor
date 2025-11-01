@@ -34,6 +34,8 @@ from dashboard.app.config import CLEANED_DATASETS_DIR, PLOTS_EDA_DIR
 from src.config import CONFIG
 from src.cleaning import CleaningConfig, DataCleaner, quick_clean
 from src.eda import EDAAnalyzer, quick_eda
+from src.eda import generate_univariate_pdf, generate_bivariate_pdf, generate_multivariate_pdf
+from src.reporting import pdf_export_section
 
 warnings.filterwarnings('ignore')
 
@@ -878,6 +880,28 @@ def univariate_analysis_page():
         with tab2:
             fig = analyzer.plot_distribution(selected_var, plot_type='pie')
             st.plotly_chart(fig, use_container_width=True)
+    
+    # Exportación PDF
+    st.markdown("---")
+    
+    def generate_univariate_report():
+        """Generate univariate analysis PDF report."""
+        from pathlib import Path
+        output_path = Path("reports") / "univariate_eda.pdf"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        return generate_univariate_pdf(
+            df=df,
+            numerical_cols=analyzer.numeric_cols,
+            categorical_cols=analyzer.categorical_cols,
+            output_path=output_path
+        )
+    
+    pdf_export_section(
+        generate_univariate_report,
+        section_title="Análisis Univariado",
+        default_filename="univariate_eda.pdf",
+        key_prefix="univariate_eda"
+    )
 
 
 def bivariate_analysis_page():
@@ -1001,6 +1025,29 @@ def bivariate_analysis_page():
                     cat_var = var2 if var1 in analyzer.numeric_cols else var1
                     group_stats = df.groupby(cat_var)[num_var].describe()
                     st.dataframe(group_stats, width='stretch')
+    
+    # Exportación PDF
+    st.markdown("---")
+    if analyzer.bivariate_results:
+        
+        def generate_bivariate_report():
+            """Generate bivariate analysis PDF report."""
+            from pathlib import Path
+            output_path = Path("reports") / "bivariate_eda.pdf"
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            return generate_bivariate_pdf(
+                df=df,
+                numerical_cols=analyzer.numeric_cols,
+                output_path=output_path,
+                correlation_threshold=0.3
+            )
+        
+        pdf_export_section(
+            generate_bivariate_report,
+            section_title="Análisis Bivariado",
+            default_filename="bivariate_eda.pdf",
+            key_prefix="bivariate_eda"
+        )
 
 
 def multivariate_analysis_page():
@@ -1307,6 +1354,28 @@ def multivariate_analysis_page():
                         with st.expander("Ver detalles del error"):
                             import traceback
                             st.code(traceback.format_exc())
+    
+    # Exportación PDF
+    st.markdown("---")
+    
+    def generate_multivariate_report():
+        """Generate multivariate analysis PDF report."""
+        from pathlib import Path
+        output_path = Path("reports") / "multivariate_eda.pdf"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        return generate_multivariate_pdf(
+            df=df,
+            numerical_cols=analyzer.numeric_cols,
+            output_path=output_path,
+            n_components=min(5, len(analyzer.numeric_cols)) if len(analyzer.numeric_cols) > 1 else None
+        )
+    
+    pdf_export_section(
+        generate_multivariate_report,
+        section_title="Análisis Multivariado",
+        default_filename="multivariate_eda.pdf",
+        key_prefix="multivariate_eda"
+    )
 
 
 def quality_report_page():

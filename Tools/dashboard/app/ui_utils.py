@@ -370,9 +370,11 @@ def train_models_with_progress(
             if lc_path.exists():
                 lc_figure_paths[model_name] = str(lc_path)
         
-
         st.session_state.learning_curve_paths = lc_figure_paths
         st.session_state.learning_curve_results = learning_curves
+    
+    # Store experiment results for statistical comparison display
+    st.session_state.experiment_results = experiment_results
     
     status_text.success(
         f"✅ Pipeline de entrenamiento completado!\n"
@@ -384,7 +386,7 @@ def train_models_with_progress(
     
     progress_bar.progress(1.0)
     
-    return save_paths
+    return save_paths, experiment_results
 
 
 def list_saved_models(task: str) -> dict[str, str]:
