@@ -54,3 +54,6 @@ logs/
 *.tmp
 *.temp
 .cache/
+
+# MkDocs build output
+site/
