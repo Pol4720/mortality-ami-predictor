@@ -358,28 +358,71 @@ def validate_loaded_model(
             )
             result["is_valid"] = False
     
-    # Check feature names consistency
-    if "feature_names" in metadata:
-        saved_features = metadata["feature_names"]
+    # Check feature names consistency (CRITICAL FOR PREDICTION)
+    if "feature_names" in metadata or metadata.get("dataset", {}).get("feature_names"):
+        # Get saved features from metadata (prefer dataset.feature_names)
+        saved_features = metadata.get("dataset", {}).get("feature_names") or metadata.get("feature_names", [])
         
         # Try to get feature names from model
         model_features = None
         if hasattr(model, 'feature_names_in_'):
-            model_features = model.feature_names_in_
+            model_features = list(model.feature_names_in_)
         elif hasattr(model, 'feature_names'):
-            model_features = model.feature_names
+            model_features = list(model.feature_names)
+        # For pipelines, check last step
+        elif hasattr(model, 'steps') and len(model.steps) > 0:
+            last_step = model.steps[-1][1]
+            if hasattr(last_step, 'feature_names_in_'):
+                model_features = list(last_step.feature_names_in_)
         
         if model_features is not None:
+            # Compare feature counts
             if len(saved_features) != len(model_features):
                 result["errors"].append(
-                    f"Feature count mismatch: saved {len(saved_features)}, "
-                    f"model expects {len(model_features)}"
+                    f"CRITICAL: Feature count mismatch! "
+                    f"Metadata has {len(saved_features)} features, "
+                    f"but model expects {len(model_features)} features. "
+                    f"Model was likely trained with different data than what's recorded in metadata."
                 )
                 result["is_valid"] = False
+            # Compare feature names
+            elif set(saved_features) != set(model_features):
+                missing_in_model = set(saved_features) - set(model_features)
+                extra_in_model = set(model_features) - set(saved_features)
+                
+                error_msg = "CRITICAL: Feature names mismatch between metadata and model!"
+                if missing_in_model:
+                    error_msg += f"\n  Missing in model: {list(missing_in_model)[:10]}"
+                if extra_in_model:
+                    error_msg += f"\n  Extra in model: {list(extra_in_model)[:10]}"
+                
+                result["errors"].append(error_msg)
+                result["is_valid"] = False
+            # Check feature order (important for some models)
             elif list(saved_features) != list(model_features):
                 result["warnings"].append(
-                    "Feature names differ between saved and model"
+                    "Feature order differs between metadata and model. "
+                    "This may cause issues with some models that depend on feature order."
                 )
+                # Auto-correct metadata with model's feature names
+                result["warnings"].append(
+                    "Auto-correcting metadata with model's feature names and order."
+                )
+                metadata["feature_names"] = model_features
+                if "dataset" in metadata and "feature_names" in metadata["dataset"]:
+                    metadata["dataset"]["feature_names"] = model_features
+            else:
+                # Perfect match!
+                result["info"] = f"✓ Feature validation passed: {len(model_features)} features match perfectly"
+        else:
+            result["warnings"].append(
+                "Could not extract feature_names_in_ from model for validation. "
+                "Prediction may fail if dataset has incompatible features."
+            )
+    else:
+        result["warnings"].append(
+            "No feature names found in metadata. Cannot validate feature compatibility."
+        )
     
     return result
 

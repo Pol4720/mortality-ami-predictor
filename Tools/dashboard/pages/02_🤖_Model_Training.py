@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from datetime import datetime
 
 # Add parent directories to path
 root_dir = Path(__file__).parents[2]
@@ -124,7 +125,36 @@ else:
 
 st.markdown("---")
 
+# Optional: Variable selection/removal before training
+st.markdown("---")
+st.subheader("📋 Variable Selection (Optional)")
+
+with st.expander("🔧 Remove Variables Before Training", expanded=False):
+    st.info("""
+    **Importante:** Si eliminas variables aquí, el modelo se entrenará SOLO con las variables restantes.
+    Los metadatos del modelo reflejarán exactamente las variables usadas.
+    """)
+    
+    # Get all columns except target
+    all_features = [col for col in df.columns if col != task]
+    
+    # Multi-select for variables to KEEP
+    selected_features = st.multiselect(
+        "Selecciona las variables a MANTENER (deja vacío para usar todas)",
+        options=all_features,
+        default=[],  # Empty by default means keep all
+        help="Solo las variables seleccionadas aquí serán usadas para entrenar el modelo"
+    )
+    
+    if selected_features:
+        st.success(f"✅ Se usarán {len(selected_features)} variables de {len(all_features)} disponibles")
+        st.session_state.selected_features_for_training = selected_features
+    else:
+        st.info(f"ℹ️ Se usarán todas las {len(all_features)} variables disponibles")
+        st.session_state.selected_features_for_training = None
+
 # Training section
+st.markdown("---")
 st.subheader("Train Models")
 
 if not selected_models:
@@ -145,6 +175,26 @@ else:
         st.session_state.is_training = True
         
         try:
+            # Prepare the actual DataFrame to use for training
+            df_for_training = df.copy()
+            
+            # Apply variable selection if user specified
+            selected_features = st.session_state.get('selected_features_for_training')
+            if selected_features:
+                # Keep only selected features + target
+                cols_to_keep = selected_features + [task]
+                df_for_training = df_for_training[cols_to_keep]
+                st.info(f"🔧 Entrenando con {len(selected_features)} variables seleccionadas (de {len(df.columns)-1} originales)")
+            else:
+                st.info(f"ℹ️ Entrenando con todas las {len(df.columns)-1} variables disponibles")
+            
+            # Save the DataFrame that will actually be used for training
+            # This ensures metadata will reflect the correct features
+            temp_dir = Path(tempfile.gettempdir())
+            training_data_path = temp_dir / f"streamlit_training_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            df_for_training.to_csv(training_data_path, index=False)
+            st.success(f"✅ Dataset para entrenamiento guardado: {len(df_for_training.columns)} columnas (incluyendo target)")
+            
             # Create containers for progress display
             progress_container = st.empty()
             status_container = st.empty()
@@ -162,7 +212,7 @@ else:
                 
                 with redirect_stdout(output_buffer):
                     save_paths, experiment_results = train_models_with_progress(
-                        data_path=data_path,
+                        data_path=str(training_data_path),  # Use the actual training dataset
                         task=task,
                         quick=quick,
                         imputer_mode=imputer_mode,
@@ -176,10 +226,24 @@ else:
                 with st.expander("📋 Ver detalles completos del entrenamiento", expanded=False):
                     st.code(output, language="text")
             
+            # Clean up temporary training dataset
+            try:
+                if training_data_path.exists():
+                    training_data_path.unlink()
+            except Exception:
+                pass  # Ignore cleanup errors
+            
             # Update session state
             set_state("is_trained", True)
             set_state("last_train_task", task)
             set_state("last_train_models", list(save_paths.keys()))
+            
+            # Store training results for PDF report
+            st.session_state.training_results = experiment_results
+            
+            # Store trained models references
+            if 'trained_models' not in st.session_state:
+                st.session_state.trained_models = {}
             
             st.success(f"""
             ✅ **Entrenamiento completado exitosamente**
@@ -417,20 +481,65 @@ if st.session_state.get('training_results'):
         output_path = Path("reports") / "training_report.pdf"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # Get models metadata from trained models or create empty dict
+        # Get training results
+        training_res = st.session_state.training_results
+        
+        # Extract models metadata from cv_results
         models_metadata = {}
-        if 'trained_models' in st.session_state:
-            for model_name, model in st.session_state.trained_models.items():
-                # Create basic metadata from model
-                from src.models.metadata import ModelMetadata
-                models_metadata[model_name] = ModelMetadata(
-                    model_name=model_name,
-                    model_type=type(model).__name__,
-                    hyperparameters=model.get_params() if hasattr(model, 'get_params') else {}
-                )
+        cv_results = training_res.get('cv_results', {})
+        
+        for model_name in cv_results.keys():
+            # Create basic metadata from CV results
+            from src.models.metadata import ModelMetadata, PerformanceMetrics, TrainingMetadata, DatasetMetadata
+            
+            cv_data = cv_results[model_name]
+            
+            # Performance metrics
+            perf_metrics = PerformanceMetrics(
+                mean_score=cv_data['mean_score'],
+                std_score=cv_data['std_score'],
+                min_score=cv_data.get('min_score', 0.0),
+                max_score=cv_data.get('max_score', 1.0),
+                all_scores=cv_data.get('all_scores', [])
+            )
+            
+            # Basic training metadata
+            train_metadata = TrainingMetadata(
+                training_date=datetime.now().isoformat(),
+                training_duration_seconds=0.0,
+                cv_strategy="RepeatedStratifiedKFold",
+                n_cv_folds=cv_data.get('n_splits', 10),
+                n_cv_repeats=cv_data.get('n_repeats', 10),
+                total_cv_runs=cv_data.get('n_runs', 100),
+                scoring_metric=cv_data.get('scoring', 'roc_auc'),
+                preprocessing_config={},
+                random_seed=42
+            )
+            
+            # Create metadata
+            models_metadata[model_name] = ModelMetadata(
+                model_name=model_name,
+                model_type=model_name,
+                task="classification",
+                model_file_path="",
+                dataset=DatasetMetadata(
+                    train_set_path="",
+                    test_set_path="",
+                    train_samples=0,
+                    test_samples=0,
+                    n_features=0,
+                    target_column="",
+                    class_distribution_train={},
+                    class_distribution_test={},
+                    feature_names=[]
+                ),
+                training=train_metadata,
+                hyperparameters={},
+                performance=perf_metrics
+            )
         
         return generate_training_pdf(
-            training_results=st.session_state.training_results,
+            training_results=training_res,
             models_metadata=models_metadata,
             output_path=output_path
         )

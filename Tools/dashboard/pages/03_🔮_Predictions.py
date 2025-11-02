@@ -1,6 +1,7 @@
 """Predictions page."""
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -70,13 +71,125 @@ st.sidebar.success(f"✅ Using: {selected_model_name}")
 try:
     model = joblib.load(model_path)
     st.success(f"✅ Model loaded: {selected_model_name}")
+    
+    # Load model metadata if available
+    metadata_path = Path(str(model_path).replace('.joblib', '.metadata.json'))
+    model_metadata = None
+    if metadata_path.exists():
+        try:
+            with open(metadata_path, 'r') as f:
+                model_metadata = json.load(f)
+            st.info("ℹ️ Model metadata loaded successfully")
+        except Exception as e:
+            st.warning(f"⚠️ Could not load metadata: {e}")
+    
+    # Determine target column
+    target_col = CONFIG.target_column if task == "mortality" else CONFIG.arrhythmia_column
+    
+    # Try to get expected features from multiple sources (in priority order)
+    expected_features = None
+    feature_source = "unknown"
+    
+    # 1. Try from model metadata (most reliable)
+    if model_metadata:
+        if model_metadata.get('dataset', {}).get('feature_names'):
+            expected_features = model_metadata['dataset']['feature_names']
+            feature_source = "metadata"
+        elif model_metadata.get('feature_names'):
+            expected_features = model_metadata['feature_names']
+            feature_source = "metadata"
+    
+    # 2. Try from model object itself
+    if not expected_features:
+        if hasattr(model, 'feature_names_in_'):
+            expected_features = list(model.feature_names_in_)
+            feature_source = "model.feature_names_in_"
+        elif hasattr(model, 'named_steps'):
+            # For pipelines, check the last step
+            for step_name, step in reversed(list(model.named_steps.items())):
+                if hasattr(step, 'feature_names_in_'):
+                    expected_features = list(step.feature_names_in_)
+                    feature_source = f"pipeline.{step_name}.feature_names_in_"
+                    break
+    
+    # Display feature information
+    if expected_features:
+        st.info(f"ℹ️ Model expects {len(expected_features)} features (source: {feature_source})")
+        
+        # Display metadata info if available
+        if model_metadata:
+            with st.expander("📋 Model Metadata"):
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Training Date", model_metadata.get('created_at', 'N/A')[:10])
+                with col2:
+                    n_features = model_metadata.get('dataset', {}).get('n_features', 'N/A')
+                    st.metric("Features", n_features)
+                with col3:
+                    perf = model_metadata.get('performance', {})
+                    mean_score = perf.get('mean_score', 0.0)
+                    st.metric("CV Score", f"{mean_score:.4f}" if mean_score else "N/A")
+                
+                # Training info
+                training = model_metadata.get('training', {})
+                if training:
+                    st.write("**Training Configuration:**")
+                    st.write(f"- CV Strategy: {training.get('cv_strategy', 'N/A')}")
+                    st.write(f"- Total Runs: {training.get('total_cv_runs', 'N/A')}")
+                    st.write(f"- Scoring: {training.get('scoring_metric', 'N/A')}")
+        
+        # Check if current data has these features
+        missing_features = set(expected_features) - set(df.columns)
+        extra_features = set(df.columns) - set(expected_features) - {target_col}
+        
+        if missing_features:
+            st.error(f"❌ **INCOMPATIBLE DATASET:** Current dataset is missing {len(missing_features)} feature(s) that the model expects")
+            with st.expander("🔍 Ver características faltantes (primeras 20)"):
+                st.write(sorted(list(missing_features))[:20])
+            
+            st.warning("""
+            **Soluciones posibles:**
+            1. Cargar el dataset original con el que se entrenó este modelo
+            2. Seleccionar otro modelo compatible con el dataset actual
+            3. Verificar que las variables no hayan sido renombradas
+            """)
+            
+            # Try to find training data
+            training_data_path = Path(str(model_path).replace('.joblib', '_training_data.parquet'))
+            if not training_data_path.exists():
+                training_data_path = Path(str(model_path).replace('.joblib', '_training_data.csv'))
+            
+            if training_data_path.exists():
+                st.info(f"💡 Dataset de entrenamiento encontrado: `{training_data_path.name}`")
+                if st.button("Cargar dataset de entrenamiento"):
+                    try:
+                        if training_data_path.suffix == '.parquet':
+                            df = pd.read_parquet(training_data_path)
+                        else:
+                            df = pd.read_csv(training_data_path)
+                        st.session_state.df = df
+                        st.success("✅ Dataset de entrenamiento cargado")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error cargando dataset: {e}")
+            
+            st.stop()
+        
+        if extra_features:
+            st.info(f"ℹ️ Current dataset has {len(extra_features)} extra feature(s) that will be ignored")
+            # Filter to only use expected features
+            feature_cols = [c for c in expected_features if c in df.columns]
+        else:
+            feature_cols = expected_features
+    else:
+        # Fallback: use all non-target columns
+        st.warning("⚠️ Could not determine expected features from model or metadata. Using all available features.")
+        feature_cols = [c for c in df.columns if c not in {CONFIG.target_column, CONFIG.arrhythmia_column}]
+    
 except Exception as e:
     st.error(f"❌ Error loading model: {e}")
+    st.exception(e)
     st.stop()
-
-# Get feature columns
-target_col = CONFIG.target_column if task == "mortality" else CONFIG.arrhythmia_column
-feature_cols = [c for c in df.columns if c not in {CONFIG.target_column, CONFIG.arrhythmia_column}]
 
 st.markdown("---")
 

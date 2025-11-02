@@ -329,7 +329,8 @@ def save_model_with_cleanup(
     model_type: str,
     models_dir: Path,
     keep_n_latest: int = 1,
-    metadata = None
+    metadata = None,
+    training_data = None
 ) -> Path:
     """Save model with metadata and optionally clean up old versions.
     
@@ -339,6 +340,7 @@ def save_model_with_cleanup(
         models_dir: Base models directory (e.g., Tools/processed/models)
         keep_n_latest: Number of latest models to keep (default: 1)
         metadata: Optional ModelMetadata object to save alongside the model
+        training_data: Optional DataFrame with the EXACT data used for training (after feature selection)
         
     Returns:
         Path where model was saved
@@ -359,7 +361,17 @@ def save_model_with_cleanup(
         metadata.model_file_path = str(save_path)
         metadata.save(metadata_path, format="json")
     
-    # Clean up old models and their metadata
+    # Save training data if provided (this is the ACTUAL data used to train, with selected features)
+    if training_data is not None:
+        training_data_path = model_dir / f"training_data_{model_type}_{timestamp}.parquet"
+        try:
+            training_data.to_parquet(training_data_path, index=False)
+        except Exception as e:
+            # Fallback to CSV if parquet fails
+            training_data_path = model_dir / f"training_data_{model_type}_{timestamp}.csv"
+            training_data.to_csv(training_data_path, index=False)
+    
+    # Clean up old models, metadata, and training data
     if keep_n_latest > 0:
         old_models = sorted(
             model_dir.glob(f"model_{model_type}_*.joblib"),
@@ -375,6 +387,13 @@ def save_model_with_cleanup(
                 metadata_file = old_model.with_suffix('.metadata.json')
                 if metadata_file.exists():
                     metadata_file.unlink()
+                # Also delete associated training data
+                ts = extract_timestamp_from_filename(old_model.name)
+                if ts:
+                    for ext in ['parquet', 'csv']:
+                        training_data_file = model_dir / f"training_data_{model_type}_{ts}.{ext}"
+                        if training_data_file.exists():
+                            training_data_file.unlink()
             except Exception:
                 pass  # Ignore errors
     

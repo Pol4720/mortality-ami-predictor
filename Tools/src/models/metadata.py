@@ -395,6 +395,7 @@ def create_metadata_from_training(
     learning_curve_path: Optional[str] = None,
     statistical_comparison: Optional[Dict] = None,
     notes: str = "",
+    actual_feature_names: Optional[List[str]] = None,
 ) -> ModelMetadata:
     """Create ModelMetadata from training results.
     
@@ -416,6 +417,7 @@ def create_metadata_from_training(
         learning_curve_path: Optional path to learning curve plot
         statistical_comparison: Optional statistical comparison results
         notes: Additional notes
+        actual_feature_names: ACTUAL features from trained model (from feature_names_in_)
         
     Returns:
         ModelMetadata instance
@@ -433,16 +435,24 @@ def create_metadata_from_training(
     train_dist = {str(k): float(v) for k, v in train_dist.items()}
     test_dist = {str(k): float(v) for k, v in test_dist.items()}
     
+    # Use ACTUAL feature names from trained model if provided, otherwise fallback to DataFrame columns
+    if actual_feature_names is not None:
+        feature_names_to_store = actual_feature_names
+        n_features = len(actual_feature_names)
+    else:
+        feature_names_to_store = train_df.drop(columns=[target_column]).columns.tolist()
+        n_features = len(train_df.columns) - 1  # Exclude target
+    
     dataset_meta = DatasetMetadata(
         train_set_path=str(train_set_path),
         test_set_path=str(test_set_path),
         train_samples=len(train_df),
         test_samples=len(test_df),
-        n_features=len(train_df.columns) - 1,  # Exclude target
+        n_features=n_features,
         target_column=target_column,
         class_distribution_train=train_dist,
         class_distribution_test=test_dist,
-        feature_names=train_df.drop(columns=[target_column]).columns.tolist()
+        feature_names=feature_names_to_store
     )
     
     # Training metadata

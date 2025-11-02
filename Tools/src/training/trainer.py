@@ -264,6 +264,34 @@ def run_rigorous_experiment_pipeline(
     # Fit on all training data
     final_pipeline.fit(X, y)
     
+    # CRITICAL: Extract actual feature names from the fitted pipeline
+    # This ensures metadata reflects the EXACT features the model expects
+    try:
+        # Try to get feature_names_in_ from the pipeline
+        if hasattr(final_pipeline, 'feature_names_in_'):
+            actual_feature_names = final_pipeline.feature_names_in_.tolist()
+        # Try from the last step (classifier)
+        elif hasattr(final_pipeline.steps[-1][1], 'feature_names_in_'):
+            actual_feature_names = final_pipeline.steps[-1][1].feature_names_in_.tolist()
+        # Try from preprocessor step
+        elif hasattr(final_pipeline.steps[0][1], 'feature_names_in_'):
+            actual_feature_names = final_pipeline.steps[0][1].feature_names_in_.tolist()
+        else:
+            # Fallback to X columns
+            actual_feature_names = X.columns.tolist()
+    except Exception as e:
+        if progress_callback:
+            progress_callback(f"⚠️ Could not extract feature_names_in_, using X.columns: {e}", 0.88)
+        actual_feature_names = X.columns.tolist()
+    
+    # Validate that feature names match
+    if set(actual_feature_names) != set(X.columns.tolist()):
+        if progress_callback:
+            progress_callback(f"⚠️ Feature mismatch detected! Model features: {len(actual_feature_names)}, X features: {len(X.columns)}", 0.89)
+    else:
+        if progress_callback:
+            progress_callback(f"✅ Feature validation passed: {len(actual_feature_names)} features", 0.89)
+    
     # Extract model type from best_name for proper directory organization
     # Map model names to directory names
     model_type_map = {
@@ -344,7 +372,7 @@ def run_rigorous_experiment_pipeline(
         'random_seed': RANDOM_SEED
     }
     
-    # Create metadata
+    # Create metadata WITH ACTUAL FEATURES FROM TRAINED MODEL
     metadata = create_metadata_from_training(
         model_name=best_name,
         model_type=model_type_str,
@@ -360,16 +388,22 @@ def run_rigorous_experiment_pipeline(
         training_config=training_config,
         learning_curve_path=results.get('learning_curves_paths', {}).get(best_name),
         statistical_comparison=results.get('statistical_comparison'),
-        notes=f"Best model selected from {len(models)} candidates"
+        notes=f"Best model selected from {len(models)} candidates",
+        actual_feature_names=actual_feature_names  # Pass actual features from trained model
     )
     
-    # Save the final trained model with metadata
+    # Save the final trained model with metadata AND training data
+    # IMPORTANT: Pass the COMPLETE training dataframe (features + target)
+    # This ensures we can validate features later
+    full_training_df = pd.concat([X, y], axis=1)
+    
     final_model_path = save_model_with_cleanup(
         final_pipeline,
         model_type,
         models_dir,
         keep_n_latest=1,
-        metadata=metadata
+        metadata=metadata,
+        training_data=full_training_df  # Save exact data used for training
     )
     results['final_model_path'] = str(final_model_path)
     results['metadata_path'] = str(final_model_path.with_suffix('.metadata.json'))
