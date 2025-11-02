@@ -324,6 +324,12 @@ def plot_shap_waterfall(
     feature_vals = sample_explanation.data
     feature_names = sample_explanation.feature_names
     
+    # Handle multi-dimensional SHAP values (e.g., multiclass)
+    # For binary classification, SHAP sometimes returns values for class 1 only
+    if shap_vals.ndim > 1:
+        # Take the last class (typically the positive class in binary classification)
+        shap_vals = shap_vals[:, -1] if shap_vals.shape[1] > 1 else shap_vals[:, 0]
+    
     # Sort by absolute SHAP value and get top features
     abs_shap = np.abs(shap_vals)
     sorted_indices = np.argsort(abs_shap)[-max_display:][::-1]
@@ -335,9 +341,10 @@ def plot_shap_waterfall(
     cumulative_values = [base_value]
     
     for idx in sorted_indices:
+        idx = idx.item() if hasattr(idx, 'item') else int(idx)  # Convert numpy integer to Python int
         feat_name = feature_names[idx]
-        shap_val = shap_vals[idx]
-        feat_val = feature_vals[idx]
+        shap_val = float(shap_vals[idx])  # Also ensure scalar
+        feat_val = float(feature_vals[idx])  # Also ensure scalar
         
         features_display.append(f"{feat_name} = {feat_val:.2f}")
         values_display.append(shap_val)
@@ -446,6 +453,10 @@ def plot_shap_force(
     feature_vals = sample_explanation.data
     feature_names = sample_explanation.feature_names
     
+    # Handle multi-dimensional SHAP values (e.g., multiclass)
+    if shap_vals.ndim > 1:
+        shap_vals = shap_vals[:, -1] if shap_vals.shape[1] > 1 else shap_vals[:, 0]
+    
     # Sort by absolute SHAP value and get top features
     idx_sorted = np.argsort(np.abs(shap_vals))[-max_display:][::-1]
     
@@ -455,10 +466,11 @@ def plot_shap_force(
     colors = []
     
     for i in idx_sorted:
+        i = i.item() if hasattr(i, 'item') else int(i)  # Convert numpy integer to Python int
         # Format feature label with value
         feat_val_str = f"{feature_vals[i]:.2f}" if isinstance(feature_vals[i], (int, float, np.number)) else str(feature_vals[i])
         feature_labels.append(f"{feature_names[i]}")
-        shap_values_sorted.append(shap_vals[i])
+        shap_values_sorted.append(float(shap_vals[i]))  # Ensure scalar
         colors.append('#FF0D57' if shap_vals[i] > 0 else '#1E88E5')
     
     # Create horizontal bar plot
@@ -480,8 +492,8 @@ def plot_shap_force(
             "<extra></extra>"
         ),
         customdata=[[
-            f"{feature_vals[i]:.2f}" if isinstance(feature_vals[i], (int, float, np.number)) else str(feature_vals[i]),
-            "Increases prediction" if shap_vals[i] > 0 else "Decreases prediction"
+            f"{feature_vals[i.item() if hasattr(i, 'item') else int(i)]:.2f}" if isinstance(feature_vals[i.item() if hasattr(i, 'item') else int(i)], (int, float, np.number)) else str(feature_vals[i.item() if hasattr(i, 'item') else int(i)]),
+            "Increases prediction" if shap_vals[i.item() if hasattr(i, 'item') else int(i)] > 0 else "Decreases prediction"
         ] for i in idx_sorted]
     ))
     

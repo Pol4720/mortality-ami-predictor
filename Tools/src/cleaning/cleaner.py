@@ -620,9 +620,11 @@ class DataCleaner:
         with open(filepath, 'r', encoding='utf-8') as f:
             metadata_dict = json.load(f)
         
+        # Filter out special fields (those starting with '_')
         self.metadata = {
             name: VariableMetadata(**meta_data)
             for name, meta_data in metadata_dict.items()
+            if not name.startswith('_')
         }
     
     def get_cleaning_report(self) -> Dict[str, Any]:

@@ -52,19 +52,36 @@ class TestEDAVisualizations:
             'target': np.random.choice([0, 1], 100),
         })
     
-    @pytest.mark.skip(reason="API signature changed - needs update to include is_numeric parameter")
     def test_plot_distribution_returns_plotly_figure(self, sample_dataframe):
         """Test that plot_distribution returns a Plotly Figure."""
-        # Current API: plot_distribution(df, col, is_numeric, plot_type='auto')
+        # Test numeric variable
         fig = plot_distribution(sample_dataframe, 'age', is_numeric=True)
         assert isinstance(fig, go.Figure)
         assert len(fig.data) > 0
+        
+        # Test categorical variable
+        fig = plot_distribution(sample_dataframe, 'category', is_numeric=False)
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) > 0
     
-    @pytest.mark.skip(reason="API signature changed - save_path parameter removed")
     def test_plot_distribution_saves_image(self, sample_dataframe):
         """Test that plot_distribution can save to file."""
-        # Note: save_path parameter no longer exists in current API
-        pass
+        import tempfile
+        from pathlib import Path
+        
+        fig = plot_distribution(sample_dataframe, 'age', is_numeric=True)
+        
+        # Save as HTML
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.html') as f:
+            temp_path = Path(f.name)
+        
+        try:
+            fig.write_html(str(temp_path))
+            assert temp_path.exists()
+            assert temp_path.stat().st_size > 0
+        finally:
+            if temp_path.exists():
+                temp_path.unlink()
     
     @pytest.mark.skip(reason="plot_boxplot not implemented yet")
     def test_plot_boxplot_returns_plotly_figure(self, sample_dataframe):
@@ -74,10 +91,8 @@ class TestEDAVisualizations:
         # assert len(fig.data) > 0
         pass
     
-    @pytest.mark.skip(reason="API signature changed - needs numeric_cols parameter")
     def test_plot_correlation_matrix_returns_plotly_figure(self, sample_dataframe):
         """Test that correlation matrix returns a Plotly Figure."""
-        # Current API: plot_correlation_matrix(df, numeric_cols, method='pearson')
         numeric_cols = ['age', 'weight', 'height']
         fig = plot_correlation_matrix(sample_dataframe, numeric_cols)
         assert isinstance(fig, go.Figure)
@@ -116,23 +131,24 @@ class TestSHAPVisualizations:
         assert isinstance(fig, go.Figure)
         assert len(fig.data) > 0
     
-    @pytest.mark.skip(reason="Bug in plot_shap_waterfall - feature_names indexing issue")
     def test_plot_shap_waterfall_returns_plotly_figure(self, shap_data):
         """Test that SHAP waterfall returns a Plotly Figure."""
-        # Bug: TypeError: only integer scalar arrays can be converted to a scalar index
-        pass
+        fig = plot_shap_waterfall(shap_data, sample_idx=0, max_display=10)
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) > 0
     
-    @pytest.mark.skip(reason="Bug in plot_shap_force - feature_names indexing issue")
     def test_plot_shap_force_returns_plotly_figure(self, shap_data):
         """Test that SHAP force plot returns a Plotly Figure."""
-        # Bug: TypeError: only integer scalar arrays can be converted to a scalar index
-        pass
+        fig = plot_shap_force(shap_data, sample_idx=0, max_display=10)
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) > 0
     
-    @pytest.mark.skip(reason="Bug in plot_shap_force - feature_names indexing issue")
     def test_plot_shap_force_optimized_for_many_features(self, shap_data):
         """Test that force plot handles many features correctly."""
-        # Bug: TypeError: only integer scalar arrays can be converted to a scalar index
-        pass
+        # Test with a larger max_display value
+        fig = plot_shap_force(shap_data, sample_idx=0, max_display=15)
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) > 0
 
 
 class TestEvaluationVisualizations:
@@ -191,12 +207,24 @@ class TestLearningCurves:
         model = RandomForestClassifier(n_estimators=10, random_state=42)
         return model, X, y
     
-    @pytest.mark.skip(reason="API signature changed - now requires LearningCurveResult object")
     def test_plot_learning_curve_returns_plotly_figure(self, model_and_data):
         """Test that learning curve returns a Plotly Figure."""
-        # Current API: plot_learning_curve(result: LearningCurveResult, title, save_path)
-        # Need to compute learning curve first, then plot
-        pass
+        from src.training.learning_curves import generate_learning_curve
+        
+        model, X, y = model_and_data
+        
+        # Generate learning curve result
+        result = generate_learning_curve(
+            model, X, y, 
+            cv=3, 
+            train_sizes=np.linspace(0.3, 1.0, 5), 
+            scoring='accuracy'
+        )
+        
+        # Plot the result
+        fig = plot_learning_curve(result, title="Test Learning Curve")
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) > 0
 
 
 class TestPlotlyIntegration:
@@ -237,17 +265,52 @@ class TestPlotlyIntegration:
 class TestDualArchitecture:
     """Test dual architecture: interactive + save."""
     
-    @pytest.mark.skip(reason="API signature changed - needs is_numeric and save_path removed")
-    def test_functions_accept_save_path(self):
-        """Test that plotting functions accept save_path parameter."""
-        # Note: Current API doesn't support save_path in plot_distribution
-        pass
+    def test_functions_return_saveable_figures(self):
+        """Test that plotting functions return figures that can be saved."""
+        import tempfile
+        from pathlib import Path
+        
+        # Create sample data
+        df = pd.DataFrame({
+            'age': np.random.normal(50, 10, 50),
+            'category': np.random.choice(['A', 'B'], 50),
+        })
+        
+        # Test plot_distribution
+        fig = plot_distribution(df, 'age', is_numeric=True)
+        assert isinstance(fig, go.Figure)
+        
+        # Verify it can be saved
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.html') as f:
+            temp_path = Path(f.name)
+        
+        try:
+            fig.write_html(str(temp_path))
+            assert temp_path.exists()
+        finally:
+            if temp_path.exists():
+                temp_path.unlink()
     
-    @pytest.mark.skip(reason="API signature changed - n_samples changed to max_samples")
-    def test_shap_functions_accept_save_path(self):
-        """Test that SHAP functions accept save_path parameter."""
-        # Note: Need to update to use max_samples instead of n_samples
-        pass
+    def test_shap_functions_with_max_samples(self):
+        """Test that SHAP functions work with max_samples parameter."""
+        from sklearn.ensemble import RandomForestClassifier
+        from src.explainability.shap_analysis import compute_shap_values
+        
+        # Create sample data
+        X, y = make_classification(n_samples=100, n_features=10, random_state=42)
+        model = RandomForestClassifier(n_estimators=10, random_state=42)
+        model.fit(X, y)
+        
+        # Test compute_shap_values with max_samples
+        feature_names = [f"feature_{i}" for i in range(10)]
+        explainer, shap_values = compute_shap_values(
+            model, X[:20], 
+            feature_names=feature_names, 
+            max_samples=20  # Updated parameter name
+        )
+        
+        assert shap_values is not None
+        assert hasattr(shap_values, 'values')
 
 
 if __name__ == "__main__":

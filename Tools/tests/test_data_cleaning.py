@@ -244,11 +244,29 @@ class TestDataCleaner:
         if 'categorical' in df_clean.columns:
             assert pd.api.types.is_numeric_dtype(df_clean['categorical'])
     
-    @pytest.mark.skip(reason="Bug in load_metadata - VariableMetadata initialization error")
-    def test_save_and_load_metadata(self, cleaning_config):
+    def test_save_and_load_metadata(self, cleaning_config, sample_dataframe):
         """Test de guardar y cargar metadatos."""
-        # Bug: TypeError: VariableMetadata() argument after ** must be a mapping, not str
-        pass
+        cleaner = DataCleaner(cleaning_config)
+        df_clean = cleaner.fit_transform(sample_dataframe)
+        
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+            temp_path = Path(f.name)
+        
+        try:
+            # Save metadata
+            cleaner.save_metadata(temp_path)
+            
+            # Create new cleaner and load
+            cleaner2 = DataCleaner(cleaning_config)
+            cleaner2.load_metadata(temp_path)
+            
+            # Check metadata was loaded
+            assert len(cleaner2.metadata) > 0
+            for name in cleaner.metadata:
+                assert name in cleaner2.metadata
+        finally:
+            if temp_path.exists():
+                temp_path.unlink()
     
     def test_save_config(self, cleaning_config):
         """Test de guardar configuración."""
