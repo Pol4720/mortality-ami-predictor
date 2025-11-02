@@ -74,7 +74,7 @@ def clean_dataset(synthetic_dataset):
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore')
         cleaner = DataCleaner()
-        cleaned = cleaner.fit_transform(data, target_col='mortality')
+        cleaned = cleaner.fit_transform(data, target_column='mortality')
     
     return cleaned
 
@@ -115,16 +115,16 @@ class TestDataPipeline:
     def test_data_cleaning_pipeline(self, synthetic_dataset):
         """Test complete data cleaning pipeline."""
         data = synthetic_dataset.copy()
-        
+
         # Check for missing values
         assert data.isnull().sum().sum() > 0
-        
+
         # Use DataCleaner
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore')
             cleaner = DataCleaner()
-            data = cleaner.fit_transform(data, target_col='mortality')
-        
+            data = cleaner.fit_transform(data, target_column='mortality')
+
         # Verify no missing values (if imputation is enabled)
         # Note: DataCleaner might drop columns instead of imputing
         # so we just verify it returns a valid DataFrame
@@ -283,12 +283,12 @@ class TestEvaluationPipeline:
             metrics = compute_classification_metrics(y, y_pred, y_proba)
         
         assert 'accuracy' in metrics
-        assert 'roc_auc' in metrics
+        assert 'auroc' in metrics
         assert 'f1' in metrics
         
         # Verify metric ranges
         assert 0 <= metrics['accuracy'] <= 1
-        assert 0 <= metrics['roc_auc'] <= 1
+        assert 0 <= metrics['auroc'] <= 1
     
     def test_cross_validation_evaluation(self, clean_dataset):
         """Test cross-validation evaluation."""
@@ -411,7 +411,7 @@ class TestEndToEndWorkflows:
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore')
             cleaner = DataCleaner()
-            data = cleaner.fit_transform(data, target_col='mortality')
+            data = cleaner.fit_transform(data, target_column='mortality')
         
         # 3. Split data
         X = data.drop('mortality', axis=1)
@@ -501,15 +501,16 @@ class TestEndToEndWorkflows:
 
 class TestErrorHandling:
     """Test error handling and edge cases."""
-    
+
     def test_empty_dataset(self):
         """Test handling of empty dataset."""
         empty_df = pd.DataFrame()
-        
+        cleaner = DataCleaner()
+
         # Should handle gracefully or raise appropriate error
         with pytest.raises((ValueError, KeyError, IndexError)):
-            preprocessor, _ = build_preprocess_pipelines(empty_df)
-    
+            cleaner.fit_transform(empty_df, target_column='mortality')
+
     def test_single_class_target(self, clean_dataset):
         """Test handling of single-class target."""
         X = clean_dataset.drop('mortality', axis=1)

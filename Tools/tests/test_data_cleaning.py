@@ -335,8 +335,9 @@ class TestEdgeCases:
         config = CleaningConfig()
         cleaner = DataCleaner(config)
         
-        df_clean = cleaner.fit_transform(df)
-        assert len(df_clean) == 0
+        # Should raise ValueError for empty dataframe
+        with pytest.raises(ValueError, match="Cannot clean an empty DataFrame"):
+            cleaner.fit_transform(df)
     
     def test_single_column(self):
         """Test con una sola columna."""

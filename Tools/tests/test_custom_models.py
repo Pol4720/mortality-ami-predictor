@@ -122,13 +122,15 @@ def simple_custom_classifier(sample_classification_data):
     """Create and train a simple custom classifier."""
     model = SimpleMLPClassifier(
         hidden_layer_sizes=(50,),
-        max_iter=100,
+        epochs=100,
         random_state=42
     )
-    model.fit(
-        sample_classification_data["X_train"],
-        sample_classification_data["y_train"]
-    )
+    
+    # Train the model
+    X_train = sample_classification_data["X_train"]
+    y_train = sample_classification_data["y_train"]
+    model.fit(X_train, y_train)
+    
     return model
 
 
@@ -154,13 +156,11 @@ class TestBaseCustomModel:
     
     def test_simple_mlp_classifier_fit_predict(self, sample_classification_data):
         """Test fitting and prediction with SimpleMLPClassifier."""
-        model = SimpleMLPClassifier(hidden_layer_sizes=(50,), max_iter=100)
+        model = SimpleMLPClassifier(hidden_layer_sizes=(50,), epochs=100)
         
-        # Fit
-        model.fit(
-            sample_classification_data["X_train"],
-            sample_classification_data["y_train"]
-        )
+        X_train = sample_classification_data["X_train"]
+        y_train = sample_classification_data["y_train"]
+        model.fit(X_train, y_train)
         
         # Predict
         predictions = model.predict(sample_classification_data["X_test"])
@@ -177,14 +177,14 @@ class TestBaseCustomModel:
         params = simple_custom_classifier.get_params()
         assert isinstance(params, dict)
         assert 'hidden_layer_sizes' in params
-        
+
         # Set params
-        simple_custom_classifier.set_params(max_iter=200)
+        simple_custom_classifier.set_params(epochs=200)
         new_params = simple_custom_classifier.get_params()
-        assert new_params['max_iter'] == 200
-    
+        assert new_params['epochs'] == 200
+
     def test_model_validation(self, simple_custom_classifier):
-        """Test that model has required methods."""
+        """Test model validation method."""
         # Check required methods exist
         assert hasattr(simple_custom_classifier, 'fit')
         assert hasattr(simple_custom_classifier, 'predict')
@@ -211,22 +211,19 @@ class TestCustomModelWrapper:
     
     def test_wrapper_fit_predict(self, sample_classification_data):
         """Test wrapper fit and predict."""
-        model = SimpleMLPClassifier(hidden_layer_sizes=(50,), max_iter=100)
-        preprocessing = StandardScaler()
+        model = SimpleMLPClassifier(hidden_layer_sizes=(50,), epochs=100)
         
-        wrapper = CustomModelWrapper(
-            model=model,
-            preprocessing=preprocessing
-        )
+        # Wrap it
+        wrapped_model = CustomModelWrapper(model)
         
         # Fit
-        wrapper.fit(
+        wrapped_model.fit(
             sample_classification_data["X_train"],
             sample_classification_data["y_train"]
         )
         
         # Predict
-        predictions = wrapper.predict(sample_classification_data["X_test"])
+        predictions = wrapped_model.predict(sample_classification_data["X_test"])
         assert predictions.shape[0] == sample_classification_data["X_test"].shape[0]
     
     def test_wrapper_get_metadata(self, simple_custom_classifier):
@@ -463,9 +460,11 @@ class TestEvaluationIntegration:
         for i in range(2):
             model = SimpleMLPClassifier(
                 hidden_layer_sizes=(50,),
-                max_iter=100,
+                epochs=100,
                 random_state=42+i
             )
+            
+            # Train and save
             model.fit(
                 sample_classification_data["X_train"],
                 sample_classification_data["y_train"]
@@ -591,15 +590,14 @@ class TestEndToEndIntegration:
         # 1. Create model
         model = SimpleMLPClassifier(
             hidden_layer_sizes=(50,),
-            max_iter=100,
+            epochs=100,
             random_state=42
         )
         
         # 2. Train model
-        model.fit(
-            sample_classification_data["X_train"],
-            sample_classification_data["y_train"]
-        )
+        X_train = sample_classification_data["X_train"]
+        y_train = sample_classification_data["y_train"]
+        model.fit(X_train, y_train)
         
         # 3. Save model
         model_path = temp_model_dir / "workflow_model"
@@ -629,11 +627,13 @@ class TestEndToEndIntegration:
     def test_workflow_with_preprocessing(self, sample_classification_data, temp_model_dir):
         """Test workflow with preprocessing pipeline."""
         # Create model with preprocessing
-        model = SimpleMLPClassifier(hidden_layer_sizes=(50,), max_iter=100)
-        preprocessing = StandardScaler()
+        model = SimpleMLPClassifier(hidden_layer_sizes=(50,), epochs=100)
+        
+        # Create a simple preprocessor
+        preprocessor = StandardScaler()
         
         # Fit preprocessing
-        X_train_scaled = preprocessing.fit_transform(sample_classification_data["X_train"])
+        X_train_scaled = preprocessor.fit_transform(sample_classification_data["X_train"])
         
         # Train model
         model.fit(X_train_scaled, sample_classification_data["y_train"])
@@ -643,7 +643,7 @@ class TestEndToEndIntegration:
         save_custom_model(
             model=model,
             path=model_path,
-            preprocessing=preprocessing
+            preprocessing=preprocessor
         )
         
         # Load and verify

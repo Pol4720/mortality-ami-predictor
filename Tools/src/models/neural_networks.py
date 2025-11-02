@@ -47,6 +47,7 @@ class TorchTabularClassifier:
         self.focal = focal_loss
         self.model = None
         self.device = None
+        self.is_fitted_ = False
     
     def _criterion(self, logits, y):
         """Compute loss (BCE or focal loss)."""
@@ -140,6 +141,7 @@ class TorchTabularClassifier:
         if best_state:
             self.model.load_state_dict(best_state)
         
+        self.is_fitted_ = True
         return self
     
     def predict_proba(self, X):

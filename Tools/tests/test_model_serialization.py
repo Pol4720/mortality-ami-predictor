@@ -419,7 +419,7 @@ class TestCustomModelSerialization:
         X_np = X.select_dtypes(include=[np.number]).values
         
         # Create and train model
-        model = SimpleMLPClassifier(hidden_dim=32, learning_rate=0.01, epochs=10)
+        model = SimpleMLPClassifier(hidden_layer_sizes=(32,), learning_rate=0.01, epochs=10)
         
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore')
@@ -467,14 +467,26 @@ class TestMetadataFromTraining:
             warnings.filterwarnings('ignore')
             model.fit(X.select_dtypes(include=[np.number]), y)
         
-        # Create metadata
+        # Create DataFrames for the function
+        X_numeric = X.select_dtypes(include=[np.number])
+        train_df = X_numeric.copy()
+        train_df['target'] = y
+        test_df = train_df.copy()  # Using same for test
+        
+        # Create metadata with proper signature
         metadata = create_metadata_from_training(
             model_name=model_name,
-            model=model,
+            model_type=type(model).__name__,
             task='classification',
-            dataset_info={'n_samples': len(X), 'n_features': X.shape[1]},
-            training_info={'cv_folds': 5},
-            performance={'accuracy': 0.85}
+            model_file_path='/tmp/model.joblib',
+            train_set_path='/tmp/train.csv',
+            test_set_path='/tmp/test.csv',
+            train_df=train_df,
+            test_df=test_df,
+            target_column='target',
+            hyperparameters=model.get_params(),
+            cv_results={'mean_score': 0.85, 'std_score': 0.05, 'all_scores': [0.8, 0.85, 0.9]},
+            training_config={'cv_strategy': 'StratifiedKFold', 'n_splits': 5, 'n_repeats': 1, 'total_runs': 5}
         )
         
         assert metadata is not None
@@ -492,14 +504,26 @@ class TestMetadataFromTraining:
             warnings.filterwarnings('ignore')
             model.fit(X.select_dtypes(include=[np.number]), y)
         
-        # Create metadata
+        # Create DataFrames for the function
+        X_numeric = X.select_dtypes(include=[np.number])
+        train_df = X_numeric.copy()
+        train_df['target'] = y
+        test_df = train_df.copy()
+        
+        # Create metadata with proper signature
         metadata = create_metadata_from_training(
             model_name=model_name,
-            model=model,
+            model_type=type(model).__name__,
             task='classification',
-            dataset_info={'n_samples': len(X)},
-            training_info={'cv_folds': 5},
-            performance={'accuracy': 0.85}
+            model_file_path='/tmp/model.joblib',
+            train_set_path='/tmp/train.csv',
+            test_set_path='/tmp/test.csv',
+            train_df=train_df,
+            test_df=test_df,
+            target_column='target',
+            hyperparameters=model.get_params(),
+            cv_results={'mean_score': 0.85, 'std_score': 0.05, 'all_scores': [0.8, 0.85, 0.9]},
+            training_config={'cv_strategy': 'StratifiedKFold', 'n_splits': 5, 'n_repeats': 1, 'total_runs': 5}
         )
         
         # Serialize to JSON
@@ -591,7 +615,7 @@ class TestSerializationIntegration:
         # Add custom model
         try:
             from src.models.custom_base import SimpleMLPClassifier
-            custom = SimpleMLPClassifier(hidden_dim=16, epochs=5)
+            custom = SimpleMLPClassifier(hidden_layer_sizes=(16,), epochs=5)
             models_to_test.append(('custom_mlp', custom))
         except ImportError:
             pass

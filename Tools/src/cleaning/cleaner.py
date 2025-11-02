@@ -132,7 +132,14 @@ class DataCleaner:
             
         Returns:
             Cleaned DataFrame
+            
+        Raises:
+            ValueError: If DataFrame is empty
         """
+        # Validate input
+        if df.empty:
+            raise ValueError("Cannot clean an empty DataFrame")
+        
         df_clean = df.copy()
         
         # Separate target if exists

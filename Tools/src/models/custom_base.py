@@ -381,7 +381,7 @@ class SimpleMLPClassifier(BaseCustomClassifier):
         hidden_layer_sizes: Tuple[int, ...] = (100,),
         activation: str = 'relu',
         learning_rate: float = 0.001,
-        max_iter: int = 200,
+        epochs: int = 200,
         random_state: Optional[int] = None,
         name: str = "SimpleMLP"
     ):
@@ -392,7 +392,7 @@ class SimpleMLPClassifier(BaseCustomClassifier):
             hidden_layer_sizes: Number of neurons in each hidden layer.
             activation: Activation function.
             learning_rate: Learning rate.
-            max_iter: Maximum number of iterations.
+            epochs: Number of training epochs.
             random_state: Random seed.
             name: Model name.
         """
@@ -400,7 +400,7 @@ class SimpleMLPClassifier(BaseCustomClassifier):
         self.hidden_layer_sizes = hidden_layer_sizes
         self.activation = activation
         self.learning_rate = learning_rate
-        self.max_iter = max_iter
+        self.max_iter = epochs
         self.random_state = random_state
         
         # Internal model (sklearn MLPClassifier)
@@ -409,7 +409,7 @@ class SimpleMLPClassifier(BaseCustomClassifier):
             hidden_layer_sizes=hidden_layer_sizes,
             activation=activation,
             learning_rate_init=learning_rate,
-            max_iter=max_iter,
+            max_iter=epochs,
             random_state=random_state
         )
     
@@ -438,7 +438,22 @@ class SimpleMLPClassifier(BaseCustomClassifier):
             'hidden_layer_sizes': self.hidden_layer_sizes,
             'activation': self.activation,
             'learning_rate': self.learning_rate,
-            'max_iter': self.max_iter,
+            'epochs': self.max_iter,
             'random_state': self.random_state,
             'name': self.name,
         }
+    
+    def set_params(self, **params) -> 'SimpleMLPClassifier':
+        """Set parameters."""
+        for key, value in params.items():
+            if key == 'epochs':
+                self.max_iter = value
+                # Update internal model's max_iter
+                if hasattr(self, '_model'):
+                    self._model.max_iter = value
+            else:
+                setattr(self, key, value)
+                # Update internal model if it exists
+                if hasattr(self, '_model') and hasattr(self._model, key):
+                    setattr(self._model, key, value)
+        return self
