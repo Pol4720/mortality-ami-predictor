@@ -11,6 +11,8 @@ from typing import Callable, List, Optional, Tuple, Dict
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from sklearn.base import clone
 
 
@@ -349,10 +351,65 @@ def plot_resampling_results(
         
         if not scores:
             continue
+        
+        # Convert to numpy array for robust handling
+        scores_array = np.array(scores)
+        data_range = scores_array.max() - scores_array.min()
+        unique_values = len(np.unique(scores_array))
+        
+        # ROBUST plotting strategy based on data characteristics
+        if unique_values <= 1:
+            # All values identical - show single vertical line
+            ax.axvline(mean_score, color='steelblue', linewidth=10, alpha=0.7, 
+                      label=f'All values: {mean_score:.4f}')
+            ax.set_xlim(mean_score - 0.01, mean_score + 0.01)
+        elif unique_values == 2:
+            # Only 2 unique values - use bar chart instead of histogram
+            unique_scores, counts = np.unique(scores_array, return_counts=True)
+            ax.bar(unique_scores, counts, alpha=0.7, color='steelblue', 
+                  edgecolor='black', width=data_range*0.1 if data_range > 0 else 0.01)
+        elif data_range < 1e-10:
+            # Essentially no variance
+            ax.axvline(mean_score, color='steelblue', linewidth=10, alpha=0.7)
+            ax.set_xlim(mean_score - 0.001, mean_score + 0.001)
+        else:
+            # Normal case - create histogram
+            # Calculate optimal bins based on data range and unique values
+            if data_range < 0.001:
+                n_bins = 3
+            elif data_range < 0.01:
+                n_bins = min(5, unique_values)
+            elif data_range < 0.05:
+                n_bins = min(10, unique_values)
+            elif data_range < 0.1:
+                n_bins = min(15, unique_values)
+            else:
+                n_bins = min(30, unique_values)
             
-        # Histogram of scores
-        ax.hist(scores, bins=30, alpha=0.7, color='steelblue', 
-               edgecolor='black')
+            # Ensure sensible number of bins
+            n_bins = max(3, min(n_bins, unique_values))
+            
+            # Create histogram with robust error handling
+            try:
+                ax.hist(scores_array, bins=n_bins, alpha=0.7, color='steelblue', 
+                       edgecolor='black')
+            except (ValueError, RuntimeError):
+                # Fallback to 'auto' binning
+                try:
+                    ax.hist(scores_array, bins='auto', alpha=0.7, color='steelblue', 
+                           edgecolor='black')
+                except:
+                    # Final fallback: manual bin edges
+                    if unique_values >= 3:
+                        bin_edges = np.linspace(scores_array.min(), scores_array.max(), 
+                                               min(10, unique_values + 1))
+                        ax.hist(scores_array, bins=bin_edges, alpha=0.7, color='steelblue', 
+                               edgecolor='black')
+                    else:
+                        # Very few values - use bar chart
+                        unique_scores, counts = np.unique(scores_array, return_counts=True)
+                        ax.bar(unique_scores, counts, alpha=0.7, color='steelblue', 
+                              edgecolor='black', width=data_range*0.2)
         
         # Mean line
         ax.axvline(mean_score, color='red', linestyle='--', 
@@ -380,6 +437,153 @@ def plot_resampling_results(
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"📊 Resampling plot saved: {save_path}")
+    
+    return fig
+
+
+def plot_resampling_results_plotly(
+    results: List[ResamplingResult],
+    metric: str = 'auroc',
+    save_path: Optional[str] = None
+) -> go.Figure:
+    """Plot interactive resampling results for comparison using Plotly.
+    
+    Args:
+        results: List of ResamplingResult objects
+        metric: Which metric to plot (default: 'auroc')
+        save_path: Optional path to save figure as PNG
+        
+    Returns:
+        Plotly Figure
+    """
+    n_results = len(results)
+    
+    # Create subplots
+    fig = make_subplots(
+        rows=1, cols=n_results,
+        subplot_titles=[f'{r.method.capitalize()} Results (n={r.n_iterations})' 
+                       for r in results],
+        horizontal_spacing=0.15
+    )
+    
+    for idx, result in enumerate(results, start=1):
+        # Get scores for the selected metric
+        scores = result.metrics.get(metric, [])
+        mean_score = result.mean_scores.get(metric, 0)
+        ci = result.confidence_intervals.get(metric, (0, 0))
+        
+        if not scores:
+            continue
+        
+        # Convert to numpy array for robust handling
+        scores_array = np.array(scores)
+        data_range = scores_array.max() - scores_array.min()
+        unique_values = len(np.unique(scores_array))
+        
+        # ROBUST plotting strategy based on data characteristics
+        if unique_values <= 1 or data_range < 1e-10:
+            # All values identical - show single vertical line
+            fig.add_vline(
+                x=mean_score, 
+                line_dash="solid", 
+                line_color="steelblue",
+                line_width=3,
+                annotation_text=f"All values: {mean_score:.4f}",
+                row=1, col=idx
+            )
+        elif unique_values == 2:
+            # Only 2 unique values - use bar chart instead of histogram
+            unique_scores, counts = np.unique(scores_array, return_counts=True)
+            fig.add_trace(
+                go.Bar(
+                    x=unique_scores,
+                    y=counts,
+                    marker_color='steelblue',
+                    marker_line_color='black',
+                    marker_line_width=1.5,
+                    name='Distribution',
+                    showlegend=(idx == 1),
+                    hovertemplate='Score: %{x:.4f}<br>Count: %{y}<extra></extra>'
+                ),
+                row=1, col=idx
+            )
+        else:
+            # Normal case - create histogram
+            fig.add_trace(
+                go.Histogram(
+                    x=scores_array,
+                    marker_color='steelblue',
+                    marker_line_color='black',
+                    marker_line_width=1,
+                    name='Distribution',
+                    showlegend=(idx == 1),
+                    hovertemplate='Score: %{x:.4f}<br>Count: %{y}<extra></extra>',
+                    nbinsx=min(30, unique_values) if data_range > 0.01 else min(10, unique_values)
+                ),
+                row=1, col=idx
+            )
+        
+        # Add mean line
+        fig.add_vline(
+            x=mean_score,
+            line_dash="dash",
+            line_color="red",
+            line_width=2,
+            annotation_text=f"Mean: {mean_score:.4f}",
+            annotation_position="top",
+            row=1, col=idx
+        )
+        
+        # Add confidence interval lines
+        fig.add_vline(
+            x=ci[0],
+            line_dash="dot",
+            line_color="green",
+            line_width=2,
+            row=1, col=idx
+        )
+        fig.add_vline(
+            x=ci[1],
+            line_dash="dot",
+            line_color="green",
+            line_width=2,
+            annotation_text=f"95% CI",
+            annotation_position="bottom right",
+            row=1, col=idx
+        )
+        
+        # Add shaded confidence interval region
+        fig.add_vrect(
+            x0=ci[0],
+            x1=ci[1],
+            fillcolor="green",
+            opacity=0.2,
+            line_width=0,
+            row=1, col=idx
+        )
+        
+        # Update axes labels
+        fig.update_xaxes(
+            title_text=f'{metric.upper()} Score',
+            row=1, col=idx
+        )
+        fig.update_yaxes(
+            title_text='Frequency',
+            row=1, col=idx
+        )
+    
+    # Update layout
+    fig.update_layout(
+        title_text=f'Resampling Results: {metric.upper()}',
+        height=500,
+        showlegend=True,
+        template='plotly_white',
+        hovermode='closest'
+    )
+    
+    if save_path:
+        fig.write_image(save_path, width=1400, height=500)
+        print(f"📊 Interactive resampling plot saved: {save_path}")
     
     return fig
 

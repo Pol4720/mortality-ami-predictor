@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, List
 
 import joblib
 import pandas as pd
@@ -18,6 +18,7 @@ from ..config import CONFIG
 from .metrics import compute_classification_metrics
 from .calibration import plot_calibration_curve
 from .decision_curves import decision_curve_analysis
+from .resampling import plot_resampling_results_plotly
 
 
 # Use new processed structure
@@ -214,6 +215,37 @@ def generate_evaluation_report(
     return csv_path
 
 
+def create_interactive_metrics_plots(
+    bootstrap_result,
+    jackknife_result,
+    metric_names: Optional[List[str]] = None
+) -> Dict[str, go.Figure]:
+    """Create interactive Plotly figures for all resampling metrics.
+    
+    Args:
+        bootstrap_result: Bootstrap ResamplingResult object
+        jackknife_result: Jackknife ResamplingResult object
+        metric_names: List of metrics to plot (default: all available)
+        
+    Returns:
+        Dictionary mapping metric names to Plotly figures
+    """
+    if metric_names is None:
+        metric_names = sorted(bootstrap_result.mean_scores.keys())
+    
+    figures = {}
+    
+    for metric in metric_names:
+        fig = plot_resampling_results_plotly(
+            results=[bootstrap_result, jackknife_result],
+            metric=metric,
+            save_path=None
+        )
+        figures[metric] = fig
+    
+    return figures
+
+
 def evaluate_main(argv: Optional[list] = None) -> None:
     """Evaluate trained model on test set with Bootstrap and Jackknife (FASE 2).
     
@@ -236,10 +268,10 @@ def evaluate_main(argv: Optional[list] = None) -> None:
 
     # Import helper function to get latest files
     from ..data_load import get_latest_model_by_task, get_latest_testset
+    from ..models.metadata import ModelMetadata
     
     # Try to find the latest model and testset for this task
     model_path = get_latest_model_by_task(args.task, MODELS_DIR)
-    test_path = get_latest_testset(args.task, ROOT_DIR / "processed" / "testsets")
     
     if not model_path or not model_path.exists():
         raise FileNotFoundError(
@@ -247,10 +279,42 @@ def evaluate_main(argv: Optional[list] = None) -> None:
             f"Train a model first. Looking in: {MODELS_DIR}"
         )
     
+    # Try to load test set path from model metadata (PREFERRED)
+    test_path = None
+    train_path = None
+    metadata_path = model_path.with_suffix('.metadata.json')
+    
+    if metadata_path.exists():
+        try:
+            metadata = ModelMetadata.load(metadata_path)
+            if metadata.dataset and metadata.dataset.test_set_path:
+                test_path = Path(metadata.dataset.test_set_path)
+                if not test_path.exists():
+                    print(f"⚠️ Warning: Test set path from metadata not found: {test_path}")
+                    test_path = None
+                else:
+                    print(f"✓ Using test set from metadata: {test_path}")
+            
+            if metadata.dataset and metadata.dataset.train_set_path:
+                train_path = Path(metadata.dataset.train_set_path)
+                if not train_path.exists():
+                    print(f"⚠️ Warning: Train set path from metadata not found: {train_path}")
+                    train_path = None
+        except Exception as e:
+            print(f"⚠️ Warning: Could not load metadata: {e}")
+    
+    # Fallback: search for test set by task name
+    if not test_path:
+        print("ℹ️ Metadata not available or paths not found, searching for test set...")
+        testsets_dir = MODELS_DIR / "testsets"
+        test_path = get_latest_testset(args.task, testsets_dir)
+    
     if not test_path or not test_path.exists():
         raise FileNotFoundError(
             f"Test set not found for task '{args.task}'.\n"
-            f"Train a model first. Looking in: {ROOT_DIR / 'processed' / 'testsets'}"
+            f"Train a model first. Checked:\n"
+            f"  - Metadata path: {metadata_path if metadata_path else 'N/A'}\n"
+            f"  - Testsets directory: {MODELS_DIR / 'testsets'}"
         )
 
     # Load model and test data
@@ -268,7 +332,26 @@ def evaluate_main(argv: Optional[list] = None) -> None:
         raise KeyError(f"Target column '{target}' not found in test set.")
     
     print(f"  Target column: {target}")
-    print(f"  Target distribution: {pd.Series(test_df[target]).value_counts().to_dict()}")
+    target_dist = pd.Series(test_df[target]).value_counts().to_dict()
+    print(f"  Target distribution: {target_dist}")
+    
+    # CRITICAL CHECK: Verify this is actually test data and not training data
+    if metadata and metadata.dataset:
+        print(f"\n⚠️  VALIDATION CHECK:")
+        print(f"  Expected test samples from metadata: {metadata.dataset.test_samples}")
+        print(f"  Actual test samples loaded: {len(test_df)}")
+        print(f"  Expected train samples from metadata: {metadata.dataset.train_samples}")
+        
+        if len(test_df) == metadata.dataset.train_samples:
+            print(f"\n🚨 ERROR: Loaded TRAINING data instead of TEST data!")
+            print(f"  This will result in overly optimistic (perfect) metrics.")
+            raise ValueError(
+                f"Data mismatch: Loaded {len(test_df)} samples but metadata says "
+                f"test set should have {metadata.dataset.test_samples} samples. "
+                f"This suggests TRAINING data was loaded instead of TEST data."
+            )
+        elif len(test_df) == metadata.dataset.test_samples:
+            print(f"  ✓ Test set size matches metadata - validation passed")
 
     # Prepare features and target
     X = test_df.drop(columns=[target])
@@ -283,7 +366,17 @@ def evaluate_main(argv: Optional[list] = None) -> None:
     
     print(f"  Predictions shape: {prob.shape}")
     print(f"  Probability range: [{prob.min():.4f}, {prob.max():.4f}]")
-
+    print(f"  Unique predictions: {len(np.unique(prob))}")
+    
+    # Check for suspiciously perfect predictions
+    accuracy = (y_pred == y.values).mean()
+    if accuracy > 0.99:
+        print(f"\n⚠️  WARNING: Accuracy is suspiciously high ({accuracy:.4f})!")
+        print(f"  This might indicate:")
+        print(f"    1. Training data was accidentally used instead of test data")
+        print(f"    2. Data leakage during preprocessing")
+        print(f"    3. Target variable included in features")
+    
     # Compute standard metrics (convert to numpy for metrics computation)
     metrics = compute_classification_metrics(y.values, prob)
     

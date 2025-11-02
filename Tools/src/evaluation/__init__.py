@@ -13,6 +13,7 @@ from .resampling import (
     jackknife_evaluation,
     combined_resampling_evaluation,
     plot_resampling_results,
+    plot_resampling_results_plotly,
     ResamplingResult,
 )
 from .pdf_reports import generate_evaluation_pdf

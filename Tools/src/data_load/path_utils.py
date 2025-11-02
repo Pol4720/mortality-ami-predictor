@@ -102,20 +102,36 @@ def get_latest_testset(model_type: str, testsets_dir: Path) -> Optional[Path]:
     Returns:
         Path to latest testset file, or None if not found
     """
+    if not testsets_dir.exists():
+        return None
+    
     # Try exact match first (model_type or task)
     result = get_latest_file(testsets_dir, f"testset_{model_type}_*.parquet")
     if result:
         return result
     
-    # If not found, return the most recent testset file regardless of type
-    if testsets_dir.exists():
-        all_testsets = sorted(
-            testsets_dir.glob("testset_*.parquet"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True
-        )
-        if all_testsets:
-            return all_testsets[0]
+    # Try CSV format as fallback
+    result = get_latest_file(testsets_dir, f"testset_{model_type}_*.csv")
+    if result:
+        return result
+    
+    # If not found, return the most recent testset file regardless of type (parquet first)
+    all_testsets = sorted(
+        testsets_dir.glob("testset_*.parquet"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True
+    )
+    if all_testsets:
+        return all_testsets[0]
+    
+    # Try CSV as last resort
+    all_testsets_csv = sorted(
+        testsets_dir.glob("testset_*.csv"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True
+    )
+    if all_testsets_csv:
+        return all_testsets_csv[0]
     
     return None
 
@@ -124,13 +140,44 @@ def get_latest_trainset(model_type: str, testsets_dir: Path) -> Optional[Path]:
     """Get the most recent trainset for a specific model type.
     
     Args:
-        model_type: Model type (e.g., "dtree", "knn", "xgb")
+        model_type: Model type (e.g., "dtree", "knn", "xgb") or task name (e.g., "mortality")
         testsets_dir: Testsets directory (e.g., Tools/processed/models/testsets)
         
     Returns:
         Path to latest trainset file, or None if not found
     """
-    return get_latest_file(testsets_dir, f"trainset_{model_type}_*.parquet")
+    if not testsets_dir.exists():
+        return None
+    
+    # Try exact match first
+    result = get_latest_file(testsets_dir, f"trainset_{model_type}_*.parquet")
+    if result:
+        return result
+    
+    # Try CSV as fallback
+    result = get_latest_file(testsets_dir, f"trainset_{model_type}_*.csv")
+    if result:
+        return result
+    
+    # Return most recent trainset regardless of type
+    all_trainsets = sorted(
+        testsets_dir.glob("trainset_*.parquet"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True
+    )
+    if all_trainsets:
+        return all_trainsets[0]
+    
+    # Try CSV as last resort
+    all_trainsets_csv = sorted(
+        testsets_dir.glob("trainset_*.csv"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True
+    )
+    if all_trainsets_csv:
+        return all_trainsets_csv[0]
+    
+    return None
 
 
 def get_latest_model_by_task(task: str, models_dir: Path) -> Optional[Path]:
@@ -440,19 +487,59 @@ def cleanup_old_testsets(
 ) -> None:
     """Clean up old testsets for a model type, keeping only the N most recent.
     
+    IMPORTANT: This function also checks if testsets are referenced in existing
+    model metadata files and will NOT delete those, even if they're old.
+    
     Args:
         model_type: Model type (e.g., "dtree", "knn", "xgb")
         testsets_dir: Testsets directory
-        keep_n_latest: Number of latest testsets to keep
+        keep_n_latest: Number of latest testsets to keep (default: 1)
     """
-    for prefix in ["testset", "trainset"]:
+    import json
+    from pathlib import Path
+    
+    # Get all metadata files to find referenced testsets
+    protected_testsets = set()
+    protected_trainsets = set()
+    
+    # Search for metadata files in model directories
+    models_base_dir = testsets_dir.parent  # processed/models
+    for model_dir in models_base_dir.iterdir():
+        if model_dir.is_dir() and model_dir.name not in ['testsets', '__pycache__']:
+            # Check all metadata files in this model directory
+            for metadata_file in model_dir.glob("*.metadata.json"):
+                try:
+                    with open(metadata_file, 'r') as f:
+                        metadata = json.load(f)
+                    
+                    # Get test and train set paths from metadata
+                    dataset_info = metadata.get('dataset', {})
+                    test_path = dataset_info.get('test_set_path')
+                    train_path = dataset_info.get('train_set_path')
+                    
+                    if test_path:
+                        protected_testsets.add(Path(test_path).name)
+                    if train_path:
+                        protected_trainsets.add(Path(train_path).name)
+                except Exception:
+                    pass  # Ignore errors reading metadata
+    
+    # Now clean up testsets/trainsets
+    for prefix, protected_set in [("testset", protected_testsets), ("trainset", protected_trainsets)]:
         old_files = sorted(
             testsets_dir.glob(f"{prefix}_{model_type}_*.parquet"),
             key=lambda f: extract_timestamp_from_filename(f.name) or datetime.min,
             reverse=True
         )
         
-        for old_file in old_files[keep_n_latest:]:
+        # Filter out protected files
+        candidates_for_deletion = []
+        for f in old_files[keep_n_latest:]:
+            if f.name not in protected_set:
+                candidates_for_deletion.append(f)
+        
+        # Delete non-protected old files
+        for old_file in candidates_for_deletion:
             try:
                 old_file.unlink()
             except Exception:

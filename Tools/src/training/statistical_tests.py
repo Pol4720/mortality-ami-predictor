@@ -353,19 +353,51 @@ def plot_model_comparison(
     ax2.set_title('Score Distribution (Violin Plot)')
     ax2.grid(True, alpha=0.3)
     
-    # 3. Histogram comparison
+    # 3. Histogram comparison with adaptive bins
     ax3 = axes[1, 0]
-    ax3.hist(result.model1_scores, bins=15, alpha=0.5, label=result.model1_name, 
-            color='blue', edgecolor='black')
-    ax3.hist(result.model2_scores, bins=15, alpha=0.5, label=result.model2_name, 
-            color='green', edgecolor='black')
+    
+    # Calculate optimal number of bins based on data range
+    all_scores = list(result.model1_scores) + list(result.model2_scores)
+    data_range = max(all_scores) - min(all_scores)
+    
+    # Adaptive bins: use fewer bins if data range is small
+    if data_range < 0.01:
+        n_bins = 5  # Very small range
+    elif data_range < 0.05:
+        n_bins = 8
+    elif data_range < 0.1:
+        n_bins = 10
+    else:
+        n_bins = 15  # Normal range
+    
+    # Use Sturges' rule as backup: k = ceil(log2(n) + 1)
+    sturges_bins = int(np.ceil(np.log2(len(all_scores)) + 1))
+    n_bins = min(n_bins, sturges_bins, len(set(all_scores)))  # Don't exceed unique values
+    
+    try:
+        ax3.hist(result.model1_scores, bins=n_bins, alpha=0.5, label=result.model1_name, 
+                color='blue', edgecolor='black')
+        ax3.hist(result.model2_scores, bins=n_bins, alpha=0.5, label=result.model2_name, 
+                color='green', edgecolor='black')
+    except ValueError:
+        # If histogram still fails, fall back to KDE plot
+        from scipy import stats
+        kde1 = stats.gaussian_kde(result.model1_scores)
+        kde2 = stats.gaussian_kde(result.model2_scores)
+        x_range = np.linspace(min(all_scores), max(all_scores), 100)
+        ax3.plot(x_range, kde1(x_range), color='blue', label=result.model1_name, linewidth=2)
+        ax3.fill_between(x_range, kde1(x_range), alpha=0.3, color='blue')
+        ax3.plot(x_range, kde2(x_range), color='green', label=result.model2_name, linewidth=2)
+        ax3.fill_between(x_range, kde2(x_range), alpha=0.3, color='green')
+        ax3.set_ylabel('Density')
+    
     ax3.axvline(result.model1_mean, color='blue', linestyle='--', linewidth=2, 
                 label=f'{result.model1_name} mean')
     ax3.axvline(result.model2_mean, color='green', linestyle='--', linewidth=2, 
                 label=f'{result.model2_name} mean')
     ax3.set_xlabel('Score (AUROC)')
     ax3.set_ylabel('Frequency')
-    ax3.set_title('Score Histograms')
+    ax3.set_title(f'Score Histograms ({n_bins} bins)' if 'kde1' not in locals() else 'Score Distributions (KDE)')
     ax3.legend()
     ax3.grid(True, alpha=0.3)
     
