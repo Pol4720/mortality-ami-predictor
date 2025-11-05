@@ -754,6 +754,354 @@ with st.expander("ℹ️ About Evaluation Metrics"):
     - 🔄 **Reset**: Double-click to restore original view
     """)
 
+# ========================================================================
+# SECCIÓN DE COMPARACIÓN CON GRACE SCORE
+# ========================================================================
+st.markdown("---")
+st.markdown("---")
+st.header("⚖️ Comparación con GRACE Score")
+
+st.info("""
+**GRACE (Global Registry of Acute Coronary Events)** es un score clínico validado internacionalmente 
+para predicción de mortalidad en pacientes con infarto agudo de miocardio. 
+
+Esta sección realiza una comparación rigurosa estadística entre el modelo ML y GRACE usando:
+- **DeLong Test**: Comparación de curvas ROC
+- **NRI**: Net Reclassification Improvement
+- **IDI**: Integrated Discrimination Improvement
+- **Calibración**: Brier Score y curvas de calibración
+""")
+
+# Verificar si existe la columna de GRACE en el dataset
+grace_column_candidates = ['escala_grace', 'GRACE', 'grace_score', 'grace', 'GRACE_score']
+grace_column = None
+
+for candidate in grace_column_candidates:
+    if candidate in df.columns:
+        grace_column = candidate
+        break
+
+if grace_column is not None:
+    st.success(f"✅ Columna GRACE encontrada: `{grace_column}`")
+    
+    # Verificar que tenemos un modelo evaluado y test set
+    if can_generate_plots and st.session_state.get('is_evaluated', False):
+        try:
+            with st.expander("🏥 **Análisis de Superioridad del Modelo ML vs GRACE**", expanded=True):
+                st.markdown("### Configuración de Comparación")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Verificar si GRACE ya está en formato de probabilidad
+                    grace_values = df[grace_column].dropna()
+                    grace_min = grace_values.min()
+                    grace_max = grace_values.max()
+                    
+                    st.metric("Valores GRACE en dataset", f"Min: {grace_min:.2f}, Max: {grace_max:.2f}")
+                    
+                    # Determinar si necesita normalización
+                    needs_normalization = grace_max > 1.0
+                    
+                    if needs_normalization:
+                        st.warning(f"⚠️ GRACE score está en escala original ({grace_min:.0f}-{grace_max:.0f})")
+                        normalization_method = st.selectbox(
+                            "Método de normalización a probabilidad",
+                            ["Min-Max [0-1]", "Logistic Transform", "Risk Categories"],
+                            help="GRACE debe estar en [0,1] para comparación válida con probabilidades del modelo"
+                        )
+                    else:
+                        st.success("✅ GRACE ya está en formato de probabilidad [0-1]")
+                        normalization_method = None
+                
+                with col2:
+                    comparison_threshold = st.slider(
+                        "Umbral de clasificación",
+                        0.0, 1.0, 0.5, 0.05,
+                        help="Umbral para convertir probabilidades a clasificación binaria"
+                    )
+                    
+                    run_comparison = st.button("🚀 Ejecutar Comparación Estadística", type="primary")
+                
+                if run_comparison:
+                    with st.spinner("Ejecutando análisis estadístico riguroso..."):
+                        try:
+                            # Importar módulo de comparación
+                            from src.evaluation.grace_comparison import (
+                                compare_with_grace,
+                                plot_roc_comparison,
+                                plot_calibration_comparison,
+                                plot_metrics_comparison,
+                                plot_nri_idi,
+                                generate_comparison_report
+                            )
+                            
+                            # Cargar modelo y obtener predicciones si no existen
+                            if 'y_prob' not in locals():
+                                model = joblib.load(model_path)
+                                test_df = pd.read_parquet(testset_path)
+                                
+                                target = CONFIG.target_column if task == "mortality" else CONFIG.arrhythmia_column
+                                X_test = test_df.drop(columns=[target])
+                                y_test = test_df[target].values
+                                
+                                y_prob = model.predict_proba(X_test)[:, 1]
+                            
+                            # Obtener valores de GRACE del test set
+                            # Necesitamos hacer match con los índices del test set
+                            if grace_column in test_df.columns:
+                                grace_scores = test_df[grace_column].values
+                            else:
+                                st.error(f"❌ La columna `{grace_column}` no está en el test set")
+                                st.stop()
+                            
+                            # Normalizar GRACE si es necesario
+                            if needs_normalization:
+                                if normalization_method == "Min-Max [0-1]":
+                                    grace_probs = (grace_scores - grace_min) / (grace_max - grace_min)
+                                    st.info(f"📊 GRACE normalizado usando Min-Max: [{grace_min:.0f}, {grace_max:.0f}] → [0, 1]")
+                                
+                                elif normalization_method == "Logistic Transform":
+                                    # Transformación logística: 1 / (1 + exp(-k*(x-x0)))
+                                    k = 0.05  # Factor de escala
+                                    x0 = (grace_min + grace_max) / 2
+                                    grace_probs = 1 / (1 + np.exp(-k * (grace_scores - x0)))
+                                    st.info("📊 GRACE normalizado usando transformación logística")
+                                
+                                elif normalization_method == "Risk Categories":
+                                    # GRACE risk categories: Low ≤108, Intermediate 109-140, High >140
+                                    grace_probs = np.zeros_like(grace_scores, dtype=float)
+                                    grace_probs[grace_scores <= 108] = 0.2  # Low risk
+                                    grace_probs[(grace_scores > 108) & (grace_scores <= 140)] = 0.5  # Intermediate
+                                    grace_probs[grace_scores > 140] = 0.8  # High risk
+                                    st.info("📊 GRACE convertido usando categorías de riesgo validadas")
+                            else:
+                                grace_probs = grace_scores
+                            
+                            # Ejecutar comparación completa
+                            comparison_result = compare_with_grace(
+                                y_true=y_test,
+                                y_pred_model=y_prob,
+                                y_pred_grace=grace_probs,
+                                model_name=selected_model if 'selected_model' in locals() else "ML Model",
+                                threshold=comparison_threshold,
+                                alpha=0.05
+                            )
+                            
+                            # Guardar en session state
+                            st.session_state.grace_comparison_result = comparison_result
+                            
+                            st.success("✅ Comparación completada con éxito!")
+                            
+                        except Exception as e:
+                            st.error(f"❌ Error durante la comparación: {e}")
+                            st.exception(e)
+                            st.stop()
+                
+                # Mostrar resultados si existen
+                if 'grace_comparison_result' in st.session_state:
+                    result = st.session_state.grace_comparison_result
+                    
+                    st.markdown("---")
+                    st.markdown("### 📊 Resultados de la Comparación Estadística")
+                    
+                    # Conclusión principal con colores
+                    if result.is_model_superior:
+                        if result.superiority_level == "highly_significant":
+                            st.success("🎉 **CONCLUSIÓN: El modelo ML es SIGNIFICATIVAMENTE SUPERIOR a GRACE** (p < 0.001)")
+                        elif result.superiority_level == "significant":
+                            st.success("✅ **CONCLUSIÓN: El modelo ML es SUPERIOR a GRACE** (p < 0.01)")
+                        elif result.superiority_level == "marginal":
+                            st.info("📊 **CONCLUSIÓN: El modelo ML es MARGINALMENTE SUPERIOR a GRACE** (p < 0.05)")
+                    elif result.superiority_level == "inferior":
+                        st.error("⚠️ **CONCLUSIÓN: El modelo ML es INFERIOR a GRACE**")
+                    elif result.superiority_level == "favorable_trend":
+                        st.warning("📈 **CONCLUSIÓN: El modelo ML muestra tendencia favorable, pero NO SIGNIFICATIVA**")
+                    else:
+                        st.info("🤝 **CONCLUSIÓN: Rendimiento EQUIVALENTE entre modelo ML y GRACE**")
+                    
+                    # Tabs para diferentes visualizaciones
+                    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+                        "📈 Curvas ROC",
+                        "📊 Calibración", 
+                        "📉 Métricas",
+                        "🔄 NRI & IDI",
+                        "📋 Reporte Completo"
+                    ])
+                    
+                    with tab1:
+                        st.markdown("#### Comparación de Curvas ROC")
+                        st.caption("**DeLong Test**: Prueba estadística para comparar curvas ROC correlacionadas")
+                        
+                        roc_fig = plot_roc_comparison(y_test, y_prob, grace_probs, result)
+                        st.plotly_chart(roc_fig, use_container_width=True, config=plotly_config)
+                        
+                        # Métricas clave
+                        col1, col2, col3 = st.columns(3)
+                        col1.metric("AUC Modelo", f"{result.model_auc:.4f}")
+                        col2.metric("AUC GRACE", f"{result.grace_auc:.4f}")
+                        col3.metric("Diferencia ΔAUC", f"{result.auc_difference:+.4f}", 
+                                   delta=f"p={result.auc_p_value:.4f}")
+                        
+                        st.markdown(f"""
+                        **Interpretación del DeLong Test:**
+                        - **Estadístico Z**: {(result.auc_difference / ((result.auc_ci_upper - result.auc_ci_lower) / 3.92)):.3f}
+                        - **P-value**: {result.auc_p_value:.4f} {'✅ (significativo)' if result.auc_p_value < 0.05 else '❌ (no significativo)'}
+                        - **IC 95%**: [{result.auc_ci_lower:.4f}, {result.auc_ci_upper:.4f}]
+                        """)
+                    
+                    with tab2:
+                        st.markdown("#### Comparación de Calibración")
+                        st.caption("**Brier Score**: Mide la precisión de las probabilidades predichas (menor es mejor)")
+                        
+                        calib_fig = plot_calibration_comparison(y_test, y_prob, grace_probs, result)
+                        st.plotly_chart(calib_fig, use_container_width=True, config=plotly_config)
+                        
+                        col1, col2, col3 = st.columns(3)
+                        col1.metric("Brier Modelo", f"{result.model_brier:.4f}")
+                        col2.metric("Brier GRACE", f"{result.grace_brier:.4f}")
+                        col3.metric("Diferencia", f"{result.brier_difference:+.4f}",
+                                   delta="Mejor" if result.brier_difference < 0 else "Peor",
+                                   delta_color="normal" if result.brier_difference < 0 else "inverse")
+                    
+                    with tab3:
+                        st.markdown("#### Comparación de Métricas de Rendimiento")
+                        
+                        metrics_fig = plot_metrics_comparison(result)
+                        st.plotly_chart(metrics_fig, use_container_width=True, config=plotly_config)
+                        
+                        # Tabla comparativa
+                        st.markdown("**Tabla Comparativa Detallada:**")
+                        comparison_df = pd.DataFrame({
+                            'Métrica': ['AUC', 'Accuracy', 'Sensitivity', 'Specificity'],
+                            'Modelo ML': [result.model_auc, result.model_accuracy, 
+                                         result.model_sensitivity, result.model_specificity],
+                            'GRACE': [result.grace_auc, result.grace_accuracy,
+                                     result.grace_sensitivity, result.grace_specificity],
+                            'Diferencia': [
+                                result.auc_difference,
+                                result.model_accuracy - result.grace_accuracy,
+                                result.model_sensitivity - result.grace_sensitivity,
+                                result.model_specificity - result.grace_specificity
+                            ]
+                        })
+                        
+                        st.dataframe(
+                            comparison_df.style.format({
+                                'Modelo ML': '{:.4f}',
+                                'GRACE': '{:.4f}',
+                                'Diferencia': '{:+.4f}'
+                            }),
+                            use_container_width=True,
+                            hide_index=True
+                        )
+                    
+                    with tab4:
+                        st.markdown("#### NRI (Net Reclassification Improvement) & IDI")
+                        st.caption("""
+                        **NRI**: Mide la mejora en reclasificación de pacientes a categorías de riesgo correctas  
+                        **IDI**: Mide la mejora en discriminación integrada entre eventos y no-eventos
+                        """)
+                        
+                        nri_idi_fig = plot_nri_idi(result)
+                        st.plotly_chart(nri_idi_fig, use_container_width=True, config=plotly_config)
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown("##### NRI Detallado")
+                            st.metric("NRI Total", f"{result.nri:.4f}", 
+                                     delta=f"p={result.nri_p_value:.4f}")
+                            st.metric("NRI Eventos", f"{result.nri_events:.4f}",
+                                     help="Proporción de eventos correctamente reclasificados")
+                            st.metric("NRI No-Eventos", f"{result.nri_nonevents:.4f}",
+                                     help="Proporción de no-eventos correctamente reclasificados")
+                        
+                        with col2:
+                            st.markdown("##### IDI Detallado")
+                            st.metric("IDI", f"{result.idi:.4f}",
+                                     delta=f"p={result.idi_p_value:.4f}")
+                            
+                            if result.idi > 0:
+                                st.success("✅ Mejora en discriminación integrada")
+                            else:
+                                st.error("❌ No hay mejora en discriminación")
+                    
+                    with tab5:
+                        st.markdown("#### Reporte Completo de Comparación")
+                        
+                        report_df = generate_comparison_report(result)
+                        st.dataframe(report_df, use_container_width=True, hide_index=True)
+                        
+                        # Descargar reporte
+                        csv = report_df.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label="📥 Descargar Reporte CSV",
+                            data=csv,
+                            file_name=f"grace_comparison_{selected_model if 'selected_model' in locals() else 'model'}.csv",
+                            mime="text/csv"
+                        )
+                        
+                        # Resumen ejecutivo
+                        st.markdown("---")
+                        st.markdown("### 📝 Resumen Ejecutivo")
+                        
+                        st.markdown(f"""
+                        **Modelo Evaluado**: {result.model_name}  
+                        **Baseline**: GRACE Score  
+                        **Nivel de Significancia**: α = 0.05
+                        
+                        **Resultados Principales:**
+                        1. **AUC**: {result.model_auc:.4f} vs {result.grace_auc:.4f} (Δ = {result.auc_difference:+.4f}, p = {result.auc_p_value:.4f})
+                        2. **NRI**: {result.nri:.4f} (p = {result.nri_p_value:.4f})
+                        3. **IDI**: {result.idi:.4f} (p = {result.idi_p_value:.4f})
+                        4. **Calibración**: Brier {result.model_brier:.4f} vs {result.grace_brier:.4f}
+                        
+                        **Conclusión Estadística**: {result.superiority_level.replace('_', ' ').title()}
+                        
+                        **Recomendación Clínica**:
+                        """)
+                        
+                        if result.is_model_superior and result.auc_p_value < 0.01:
+                            st.success("""
+                            ✅ **RECOMENDADO**: El modelo ML demostró superioridad estadística significativa sobre GRACE.
+                            Se recomienda su uso complementario o como alternativa en entornos clínicos apropiados.
+                            """)
+                        elif result.is_model_superior:
+                            st.info("""
+                            📊 **PROMISORIO**: El modelo ML muestra superioridad marginal sobre GRACE.
+                            Se recomienda validación adicional en cohortes independientes.
+                            """)
+                        else:
+                            st.warning("""
+                            ⚠️ **PRECAUCIÓN**: El modelo ML no demostró superioridad sobre GRACE.
+                            GRACE sigue siendo el estándar de oro recomendado.
+                            """)
+        
+        except Exception as e:
+            st.error(f"❌ Error al cargar datos para comparación: {e}")
+            st.info("💡 Asegúrate de haber ejecutado la evaluación del modelo primero")
+    else:
+        st.info("ℹ️ Por favor, ejecuta la evaluación del modelo primero para habilitar la comparación con GRACE")
+
+else:
+    st.warning(f"""
+    ⚠️ **No se encontró la columna de GRACE Score en el dataset**
+    
+    Columnas buscadas: {', '.join([f'`{c}`' for c in grace_column_candidates])}
+    
+    **Para habilitar la comparación:**
+    1. Asegúrate de que tu dataset incluya el GRACE score
+    2. La columna debe llamarse: `escala_grace`, `GRACE`, `grace_score`, o `grace`
+    3. Vuelve a cargar el dataset en Data Cleaning
+    
+    **Información sobre GRACE Score:**
+    GRACE es un score validado que predice mortalidad en pacientes con IAM basado en:
+    - Edad, frecuencia cardíaca, presión arterial
+    - Creatinina, paro cardíaco, desviación ST
+    - Enzimas cardíacas elevadas, clase Killip
+    """)
+
 # Exportación PDF
 st.markdown("---")
 st.subheader("📄 Exportar Reporte de Evaluación")

@@ -12,6 +12,10 @@ if str(root_dir) not in sys.path:
 
 import streamlit as st
 import pandas as pd
+import numpy as np
+from sklearn.decomposition import PCA
+import joblib
+import tempfile
 
 from app import (
     display_model_list,
@@ -25,6 +29,7 @@ from app.config import PLOTS_TRAINING_DIR
 from src.data_load import get_latest_plot
 from src.training import generate_training_pdf
 from src.reporting import pdf_export_section
+from src.features import ICATransformer
 
 # Initialize
 initialize_state()
@@ -125,33 +130,242 @@ else:
 
 st.markdown("---")
 
-# Optional: Variable selection/removal before training
-st.markdown("---")
-st.subheader("📋 Variable Selection (Optional)")
+# ==================== FEATURE TRANSFORMATION SELECTOR ====================
+st.subheader("🔄 Feature Transformation")
 
-with st.expander("🔧 Remove Variables Before Training", expanded=False):
-    st.info("""
-    **Importante:** Si eliminas variables aquí, el modelo se entrenará SOLO con las variables restantes.
-    Los metadatos del modelo reflejarán exactamente las variables usadas.
+with st.expander("ℹ️ ¿Qué transformación usar?", expanded=False):
+    st.markdown("""
+    **Opciones de transformación de features:**
+    
+    - **🔤 Original Features:** Entrena con las variables originales sin transformación.
+      - ✅ Interpretabilidad directa de features
+      - ✅ No requiere procesamiento adicional
+      - ❌ Alta dimensionalidad si hay muchas variables
+    
+    - **📊 PCA (Principal Component Analysis):** Reducción de dimensionalidad maximizando varianza.
+      - ✅ Reduce multicolinealidad
+      - ✅ Menor dimensionalidad = entrenamiento más rápido
+      - ✅ Componentes ordenados por importancia (varianza)
+      - ❌ Pérdida de interpretabilidad directa
+      - 💡 Mejor para datos Gaussianos / lineales
+    
+    - **🧬 ICA (Independent Component Analysis):** Separación de fuentes independientes.
+      - ✅ Encuentra patrones no-Gaussianos
+      - ✅ Componentes estadísticamente independientes
+      - ✅ Útil para separar señales mezcladas
+      - ❌ No ordena componentes por importancia
+      - 💡 Mejor para datos no-Gaussianos con múltiples fuentes
+    
+    **El transformer será guardado junto con el modelo para aplicarlo automáticamente en predicciones.**
     """)
+
+transformation_type = st.radio(
+    "Selecciona tipo de features para entrenamiento:",
+    ["🔤 Original Features", "📊 PCA Components", "🧬 ICA Components"],
+    help="El modelo se entrenará con el tipo de features seleccionado"
+)
+
+# Initialize transformation session state
+if 'transformation_applied' not in st.session_state:
+    st.session_state.transformation_applied = False
+    st.session_state.transformer = None
+    st.session_state.transformed_df = None
+    st.session_state.transformation_params = {}
+
+# Configuration based on transformation type
+if transformation_type == "📊 PCA Components" or transformation_type == "🧬 ICA Components":
+    st.markdown("### ⚙️ Configuración de Transformación")
     
-    # Get all columns except target
-    all_features = [col for col in df.columns if col != task]
+    col1, col2, col3 = st.columns(3)
     
-    # Multi-select for variables to KEEP
-    selected_features = st.multiselect(
-        "Selecciona las variables a MANTENER (deja vacío para usar todas)",
-        options=all_features,
-        default=[],  # Empty by default means keep all
-        help="Solo las variables seleccionadas aquí serán usadas para entrenar el modelo"
-    )
+    # Get numeric columns (exclude target)
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    if task in numeric_cols:
+        numeric_cols.remove(task)
     
-    if selected_features:
-        st.success(f"✅ Se usarán {len(selected_features)} variables de {len(all_features)} disponibles")
-        st.session_state.selected_features_for_training = selected_features
+    n_features = len(numeric_cols)
+    
+    with col1:
+        if transformation_type == "📊 PCA Components":
+            pca_mode = st.radio(
+                "Modo de selección",
+                ["Varianza", "Número fijo"],
+                help="Varianza: selecciona automáticamente | Número fijo: especifica cantidad"
+            )
+            
+            if pca_mode == "Varianza":
+                variance_threshold = st.slider(
+                    "Varianza acumulada deseada",
+                    0.70, 0.99, 0.95, 0.01,
+                    format="%.2f",
+                    help="Porcentaje de varianza a capturar"
+                )
+                n_components = None
+            else:
+                n_components = st.slider(
+                    "Número de componentes",
+                    2, min(20, n_features), min(10, n_features),
+                    help="Componentes PCA a extraer"
+                )
+                variance_threshold = None
+        
+        else:  # ICA
+            n_components = st.slider(
+                "Número de componentes",
+                2, min(20, n_features), min(10, n_features),
+                help="Componentes independientes a extraer"
+            )
+    
+    with col2:
+        if transformation_type == "🧬 ICA Components":
+            ica_algorithm = st.selectbox(
+                "Algoritmo ICA",
+                ["parallel", "deflation"],
+                help="parallel: simultáneo | deflation: secuencial"
+            )
+            
+            ica_fun = st.selectbox(
+                "Función de contraste",
+                ["logcosh", "exp", "cube"],
+                help="logcosh: general | exp: super-Gaussiano | cube: sub-Gaussiano"
+            )
+    
+    with col3:
+        standardize = st.checkbox(
+            "Estandarizar datos",
+            value=True,
+            help="Recomendado para PCA/ICA (escala variables)"
+        )
+        
+        if transformation_type == "🧬 ICA Components":
+            whiten = st.checkbox(
+                "Whitening",
+                value=True,
+                help="Pre-procesamiento para ICA (recomendado)"
+            )
+    
+    # Apply transformation button
+    if st.button("🔄 Aplicar Transformación", type="secondary", use_container_width=True):
+        with st.spinner(f"Aplicando {'PCA' if transformation_type == '📊 PCA Components' else 'ICA'}..."):
+            try:
+                # Prepare data (only numeric columns, drop NaNs)
+                df_for_transform = df[numeric_cols].dropna()
+                
+                if len(df_for_transform) == 0:
+                    st.error("❌ No hay datos válidos después de eliminar NaNs. Aplica imputación primero.")
+                    st.stop()
+                
+                if transformation_type == "📊 PCA Components":
+                    # Apply PCA
+                    from sklearn.preprocessing import StandardScaler
+                    
+                    # Standardize if requested
+                    if standardize:
+                        scaler = StandardScaler()
+                        data_scaled = scaler.fit_transform(df_for_transform)
+                    else:
+                        data_scaled = df_for_transform.values
+                        scaler = None
+                    
+                    # Fit PCA
+                    if pca_mode == "Varianza":
+                        pca = PCA(n_components=variance_threshold, random_state=42)
+                    else:
+                        pca = PCA(n_components=n_components, random_state=42)
+                    
+                    components = pca.fit_transform(data_scaled)
+                    
+                    # Create DataFrame
+                    component_names = [f'PC{i+1}' for i in range(pca.n_components_)]
+                    transformed_df = pd.DataFrame(
+                        components,
+                        columns=component_names,
+                        index=df_for_transform.index
+                    )
+                    
+                    # Add target back
+                    transformed_df[task] = df.loc[transformed_df.index, task]
+                    
+                    # Store in session state
+                    st.session_state.transformer = {'pca': pca, 'scaler': scaler}
+                    st.session_state.transformed_df = transformed_df
+                    st.session_state.transformation_applied = True
+                    st.session_state.transformation_params = {
+                        'type': 'pca',
+                        'n_components': pca.n_components_,
+                        'variance_explained': sum(pca.explained_variance_ratio_),
+                        'standardize': standardize,
+                        'feature_names': numeric_cols
+                    }
+                    
+                    st.success(
+                        f"✅ PCA aplicado exitosamente: {pca.n_components_} componentes | "
+                        f"Varianza explicada: {sum(pca.explained_variance_ratio_)*100:.2f}%"
+                    )
+                
+                else:  # ICA
+                    # Apply ICA
+                    ica = ICATransformer(
+                        n_components=n_components,
+                        algorithm=ica_algorithm,
+                        fun=ica_fun,
+                        whiten=whiten,
+                        max_iter=500,
+                        random_state=42
+                    )
+                    
+                    ica.fit(df_for_transform)
+                    transformed_df = ica.transform(df_for_transform)
+                    
+                    # Add target back
+                    transformed_df[task] = df.loc[transformed_df.index, task]
+                    
+                    # Store in session state
+                    st.session_state.transformer = ica
+                    st.session_state.transformed_df = transformed_df
+                    st.session_state.transformation_applied = True
+                    st.session_state.transformation_params = {
+                        'type': 'ica',
+                        'n_components': n_components,
+                        'algorithm': ica_algorithm,
+                        'fun': ica_fun,
+                        'whiten': whiten,
+                        'kurtosis_mean': float(np.mean(np.abs(ica.result.kurtosis))),
+                        'feature_names': numeric_cols
+                    }
+                    
+                    st.success(
+                        f"✅ ICA aplicado exitosamente: {n_components} componentes independientes | "
+                        f"Kurtosis promedio: {np.mean(np.abs(ica.result.kurtosis)):.3f}"
+                    )
+                
+                # Show preview
+                st.markdown("#### 📋 Preview de datos transformados")
+                st.dataframe(transformed_df.head(10), width='stretch')
+                st.info(f"Shape: {transformed_df.shape} | Target: {task}")
+                
+            except Exception as e:
+                st.error(f"❌ Error durante transformación: {e}")
+                import traceback
+                with st.expander("Ver traceback"):
+                    st.code(traceback.format_exc())
+
+# Show transformation status
+if transformation_type != "🔤 Original Features":
+    if st.session_state.transformation_applied:
+        params = st.session_state.transformation_params
+        if params['type'] == 'pca':
+            st.success(
+                f"✅ **PCA activo:** {params['n_components']} componentes | "
+                f"Varianza: {params['variance_explained']*100:.2f}%"
+            )
+        else:  # ICA
+            st.success(
+                f"✅ **ICA activo:** {params['n_components']} componentes | "
+                f"Kurtosis: {params['kurtosis_mean']:.3f}"
+            )
     else:
-        st.info(f"ℹ️ Se usarán todas las {len(all_features)} variables disponibles")
-        st.session_state.selected_features_for_training = None
+        st.warning("⚠️ Transformación configurada pero no aplicada. Haz clic en '🔄 Aplicar Transformación'.")
 
 # Training section
 st.markdown("---")
@@ -175,18 +389,26 @@ else:
         st.session_state.is_training = True
         
         try:
-            # Prepare the actual DataFrame to use for training
-            df_for_training = df.copy()
-            
-            # Apply variable selection if user specified
-            selected_features = st.session_state.get('selected_features_for_training')
-            if selected_features:
-                # Keep only selected features + target
-                cols_to_keep = selected_features + [task]
-                df_for_training = df_for_training[cols_to_keep]
-                st.info(f"🔧 Entrenando con {len(selected_features)} variables seleccionadas (de {len(df.columns)-1} originales)")
+            # Determine which dataset to use based on transformation selection
+            if transformation_type != "🔤 Original Features":
+                if st.session_state.transformation_applied and st.session_state.transformed_df is not None:
+                    df_for_training = st.session_state.transformed_df.copy()
+                    params = st.session_state.transformation_params
+                    transform_type = "PCA" if params['type'] == 'pca' else "ICA"
+                    st.info(
+                        f"ℹ️ Entrenando con **{transform_type}**: {params['n_components']} componentes "
+                        f"(transformación aplicada a {len(params['feature_names'])} variables originales)"
+                    )
+                else:
+                    st.error(
+                        f"❌ Has seleccionado transformación {transformation_type} pero no la has aplicado. "
+                        f"Haz clic en '🔄 Aplicar Transformación' primero."
+                    )
+                    st.session_state.is_training = False
+                    st.stop()
             else:
-                st.info(f"ℹ️ Entrenando con todas las {len(df.columns)-1} variables disponibles")
+                df_for_training = df.copy()
+                st.info(f"ℹ️ Entrenando con **features originales**: {len(df.columns)-1} variables")
             
             # Save the DataFrame that will actually be used for training
             # This ensures metadata will reflect the correct features
@@ -194,6 +416,13 @@ else:
             training_data_path = temp_dir / f"streamlit_training_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
             df_for_training.to_csv(training_data_path, index=False)
             st.success(f"✅ Dataset para entrenamiento guardado: {len(df_for_training.columns)} columnas (incluyendo target)")
+            
+            # Save transformer if using transformation
+            transformer_path = None
+            if transformation_type != "🔤 Original Features" and st.session_state.transformer is not None:
+                transformer_path = temp_dir / f"streamlit_transformer_{datetime.now().strftime('%Y%m%d_%H%M%S')}.joblib"
+                joblib.dump(st.session_state.transformer, str(transformer_path))
+                st.success(f"✅ Transformer guardado temporalmente: {transformer_path.name}")
             
             # Create containers for progress display
             progress_container = st.empty()
@@ -259,6 +488,69 @@ else:
             with st.expander("📁 Ver rutas de modelos guardados"):
                 for name, path in save_paths.items():
                     st.code(f"{name}: {path}", language="text")
+            
+            # Save transformer alongside models and update metadata
+            if transformer_path is not None and st.session_state.transformer is not None:
+                st.markdown("---")
+                st.info("💾 **Guardando transformer y actualizando metadata de modelos...**")
+                
+                try:
+                    from pathlib import Path as PathlibPath
+                    import json
+                    
+                    # Save transformer permanently for each model
+                    for model_name, model_path in save_paths.items():
+                        model_dir = PathlibPath(model_path).parent
+                        transformer_save_path = model_dir / f"{model_name}_transformer.joblib"
+                        
+                        # Copy transformer to model directory
+                        joblib.dump(st.session_state.transformer, str(transformer_save_path))
+                        
+                        # Update model metadata to include transformation info
+                        metadata_path = model_dir / f"{model_name}_metadata.json"
+                        
+                        if metadata_path.exists():
+                            with open(metadata_path, 'r', encoding='utf-8') as f:
+                                metadata_dict = json.load(f)
+                            
+                            # Add transformation information
+                            metadata_dict['transformation'] = {
+                                'type': st.session_state.transformation_params['type'],
+                                'n_components': st.session_state.transformation_params['n_components'],
+                                'transformer_path': str(transformer_save_path),
+                                'original_features': st.session_state.transformation_params['feature_names'],
+                                'params': st.session_state.transformation_params
+                            }
+                            
+                            with open(metadata_path, 'w', encoding='utf-8') as f:
+                                json.dump(metadata_dict, f, indent=2)
+                        
+                        st.success(f"✅ Transformer guardado para {model_name}: `{transformer_save_path.name}`")
+                    
+                    st.success(f"""
+                    ✅ **Transformers guardados exitosamente**
+                    
+                    - Tipo: {st.session_state.transformation_params['type'].upper()}
+                    - Componentes: {st.session_state.transformation_params['n_components']}
+                    - Variables originales transformadas: {len(st.session_state.transformation_params['feature_names'])}
+                    - Metadata actualizado para todos los modelos
+                    
+                    **Los modelos aplicarán automáticamente esta transformación durante la predicción.**
+                    """)
+                    
+                except Exception as e:
+                    st.error(f"❌ Error guardando transformer: {e}")
+                    import traceback
+                    with st.expander("Ver detalles del error"):
+                        st.code(traceback.format_exc())
+                
+                finally:
+                    # Clean up temporary transformer
+                    try:
+                        if transformer_path.exists():
+                            transformer_path.unlink()
+                    except Exception:
+                        pass
             
             # Display learning curves if available
             if hasattr(st.session_state, 'learning_curve_paths') and st.session_state.learning_curve_paths:

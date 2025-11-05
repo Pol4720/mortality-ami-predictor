@@ -35,6 +35,7 @@ from src.config import CONFIG
 from src.cleaning import CleaningConfig, DataCleaner, quick_clean
 from src.eda import EDAAnalyzer, quick_eda
 from src.eda import generate_univariate_pdf, generate_bivariate_pdf, generate_multivariate_pdf
+from src.features import ICATransformer, compare_pca_vs_ica
 from src.reporting import pdf_export_section
 
 warnings.filterwarnings('ignore')
@@ -671,14 +672,34 @@ def data_cleaning_page():
     
     # Usar datos limpios si existen, sino usar datos crudos
     if st.session_state.raw_data is not None:
-        df = st.session_state.raw_data
+        df = st.session_state.raw_data.copy()
         st.info("📊 Usando datos crudos para limpieza")
     elif st.session_state.cleaned_data is not None:
-        df = st.session_state.cleaned_data
+        df = st.session_state.cleaned_data.copy()
         st.info("📊 Usando datos limpios existentes (se pueden re-procesar)")
     else:
         st.warning("⚠️ Primero carga un dataset en la pestaña 'Carga de Datos'")
         return
+    
+    # CRÍTICO: Aplicar selección de variables ANTES de la limpieza
+    if 'variables_to_keep' in st.session_state and len(st.session_state.variables_to_keep) > 0:
+        # Filtrar solo las variables seleccionadas
+        available_vars = set(df.columns) & st.session_state.variables_to_keep
+        if available_vars:
+            df = df[sorted(available_vars)].copy()
+            st.success(f"✅ Usando {len(available_vars)} variables seleccionadas (de {df.shape[1]} disponibles)")
+            
+            # Mostrar variables descartadas si hay
+            if 'variables_to_drop' in st.session_state and st.session_state.variables_to_drop:
+                discarded = st.session_state.variables_to_drop & set(st.session_state.raw_data.columns if st.session_state.raw_data is not None else st.session_state.cleaned_data.columns)
+                if discarded:
+                    with st.expander(f"🗑️ {len(discarded)} variables descartadas (no se incluirán en la limpieza)", expanded=False):
+                        for var in sorted(discarded):
+                            st.text(f"✗ {var}")
+        else:
+            st.warning("⚠️ Ninguna de las variables seleccionadas está disponible en el dataset actual")
+    else:
+        st.info("ℹ️ No se ha aplicado selección de variables. Se usarán todas las columnas disponibles.")
     
     # Configuración de limpieza en sidebar expandido
     with st.expander("⚙️ Configuración de Limpieza", expanded=True):
@@ -1512,7 +1533,11 @@ def multivariate_analysis_page():
         analyzer = st.session_state.analyzer
     
     # Tabs para diferentes análisis
-    tabs = st.tabs(["📊 Matriz de Correlación", "🎯 PCA (Análisis de Componentes Principales)"])
+    tabs = st.tabs([
+        "📊 Matriz de Correlación", 
+        "🎯 PCA (Análisis de Componentes Principales)",
+        "🧬 ICA (Análisis de Componentes Independientes)"
+    ])
     
     with tabs[0]:
         st.subheader("Matriz de Correlación")
@@ -1789,6 +1814,418 @@ def multivariate_analysis_page():
                         )
                     except Exception as e:
                         st.error(f"❌ Error durante PCA: {e}")
+                        with st.expander("Ver detalles del error"):
+                            import traceback
+                            st.code(traceback.format_exc())
+    
+    # ==================== TAB 3: ICA ====================
+    with tabs[2]:
+        st.subheader("Análisis de Componentes Independientes (ICA)")
+        
+        # Explicación de ICA vs PCA
+        with st.expander("ℹ️ ¿Qué es ICA y cuándo usarlo?"):
+            st.markdown("""
+            **ICA (Independent Component Analysis)** busca componentes **estadísticamente independientes**, 
+            no solo no correlacionados como PCA.
+            
+            **Diferencias clave con PCA:**
+            - **PCA:** Busca componentes ortogonales que maximizan la varianza (datos Gaussianos)
+            - **ICA:** Busca componentes independientes que maximizan la no-Gaussianidad (datos no-Gaussianos)
+            
+            **Cuándo usar ICA:**
+            - ✅ Datos no-Gaussianos con múltiples fuentes mezcladas (ej: señales biomédicas)
+            - ✅ Cuando se busca separación de fuentes (blind source separation)
+            - ✅ Cuando la independencia estadística es más importante que la varianza
+            
+            **Cuándo usar PCA:**
+            - ✅ Reducción de dimensionalidad general
+            - ✅ Datos aproximadamente Gaussianos
+            - ✅ Cuando la varianza es el criterio principal
+            
+            **Métrica clave: Kurtosis** (medida de no-Gaussianidad)
+            - Kurtosis = 0: Distribución Gaussiana
+            - Kurtosis > 0: Distribución leptocúrtica (colas pesadas)
+            - Kurtosis < 0: Distribución platicúrtica (colas ligeras)
+            """)
+        
+        if len(analyzer.numeric_cols) < 2:
+            st.warning("⚠️ Se necesitan al menos 2 variables numéricas para ICA")
+        else:
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                n_components_ica = st.slider(
+                    "Número de componentes",
+                    2, min(20, len(analyzer.numeric_cols)), 
+                    min(5, len(analyzer.numeric_cols)),
+                    help="Número de componentes independientes a extraer"
+                )
+            
+            with col2:
+                ica_algorithm = st.selectbox(
+                    "Algoritmo ICA",
+                    ["parallel", "deflation"],
+                    help="parallel: extrae todos simultáneamente, deflation: uno por uno"
+                )
+            
+            with col3:
+                ica_fun = st.selectbox(
+                    "Función de contraste",
+                    ["logcosh", "exp", "cube"],
+                    help="logcosh: general, exp: super-Gaussiano, cube: sub-Gaussiano"
+                )
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                whiten_ica = st.checkbox(
+                    "Blanqueamiento (whitening)",
+                    value=True,
+                    help="Pre-procesa datos para ortogonalizar (recomendado)"
+                )
+            
+            with col2:
+                max_iter_ica = st.number_input(
+                    "Iteraciones máximas",
+                    200, 1000, 500, 50,
+                    help="Más iteraciones = mejor convergencia pero más lento"
+                )
+            
+            if st.button("🚀 Ejecutar ICA", type="primary"):
+                with st.spinner("Ejecutando Análisis de Componentes Independientes..."):
+                    try:
+                        # Validar datos
+                        if len(analyzer.numeric_cols) < 2:
+                            st.error("❌ Se requieren al menos 2 variables numéricas para ICA")
+                            st.stop()
+                        
+                        df_for_ica = df[analyzer.numeric_cols].dropna()
+                        
+                        if len(df_for_ica) == 0:
+                            st.error(
+                                "❌ **No se puede ejecutar ICA: Todas las filas tienen valores faltantes**\n\n"
+                                "Solución: Ve a '🧹 Limpieza de Datos' y aplica imputación."
+                            )
+                            st.stop()
+                        
+                        if len(df_for_ica) < 2:
+                            st.warning(
+                                f"⚠️ Datos insuficientes: solo {len(df_for_ica)} fila(s) completa(s). "
+                                "Se requieren al menos 2."
+                            )
+                            st.stop()
+                        
+                        # Crear y ajustar ICA
+                        ica = ICATransformer(
+                            n_components=n_components_ica,
+                            algorithm=ica_algorithm,
+                            fun=ica_fun,
+                            whiten=whiten_ica,
+                            max_iter=max_iter_ica,
+                            random_state=42
+                        )
+                        
+                        ica.fit(df_for_ica)
+                        transformed_data = ica.transform(df_for_ica)
+                        
+                        # Guardar en session_state para comparación posterior
+                        st.session_state.ica_transformer = ica
+                        st.session_state.ica_data = transformed_data
+                        
+                        st.success(f"✅ ICA completado: {n_components_ica} componentes independientes extraídos")
+                        
+                        # ==================== MÉTRICAS ====================
+                        st.markdown("---")
+                        st.subheader("📊 Resultados de ICA")
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        col1.metric(
+                            "Componentes Independientes",
+                            ica.result.n_components
+                        )
+                        
+                        # Varianza explicada promedio
+                        avg_variance = np.mean(ica.result.variance_per_component) * 100
+                        col2.metric(
+                            "Varianza Promedio/Comp",
+                            f"{avg_variance:.1f}%"
+                        )
+                        
+                        # Kurtosis promedio (medida de no-Gaussianidad)
+                        avg_kurtosis = np.mean(np.abs(ica.result.kurtosis))
+                        col3.metric(
+                            "Kurtosis Promedio (abs)",
+                            f"{avg_kurtosis:.2f}",
+                            help="Mayor kurtosis = mayor no-Gaussianidad (mejor para ICA)"
+                        )
+                        
+                        col4.metric(
+                            "Variables Originales",
+                            len(ica.result.feature_names)
+                        )
+                        
+                        # ==================== VISUALIZACIONES ====================
+                        st.markdown("---")
+                        
+                        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+                            "📈 Kurtosis",
+                            "🔥 Matriz de Mezcla",
+                            "📊 Distribución Componentes",
+                            "📉 Varianza Explicada",
+                            "⚖️ Comparación PCA vs ICA"
+                        ])
+                        
+                        with tab1:
+                            st.subheader("Kurtosis de Componentes Independientes")
+                            st.markdown("""
+                            **Kurtosis** mide la no-Gaussianidad de cada componente:
+                            - **Kurtosis ≈ 0:** Distribución Gaussiana (normal)
+                            - **Kurtosis > 0:** Leptocúrtica (colas pesadas, picos altos)
+                            - **Kurtosis < 0:** Platicúrtica (colas ligeras, picos bajos)
+                            
+                            ICA **maximiza la kurtosis** para encontrar fuentes independientes.
+                            """)
+                            
+                            fig_kurtosis = ica.plot_kurtosis()
+                            st.plotly_chart(fig_kurtosis, use_container_width=True)
+                            
+                            # Tabla de kurtosis
+                            kurtosis_df = pd.DataFrame({
+                                'Componente': [f'IC{i+1}' for i in range(len(ica.result.kurtosis))],
+                                'Kurtosis': ica.result.kurtosis,
+                                'Kurtosis (abs)': np.abs(ica.result.kurtosis)
+                            })
+                            kurtosis_df = kurtosis_df.sort_values('Kurtosis (abs)', ascending=False)
+                            
+                            st.dataframe(kurtosis_df, width='stretch')
+                            
+                            st.info(
+                                f"💡 **Interpretación:** Componente con mayor kurtosis (abs): "
+                                f"**{kurtosis_df.iloc[0]['Componente']}** con kurtosis = "
+                                f"{kurtosis_df.iloc[0]['Kurtosis']:.3f} → "
+                                f"{'Distribución leptocúrtica (colas pesadas)' if kurtosis_df.iloc[0]['Kurtosis'] > 0 else 'Distribución platicúrtica (colas ligeras)'}"
+                            )
+                        
+                        with tab2:
+                            st.subheader("Matriz de Mezcla (Mixing Matrix)")
+                            st.markdown("""
+                            Muestra **cómo cada componente independiente se mezcla** para formar las variables originales.
+                            
+                            - **Filas:** Variables originales
+                            - **Columnas:** Componentes independientes
+                            - **Valores:** Peso de cada IC en cada variable (colores intensos = mayor influencia)
+                            """)
+                            
+                            fig_mixing = ica.plot_mixing_matrix()
+                            st.plotly_chart(fig_mixing, use_container_width=True)
+                            
+                            # Mostrar matriz como tabla
+                            with st.expander("Ver Matriz de Mezcla (valores numéricos)"):
+                                mixing_df = pd.DataFrame(
+                                    ica.result.mixing_matrix,
+                                    columns=[f'IC{i+1}' for i in range(ica.result.n_components)],
+                                    index=ica.result.feature_names
+                                )
+                                st.dataframe(mixing_df.style.format("{:.4f}"), width='stretch')
+                        
+                        with tab3:
+                            st.subheader("Distribución de Componentes Independientes")
+                            st.markdown("""
+                            Histogramas de los primeros componentes independientes.
+                            ICA busca que estas distribuciones sean **lo más no-Gaussianas posible**.
+                            """)
+                            
+                            n_show = min(6, n_components_ica)
+                            fig_dist = ica.plot_components_distribution(n_components=n_show)
+                            st.plotly_chart(fig_dist, use_container_width=True)
+                        
+                        with tab4:
+                            st.subheader("Varianza Explicada por Componente")
+                            st.markdown("""
+                            ⚠️ **Nota:** La varianza **NO es el objetivo principal de ICA** 
+                            (eso es de PCA). ICA busca **independencia estadística**, no varianza máxima.
+                            
+                            Sin embargo, es útil ver cuánta varianza captura cada componente.
+                            """)
+                            
+                            fig_variance = ica.plot_variance_explained()
+                            st.plotly_chart(fig_variance, use_container_width=True)
+                            
+                            # Tabla de varianza
+                            variance_df = pd.DataFrame({
+                                'Componente': [f'IC{i+1}' for i in range(len(ica.result.variance_per_component))],
+                                'Varianza Individual (%)': ica.result.variance_per_component * 100,
+                                'Varianza Acumulada (%)': np.cumsum(ica.result.variance_per_component) * 100
+                            })
+                            
+                            st.dataframe(variance_df, width='stretch')
+                        
+                        with tab5:
+                            st.subheader("Comparación: PCA vs ICA")
+                            st.markdown("""
+                            Comparación directa entre PCA e ICA aplicados a los mismos datos.
+                            """)
+                            
+                            # Verificar si hay resultados de PCA en session_state
+                            if hasattr(st.session_state, 'analyzer') and st.session_state.analyzer is not None:
+                                with st.spinner("Calculando comparación PCA vs ICA..."):
+                                    try:
+                                        # Ejecutar PCA con el mismo número de componentes
+                                        pca_results = analyzer.perform_pca(
+                                            n_components=n_components_ica,
+                                            scale=True
+                                        )
+                                        
+                                        comparison_fig = compare_pca_vs_ica(
+                                            data=df_for_ica,
+                                            n_components=n_components_ica,
+                                            feature_names=ica.result.feature_names
+                                        )
+                                        
+                                        st.plotly_chart(comparison_fig, use_container_width=True)
+                                        
+                                        # Tabla comparativa
+                                        st.markdown("### 📋 Comparación de Métricas")
+                                        
+                                        comparison_df = pd.DataFrame({
+                                            'Métrica': [
+                                                'Varianza Total Explicada (%)',
+                                                'Kurtosis Promedio (abs)',
+                                                'Objetivo Principal',
+                                                'Asunción de Datos'
+                                            ],
+                                            'PCA': [
+                                                f"{sum(pca_results.explained_variance_ratio) * 100:.2f}%",
+                                                "0.00 (Gaussianos)",
+                                                "Maximizar varianza",
+                                                "Gaussianos / Cualquiera"
+                                            ],
+                                            'ICA': [
+                                                f"{np.sum(ica.result.variance_per_component) * 100:.2f}%",
+                                                f"{avg_kurtosis:.2f}",
+                                                "Maximizar independencia",
+                                                "No-Gaussianos"
+                                            ]
+                                        })
+                                        
+                                        st.dataframe(comparison_df, width='stretch', hide_index=True)
+                                        
+                                        st.success(
+                                            "✅ **Recomendación:** "
+                                            f"{'Usa ICA si tus datos son claramente no-Gaussianos y buscas separación de fuentes.' if avg_kurtosis > 1 else 'Usa PCA si buscas reducción de dimensionalidad general o tus datos son aproximadamente Gaussianos.'}"
+                                        )
+                                        
+                                    except Exception as e:
+                                        st.warning(f"⚠️ No se pudo completar la comparación: {e}")
+                                        st.info("Ejecuta PCA en la pestaña anterior para habilitar la comparación completa.")
+                            else:
+                                st.info("ℹ️ Ejecuta PCA en la pestaña anterior para comparar ambos métodos.")
+                        
+                        # ==================== IMPORTANCIA DE FEATURES ====================
+                        st.markdown("---")
+                        st.subheader("🎯 Importancia de Features en Componentes Independientes")
+                        
+                        ic_selected = st.selectbox(
+                            "Selecciona Componente Independiente",
+                            [f'IC{i+1}' for i in range(n_components_ica)]
+                        )
+                        
+                        ic_idx = int(ic_selected.replace('IC', '')) - 1
+                        importance_df = ica.get_feature_importance(ic_idx)
+                        
+                        col1, col2 = st.columns([2, 1])
+                        
+                        with col1:
+                            import plotly.express as px
+                            fig_importance = px.bar(
+                                importance_df.head(15).reset_index(),
+                                x='importance',
+                                y='feature',
+                                orientation='h',
+                                title=f'Top 15 Features en {ic_selected}',
+                                labels={'feature': 'Variable', 'importance': 'Peso (abs)'},
+                                color='importance',
+                                color_continuous_scale='Viridis'
+                            )
+                            fig_importance.update_layout(yaxis={'categoryorder': 'total ascending'})
+                            st.plotly_chart(fig_importance, use_container_width=True)
+                        
+                        with col2:
+                            st.markdown(f"**Top 5 Features en {ic_selected}:**")
+                            top5 = importance_df.head(5)
+                            for idx, (feat, imp) in enumerate(top5.items(), 1):
+                                st.markdown(f"{idx}. **{feat}**: {imp:.4f}")
+                        
+                        # Tabla completa
+                        with st.expander("Ver todas las importancias"):
+                            st.dataframe(importance_df, width='stretch')
+                        
+                        # ==================== ERROR DE RECONSTRUCCIÓN ====================
+                        st.markdown("---")
+                        st.subheader("🔄 Error de Reconstrucción")
+                        
+                        reconstruction_error = ica.get_reconstruction_error(df_for_ica)
+                        
+                        col1, col2 = st.columns(2)
+                        col1.metric(
+                            "Error de Reconstrucción (MSE)",
+                            f"{reconstruction_error:.6f}",
+                            help="Menor es mejor. Diferencia entre datos originales y reconstruidos desde ICs."
+                        )
+                        
+                        # Reconstruir datos
+                        reconstructed = ica.inverse_transform(transformed_data)
+                        reconstruction_quality = 1 - (reconstruction_error / df_for_ica.var().mean())
+                        
+                        col2.metric(
+                            "Calidad de Reconstrucción",
+                            f"{max(0, reconstruction_quality * 100):.2f}%",
+                            help="Porcentaje de información preservada"
+                        )
+                        
+                        # ==================== GUARDAR RESULTADOS ====================
+                        st.markdown("---")
+                        st.subheader("💾 Guardar Resultados")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            if st.button("💾 Guardar Datos Transformados (ICA)", use_container_width=True):
+                                try:
+                                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                    ica_data_path = CLEANED_DATASETS_DIR / f"ica_transformed_{timestamp}.csv"
+                                    ica_data_path.parent.mkdir(parents=True, exist_ok=True)
+                                    
+                                    transformed_data.to_csv(ica_data_path, index=False)
+                                    st.success(f"✅ Datos ICA guardados en: {ica_data_path}")
+                                except Exception as e:
+                                    st.error(f"❌ Error: {e}")
+                        
+                        with col2:
+                            if st.button("💾 Guardar Transformer ICA", use_container_width=True):
+                                try:
+                                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                    ica_model_path = CLEANED_DATASETS_DIR.parent / "models" / f"ica_transformer_{timestamp}.joblib"
+                                    ica_model_path.parent.mkdir(parents=True, exist_ok=True)
+                                    
+                                    ica.save(str(ica_model_path))
+                                    st.success(f"✅ Transformer ICA guardado en: {ica_model_path}")
+                                    st.info("Puedes cargar este transformer más tarde para aplicar la misma transformación a nuevos datos.")
+                                except Exception as e:
+                                    st.error(f"❌ Error: {e}")
+                        
+                    except ValueError as ve:
+                        st.error(f"❌ Error de validación: {ve}")
+                        st.info(
+                            "💡 **Sugerencias:**\n"
+                            "- Asegúrate de haber aplicado limpieza de datos primero\n"
+                            "- Verifica que las variables numéricas tengan datos válidos\n"
+                            "- Aplica imputación de valores faltantes si es necesario\n"
+                            "- ICA funciona mejor con datos no-Gaussianos"
+                        )
+                    except Exception as e:
+                        st.error(f"❌ Error durante ICA: {e}")
                         with st.expander("Ver detalles del error"):
                             import traceback
                             st.code(traceback.format_exc())

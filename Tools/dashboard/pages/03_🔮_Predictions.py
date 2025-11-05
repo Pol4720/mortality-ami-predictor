@@ -83,6 +83,59 @@ try:
         except Exception as e:
             st.warning(f"⚠️ Could not load metadata: {e}")
     
+    # ==================== LOAD TRANSFORMER IF EXISTS ====================
+    transformer = None
+    transformation_info = None
+    
+    if model_metadata and 'transformation' in model_metadata:
+        transformation_info = model_metadata['transformation']
+        transformer_path_str = transformation_info.get('transformer_path')
+        
+        if transformer_path_str:
+            transformer_path = Path(transformer_path_str)
+            
+            if transformer_path.exists():
+                try:
+                    transformer = joblib.load(str(transformer_path))
+                    
+                    transform_type = transformation_info['type'].upper()
+                    n_comps = transformation_info['n_components']
+                    
+                    st.success(f"""
+                    ✅ **Transformer cargado: {transform_type}**
+                    
+                    - Tipo: {transform_type}
+                    - Componentes: {n_comps}
+                    - Variables originales: {len(transformation_info.get('original_features', []))}
+                    
+                    **Las predicciones aplicarán automáticamente esta transformación a tus datos.**
+                    """)
+                    
+                    # Show transformation details
+                    with st.expander("🔄 Detalles de la Transformación"):
+                        st.write(f"**Tipo de transformación:** {transform_type}")
+                        st.write(f"**Número de componentes:** {n_comps}")
+                        
+                        if transform_type == 'PCA':
+                            variance = transformation_info.get('params', {}).get('variance_explained', 0)
+                            st.write(f"**Varianza explicada:** {variance*100:.2f}%")
+                            st.write(f"**Estandarizado:** {'Sí' if transformation_info.get('params', {}).get('standardize', False) else 'No'}")
+                        elif transform_type == 'ICA':
+                            kurtosis = transformation_info.get('params', {}).get('kurtosis_mean', 0)
+                            st.write(f"**Kurtosis promedio:** {kurtosis:.3f}")
+                            st.write(f"**Algoritmo:** {transformation_info.get('params', {}).get('algorithm', 'N/A')}")
+                            st.write(f"**Función:** {transformation_info.get('params', {}).get('fun', 'N/A')}")
+                        
+                        st.write("**Variables originales transformadas:**")
+                        original_feats = transformation_info.get('original_features', [])
+                        st.write(f"{len(original_feats)} variables: {', '.join(original_feats[:10])}{'...' if len(original_feats) > 10 else ''}")
+                
+                except Exception as e:
+                    st.error(f"❌ Error cargando transformer: {e}")
+                    transformer = None
+            else:
+                st.warning(f"⚠️ Transformer no encontrado en: `{transformer_path}`")
+    
     # Determine target column
     target_col = CONFIG.target_column if task == "mortality" else CONFIG.arrhythmia_column
     
@@ -279,8 +332,67 @@ with tab1:
         st.subheader("Prediction Results")
         
         try:
+            # ==================== APPLY TRANSFORMATION IF EXISTS ====================
+            X_to_predict = X_row.copy()
+            
+            if transformer is not None and transformation_info is not None:
+                st.info(f"🔄 Aplicando transformación {transformation_info['type'].upper()}...")
+                
+                # Get original features that need transformation
+                original_features = transformation_info.get('original_features', [])
+                
+                # Check if all required features are present
+                missing_feats = set(original_features) - set(X_row.columns)
+                if missing_feats:
+                    st.error(f"❌ Faltan variables para la transformación: {missing_feats}")
+                    st.stop()
+                
+                # Extract only the features that were transformed
+                X_original = X_row[original_features]
+                
+                # Apply transformation based on type
+                if transformation_info['type'] == 'pca':
+                    # PCA transformation
+                    scaler = transformer.get('scaler')
+                    pca = transformer.get('pca')
+                    
+                    if scaler is not None:
+                        X_scaled = scaler.transform(X_original)
+                    else:
+                        X_scaled = X_original.values
+                    
+                    X_transformed = pca.transform(X_scaled)
+                    
+                    # Create DataFrame with component names
+                    component_names = [f'PC{i+1}' for i in range(pca.n_components_)]
+                    X_to_predict = pd.DataFrame(
+                        X_transformed,
+                        columns=component_names,
+                        index=X_row.index
+                    )
+                    
+                    st.success(f"✅ Transformación PCA aplicada: {len(original_features)} variables → {pca.n_components_} componentes")
+                
+                elif transformation_info['type'] == 'ica':
+                    # ICA transformation
+                    X_transformed = transformer.transform(X_original)
+                    X_to_predict = X_transformed
+                    
+                    st.success(f"✅ Transformación ICA aplicada: {len(original_features)} variables → {transformation_info['n_components']} componentes independientes")
+                
+                # Show transformation preview
+                with st.expander("🔍 Ver datos transformados"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write("**Datos Originales (primeras 5 vars):**")
+                        st.dataframe(X_original.iloc[:, :5], width='stretch')
+                    with col2:
+                        st.write(f"**Datos Transformados ({transformation_info['type'].upper()}):**")
+                        st.dataframe(X_to_predict, width='stretch')
+            
+            # Make prediction with (possibly transformed) data
             if hasattr(model, "predict_proba"):
-                prob = model.predict_proba(X_row)[:, 1][0]
+                prob = model.predict_proba(X_to_predict)[:, 1][0]
                 
                 col1, col2 = st.columns(2)
                 with col1:
@@ -292,7 +404,7 @@ with tab1:
                 # Visual probability bar
                 st.progress(prob)
             else:
-                pred = model.predict(X_row)[0]
+                pred = model.predict(X_to_predict)[0]
                 st.metric("Prediction", str(pred))
         
         except Exception as e:
@@ -336,14 +448,71 @@ with tab2:
             
             if st.button("🎯 Predict All Rows", type="primary"):
                 with st.spinner("Making predictions..."):
-                    # Make predictions
+                    # ==================== APPLY TRANSFORMATION IF EXISTS ====================
+                    df_to_predict = upload_df.copy()
+                    
+                    if transformer is not None and transformation_info is not None:
+                        st.info(f"🔄 Aplicando transformación {transformation_info['type'].upper()} a {len(upload_df)} filas...")
+                        
+                        # Get original features that need transformation
+                        original_features = transformation_info.get('original_features', [])
+                        
+                        # Check if all required features are present
+                        missing_feats = set(original_features) - set(upload_df.columns)
+                        if missing_feats:
+                            st.error(f"❌ Faltan variables para la transformación: {missing_feats}")
+                            st.stop()
+                        
+                        # Extract only the features that were transformed
+                        df_original = upload_df[original_features]
+                        
+                        # Apply transformation based on type
+                        if transformation_info['type'] == 'pca':
+                            # PCA transformation
+                            scaler = transformer.get('scaler')
+                            pca = transformer.get('pca')
+                            
+                            if scaler is not None:
+                                data_scaled = scaler.transform(df_original)
+                            else:
+                                data_scaled = df_original.values
+                            
+                            data_transformed = pca.transform(data_scaled)
+                            
+                            # Create DataFrame with component names
+                            component_names = [f'PC{i+1}' for i in range(pca.n_components_)]
+                            df_to_predict = pd.DataFrame(
+                                data_transformed,
+                                columns=component_names,
+                                index=upload_df.index
+                            )
+                            
+                            st.success(f"✅ Transformación PCA aplicada: {len(original_features)} variables → {pca.n_components_} componentes")
+                        
+                        elif transformation_info['type'] == 'ica':
+                            # ICA transformation
+                            df_to_predict = transformer.transform(df_original)
+                            
+                            st.success(f"✅ Transformación ICA aplicada: {len(original_features)} variables → {transformation_info['n_components']} componentes independientes")
+                        
+                        # Show transformation summary
+                        with st.expander("🔍 Ver resumen de transformación"):
+                            st.write(f"**Tipo:** {transformation_info['type'].upper()}")
+                            st.write(f"**Filas procesadas:** {len(upload_df)}")
+                            st.write(f"**Variables originales:** {len(original_features)}")
+                            st.write(f"**Componentes resultantes:** {df_to_predict.shape[1]}")
+                            
+                            st.write("**Primeras 3 filas transformadas:**")
+                            st.dataframe(df_to_predict.head(3), width='stretch')
+                    
+                    # Make predictions with (possibly transformed) data
                     if hasattr(model, "predict_proba"):
-                        probs = model.predict_proba(upload_df)[:, 1]
+                        probs = model.predict_proba(df_to_predict)[:, 1]
                         output_df = upload_df.copy()
                         output_df["prediction_probability"] = probs
                         output_df["prediction_class"] = (probs > 0.5).astype(int)
                     else:
-                        preds = model.predict(upload_df)
+                        preds = model.predict(df_to_predict)
                         output_df = upload_df.copy()
                         output_df["prediction"] = preds
                     

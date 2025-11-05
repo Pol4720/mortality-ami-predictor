@@ -1,7 +1,7 @@
 """Evaluation module for model assessment.
 
 This module provides utilities for computing metrics, calibration curves,
-decision curves, resampling methods, custom models evaluation, and generating reports.
+decision curves, resampling methods, custom models evaluation, GRACE comparison, and generating reports.
 """
 
 from .metrics import compute_classification_metrics, compute_regression_metrics
@@ -25,6 +25,15 @@ from .custom_integration import (
     compare_model_performance,
     create_evaluation_summary,
 )
+from .grace_comparison import (
+    compare_with_grace,
+    plot_roc_comparison,
+    plot_calibration_comparison,
+    plot_metrics_comparison,
+    plot_nri_idi,
+    generate_comparison_report,
+    ComparisonResult,
+)
 
 __all__ = [
     "compute_classification_metrics",
@@ -38,6 +47,7 @@ __all__ = [
     "jackknife_evaluation",
     "combined_resampling_evaluation",
     "plot_resampling_results",
+    "plot_resampling_results_plotly",
     "ResamplingResult",
     "generate_evaluation_pdf",
     # Custom models evaluation
@@ -47,4 +57,12 @@ __all__ = [
     "batch_evaluate_mixed_models",
     "compare_model_performance",
     "create_evaluation_summary",
+    # GRACE comparison
+    "compare_with_grace",
+    "plot_roc_comparison",
+    "plot_calibration_comparison",
+    "plot_metrics_comparison",
+    "plot_nri_idi",
+    "generate_comparison_report",
+    "ComparisonResult",
 ]

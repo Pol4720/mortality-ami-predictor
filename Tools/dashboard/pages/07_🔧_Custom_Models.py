@@ -886,7 +886,7 @@ def code_editor_section():
         )
     
     with col2:
-        if st.button("📥 Cargar Template", use_container_width=True):
+        if st.button("📥 Cargar Template", use_container_width=True, key="load_template_btn"):
             if template_choice == "Clasificador Simple":
                 st.session_state.custom_model_code = TEMPLATE_SIMPLE_CLASSIFIER
             elif template_choice == "Red Neuronal":
@@ -897,17 +897,54 @@ def code_editor_section():
                 st.session_state.custom_model_code = ""
             st.rerun()
     
-    # Code editor
-    code = st.text_area(
-        "Código del Modelo:",
-        value=st.session_state.custom_model_code,
-        height=400,
-        key="code_editor",
-        help="Escribe tu código aquí. Debe incluir una clase que herede de BaseCustomClassifier o BaseCustomRegressor."
-    )
+    # Enhanced code editor with syntax highlighting
+    st.markdown("### 📝 Editor de Código con Syntax Highlighting")
     
-    # Update session state
-    st.session_state.custom_model_code = code
+    # Info about current template
+    if st.session_state.custom_model_code:
+        line_count = len(st.session_state.custom_model_code.split('\n'))
+        st.info(f"📊 Código actual: **{line_count} líneas**")
+    else:
+        st.warning("📄 Editor vacío - selecciona un template arriba")
+    
+    # TWO-PANEL APPROACH: Display with syntax highlighting + Edit in text area
+    col_display, col_edit = st.columns([1, 1])
+    
+    with col_display:
+        st.markdown("**Vista con Syntax Highlighting:**")
+        if st.session_state.custom_model_code:
+            st.code(st.session_state.custom_model_code, language="python", line_numbers=True)
+        else:
+            st.info("No hay código para mostrar")
+    
+    with col_edit:
+        st.markdown("**Editor (edita aquí):**")
+        # Add custom CSS for better code display
+        st.markdown("""
+        <style>
+        .stTextArea textarea {
+            font-family: 'Courier New', monospace !important;
+            font-size: 13px !important;
+            line-height: 1.5 !important;
+            background-color: #1e1e1e !important;
+            color: #d4d4d4 !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Code editor - use unique key
+        code = st.text_area(
+            "Edita tu código:",
+            value=st.session_state.custom_model_code,
+            height=600,
+            key="code_text_area",
+            help="Escribe tu código aquí. Debe incluir una clase que herede de BaseCustomClassifier o BaseCustomRegressor.",
+            label_visibility="collapsed"
+        )
+        
+        # Update session state when user types
+        if code != st.session_state.custom_model_code:
+            st.session_state.custom_model_code = code
     
     # Action buttons
     col1, col2, col3 = st.columns(3)
@@ -940,16 +977,39 @@ def code_editor_section():
                         st.markdown(f"- **{cls['name']}** ({cls['type']})")
                 
                 if validation['warnings']:
+                    st.warning("⚠️ Advertencias:")
                     for warning in validation['warnings']:
-                        st.warning(f"⚠️ {warning}")
+                        st.warning(f"• {warning}")
             else:
-                st.error("❌ El código tiene errores:")
+                st.error("❌ El código tiene errores de sintaxis:")
+                
+                # Show errors with context
                 for error in validation['errors']:
                     st.error(f"• {error}")
                 
+                # If there's a line number in the error, show context
+                if 'línea' in error.lower() or 'line' in error.lower():
+                    with st.expander("🔍 Ver contexto del error"):
+                        lines = code.split('\n')
+                        # Try to extract line number from error message
+                        import re
+                        line_match = re.search(r'línea (\d+)|line (\d+)', error.lower())
+                        if line_match:
+                            error_line = int(line_match.group(1) or line_match.group(2))
+                            start = max(0, error_line - 3)
+                            end = min(len(lines), error_line + 2)
+                            
+                            context_lines = []
+                            for i in range(start, end):
+                                marker = " >>> " if i + 1 == error_line else "     "
+                                context_lines.append(f"{marker}{i+1:4d} | {lines[i]}")
+                            
+                            st.code('\n'.join(context_lines), language='python')
+                
                 if validation['warnings']:
+                    st.warning("⚠️ Advertencias adicionales:")
                     for warning in validation['warnings']:
-                        st.warning(f"⚠️ {warning}")
+                        st.warning(f"• {warning}")
     
     if save_btn and code.strip():
         # Show save dialog
@@ -1023,9 +1083,25 @@ def file_upload_section():
         # Leer contenido
         code = uploaded_file.read().decode('utf-8')
         
-        # Mostrar preview
+        # Botón para cargar en el editor
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.info("💡 Puedes importar directamente o cargar en el editor para modificarlo")
+        
+        with col2:
+            if st.button("📝 Cargar en Editor", use_container_width=True):
+                st.session_state.custom_model_code = code
+                st.success("✅ Código cargado en el editor")
+                st.info("Ve a la pestaña 'Editor de Código' para editarlo")
+        
+        # Mostrar preview con números de línea
         with st.expander("👀 Vista previa del código", expanded=True):
-            st.code(code, language='python')
+            # Add line numbers to code preview
+            lines = code.split('\n')
+            numbered_code = '\n'.join([f"{i+1:4d} | {line}" for i, line in enumerate(lines)])
+            st.code(numbered_code, language='python')
+            st.caption(f"📊 Total: {len(lines)} líneas")
         
         # Validar
         with st.spinner("Validando archivo..."):
@@ -1139,12 +1215,12 @@ def model_manager_section():
                 with col2:
                     st.markdown("**Acciones:**")
                     
-                    if st.button("👁️ Ver Código", key=f"view_{model_file.name}"):
-                        st.code(code, language='python')
+                    view_code_btn = st.button("👁️ Ver Código", key=f"view_{model_file.name}")
                     
                     if st.button("📝 Editar", key=f"edit_{model_file.name}"):
                         st.session_state.custom_model_code = code
-                        st.info("Código cargado en el editor. Ve a la pestaña 'Editor' para editarlo.")
+                        st.success("✅ Código cargado en el editor")
+                        st.info("💡 Ve a la pestaña 'Editor de Código' para editarlo")
                     
                     if st.button("🗑️ Eliminar", key=f"delete_{model_file.name}"):
                         try:
@@ -1155,6 +1231,17 @@ def model_manager_section():
                             st.rerun()
                         except Exception as e:
                             st.error(f"❌ Error al eliminar: {e}")
+                
+                # Show code if view button clicked
+                if view_code_btn:
+                    st.markdown("---")
+                    st.markdown("### 📄 Código Completo")
+                    
+                    # Add line numbers
+                    lines = code.split('\n')
+                    numbered_code = '\n'.join([f"{i+1:4d} | {line}" for i, line in enumerate(lines)])
+                    st.code(numbered_code, language='python')
+                    st.caption(f"📊 Total: {len(lines)} líneas")
                 
             except Exception as e:
                 st.error(f"Error al cargar {model_file.name}: {e}")
