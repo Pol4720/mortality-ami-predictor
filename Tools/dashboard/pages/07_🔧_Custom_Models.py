@@ -633,15 +633,16 @@ class EnsemblePersonalizado(BaseCustomClassifier):
             name: Nombre del modelo
         """
         super().__init__(name=name)
+        # Guardar parámetros originales (NO modificar para sklearn clone)
         self.rf_weight = rf_weight
         self.gb_weight = gb_weight
         self.lr_weight = lr_weight
         
-        # Normalizar pesos
+        # Calcular pesos normalizados (en variable interna)
         total = rf_weight + gb_weight + lr_weight
-        self.rf_weight /= total
-        self.gb_weight /= total
-        self.lr_weight /= total
+        self._rf_weight_norm = rf_weight / total
+        self._gb_weight_norm = gb_weight / total
+        self._lr_weight_norm = lr_weight / total
         
         # Modelos
         self._rf = RandomForestClassifier(n_estimators=100, random_state=42)
@@ -672,11 +673,11 @@ class EnsemblePersonalizado(BaseCustomClassifier):
         proba_gb = self._gb.predict_proba(X)
         proba_lr = self._lr.predict_proba(X)
         
-        # Combinar con pesos
+        # Combinar con pesos normalizados
         proba_ensemble = (
-            self.rf_weight * proba_rf +
-            self.gb_weight * proba_gb +
-            self.lr_weight * proba_lr
+            self._rf_weight_norm * proba_rf +
+            self._gb_weight_norm * proba_gb +
+            self._lr_weight_norm * proba_lr
         )
         
         return proba_ensemble
@@ -1005,8 +1006,17 @@ def code_editor_section():
         st.session_state.custom_model_code = ""
         st.rerun()
     
-    # Handle save button - show inline form
+    # Initialize save mode state
+    if 'save_mode' not in st.session_state:
+        st.session_state.save_mode = False
+    
+    # Handle save button - activate save mode
     if save_btn:
+        st.session_state.save_mode = True
+        st.rerun()
+    
+    # Show save form if in save mode
+    if st.session_state.save_mode:
         st.markdown("---")
         st.markdown("### 💾 Guardar Modelo")
         
@@ -1032,6 +1042,7 @@ def code_editor_section():
         
         with col_cancel:
             if st.button("❌ Cancelar", use_container_width=True):
+                st.session_state.save_mode = False
                 st.rerun()
         
         with col_confirm:
@@ -1074,7 +1085,8 @@ def code_editor_section():
                                 st.info(f"📂 {filepath}")
                                 st.info(f"📦 {len(validation['classes'])} clase(s): " + ", ".join([c['name'] for c in validation['classes']]))
                                 
-                                # Recargar en 1 segundo
+                                # Desactivar modo guardado y recargar
+                                st.session_state.save_mode = False
                                 time.sleep(1)
                                 st.rerun()
                             

@@ -334,7 +334,15 @@ def train_models_with_progress(
     if custom_model_classes:
         for model_name, model_class in custom_model_classes.items():
             # Instantiate custom model with default parameters
-            all_models[model_name] = model_class()
+            # Models need to be in format (base_model, param_grid)
+            model_instance = model_class()
+            
+            # Get parameters from the model to create param_grid
+            params = model_instance.get_params()
+            # Create empty param_grid (no hyperparameter tuning for custom models by default)
+            param_grid = {}
+            
+            all_models[model_name] = (model_instance, param_grid)
     
     models_to_train = {k: v for k, v in all_models.items() if k in selected_models}
     
