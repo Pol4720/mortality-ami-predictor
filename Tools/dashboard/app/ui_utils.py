@@ -184,6 +184,7 @@ def train_models_with_progress(
     quick: bool,
     imputer_mode: str,
     selected_models: list[str],
+    custom_model_classes: dict = None,
 ) -> dict[str, str]:
     """Train selected models using the rigorous experiment pipeline.
     
@@ -200,11 +201,15 @@ def train_models_with_progress(
         task: Task name (mortality/arrhythmia)
         quick: Whether to use quick mode (fewer CV splits)
         imputer_mode: Imputation strategy
-        selected_models: List of model names to train
+        selected_models: List of model names to train (includes custom models)
+        custom_model_classes: Dictionary mapping custom model names to their classes
         
     Returns:
         Dictionary mapping model names to saved file paths
     """
+    if custom_model_classes is None:
+        custom_model_classes = {}
+    
     # Load data
     df = load_dataset(data_path)
     
@@ -324,6 +329,13 @@ def train_models_with_progress(
     # Get selected models
     from src.models import make_classifiers
     all_models = make_classifiers()
+    
+    # Add custom models if provided
+    if custom_model_classes:
+        for model_name, model_class in custom_model_classes.items():
+            # Instantiate custom model with default parameters
+            all_models[model_name] = model_class()
+    
     models_to_train = {k: v for k, v in all_models.items() if k in selected_models}
     
     if not models_to_train:

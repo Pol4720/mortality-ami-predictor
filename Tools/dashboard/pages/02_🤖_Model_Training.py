@@ -76,30 +76,56 @@ st.sidebar.header("🔧 Custom Models")
 use_custom_models = st.sidebar.checkbox(
     "Include Custom Models",
     value=False,
-    help="Include custom models in training"
+    help="Include custom models defined in Custom Models page"
 )
 
 custom_models_list = []
+custom_model_classes = {}
+
 if use_custom_models:
-    from src.models.persistence import list_saved_models
-    custom_models_dir = root_dir / "models" / "custom"
-    custom_models_dir.mkdir(parents=True, exist_ok=True)
+    import importlib.util
+    import inspect
+    from src.models.custom_base import BaseCustomModel, BaseCustomClassifier, BaseCustomRegressor
     
-    available_custom = list_saved_models(custom_models_dir, include_info=True)
+    # Buscar archivos .py con definiciones de modelos custom
+    code_templates_dir = root_dir / "src" / "models" / "custom"
+    code_templates_dir.mkdir(parents=True, exist_ok=True)
     
-    if available_custom:
-        st.sidebar.markdown(f"**Available: {len(available_custom)} model(s)**")
+    available_files = sorted([f for f in code_templates_dir.glob("*.py") if f.name != "__init__.py"])
+    
+    if available_files:
+        st.sidebar.markdown(f"**Available: {len(available_files)} file(s)**")
         
-        custom_models_list = st.sidebar.multiselect(
-            "Select Custom Models",
-            [m["name"] for m in available_custom],
-            help="Select which custom models to include"
-        )
+        # Extraer clases de cada archivo
+        available_classes = []
+        for filepath in available_files:
+            try:
+                spec = importlib.util.spec_from_file_location("custom_model", filepath)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                
+                for name, obj in inspect.getmembers(module, inspect.isclass):
+                    if issubclass(obj, (BaseCustomClassifier, BaseCustomRegressor)):
+                        if obj not in [BaseCustomModel, BaseCustomClassifier, BaseCustomRegressor]:
+                            display_name = f"{name} ({filepath.stem})"
+                            available_classes.append(display_name)
+                            custom_model_classes[display_name] = obj
+            except Exception as e:
+                st.sidebar.warning(f"⚠️ Error loading {filepath.name}: {e}")
         
-        if custom_models_list:
-            st.sidebar.success(f"✅ {len(custom_models_list)} custom model(s) selected")
+        if available_classes:
+            custom_models_list = st.sidebar.multiselect(
+                "Select Custom Models",
+                available_classes,
+                help="Select which custom models to include in training"
+            )
+            
+            if custom_models_list:
+                st.sidebar.success(f"✅ {len(custom_models_list)} custom model(s) selected")
+        else:
+            st.sidebar.warning("⚠️ No valid model classes found in files")
     else:
-        st.sidebar.info("No custom models available. Upload in Custom Models page.")
+        st.sidebar.info("📭 No custom models available. Create one in Custom Models page (🔧).")
 
 # Training settings
 st.sidebar.markdown("---")
@@ -108,6 +134,11 @@ st.sidebar.header("⚙️ Training Configuration")
 
 
 quick, imputer_mode, selected_models = sidebar_training_controls()
+
+# Combine standard models with custom models
+all_selected_models = list(selected_models) if selected_models else []
+if custom_models_list:
+    all_selected_models.extend(custom_models_list)
 
 # Main content
 st.subheader("Training Configuration")
@@ -120,11 +151,14 @@ with col1:
 
 with col2:
     st.metric("Quick Mode", "Enabled" if quick else "Disabled")
-    st.metric("Models Selected", len(selected_models))
+    st.metric("Models Selected", len(all_selected_models))
 
 # Display selected models
-if selected_models:
-    st.info(f"📦 Selected models: {', '.join(selected_models)}")
+if all_selected_models:
+    if selected_models:
+        st.info(f"📦 Standard models: {', '.join(selected_models)}")
+    if custom_models_list:
+        st.success(f"🔧 Custom models: {', '.join(custom_models_list)}")
 else:
     st.warning("⚠️ No models selected for training")
 
@@ -371,7 +405,7 @@ if transformation_type != "🔤 Original Features":
 st.markdown("---")
 st.subheader("Train Models")
 
-if not selected_models:
+if not all_selected_models:
     st.error("❌ Please select at least one model from the sidebar")
 else:
     # Initialize training state
@@ -445,7 +479,8 @@ else:
                         task=task,
                         quick=quick,
                         imputer_mode=imputer_mode,
-                        selected_models=selected_models,
+                        selected_models=all_selected_models,
+                        custom_model_classes=custom_model_classes if use_custom_models else {},
                     )
                 
                 # Get the output

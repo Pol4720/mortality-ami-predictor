@@ -20,6 +20,7 @@ import json
 import tempfile
 import importlib.util
 import inspect
+import time
 
 # Add src to path
 root_path = Path(__file__).parent.parent.parent
@@ -759,41 +760,48 @@ def validate_model_code(code: str) -> dict:
     }
     
     try:
-        # Intentar compilar el código
+        # 1. Verificar sintaxis Python básica
         compile(code, '<string>', 'exec')
         
-        # Ejecutar en un namespace aislado
-        namespace = {}
-        exec(code, namespace)
+        # 2. Buscar imports y clases usando análisis de texto (más seguro que exec)
+        import re
         
-        # Buscar clases que hereden de BaseCustomModel
-        for name, obj in namespace.items():
-            if inspect.isclass(obj):
-                # Verificar si hereda de BaseCustomModel
-                if issubclass(obj, (BaseCustomClassifier, BaseCustomRegressor, BaseCustomModel)):
-                    result['classes'].append({
-                        'name': name,
-                        'type': 'classifier' if issubclass(obj, BaseCustomClassifier) else 'regressor',
-                        'bases': [base.__name__ for base in obj.__bases__]
-                    })
-                    
-                    # Verificar métodos requeridos
-                    required_methods = ['fit', 'predict', 'get_params']
-                    if issubclass(obj, BaseCustomClassifier):
-                        required_methods.append('predict_proba')
-                    
-                    for method in required_methods:
-                        if not hasattr(obj, method):
-                            result['errors'].append(
-                                f"Clase '{name}' no tiene el método requerido '{method}'"
-                            )
-                            result['valid'] = False
+        # Buscar clases que heredan de BaseCustom*
+        class_pattern = r'class\s+(\w+)\s*\([^)]*(?:BaseCustomClassifier|BaseCustomRegressor)[^)]*\):'
+        matches = re.findall(class_pattern, code)
         
-        # Verificar que se encontró al menos una clase válida
+        if matches:
+            for class_name in matches:
+                # Determinar tipo basándose en la clase base
+                if re.search(rf'class\s+{class_name}\s*\([^)]*BaseCustomClassifier', code):
+                    class_type = 'classifier'
+                elif re.search(rf'class\s+{class_name}\s*\([^)]*BaseCustomRegressor', code):
+                    class_type = 'regressor'
+                else:
+                    class_type = 'unknown'
+                
+                result['classes'].append({
+                    'name': class_name,
+                    'type': class_type,
+                })
+        
+        # 3. Verificar imports necesarios
+        if 'from src.models.custom_base import' not in code:
+            result['warnings'].append(
+                "Falta import: 'from src.models.custom_base import BaseCustomClassifier'"
+            )
+        
+        # 4. Verificar métodos requeridos en el código
         if not result['classes']:
             result['warnings'].append(
                 "No se encontraron clases que hereden de BaseCustomClassifier o BaseCustomRegressor"
             )
+        else:
+            # Verificar métodos básicos
+            required_methods = ['def fit', 'def predict', 'def get_params']
+            for method in required_methods:
+                if method not in code:
+                    result['warnings'].append(f"No se encontró '{method}'. Asegúrate de implementarlo.")
         
     except SyntaxError as e:
         result['valid'] = False
@@ -897,6 +905,39 @@ def code_editor_section():
                 st.session_state.custom_model_code = ""
             st.rerun()
     
+    # Container desplegable con las plantillas disponibles para consulta
+    with st.expander("📚 Ver Plantillas Disponibles (Referencia)", expanded=False):
+        st.markdown("""
+        Consulta aquí el código completo de cada plantilla. 
+        Usa el selector arriba para cargar una plantilla en el editor.
+        """)
+        
+        template_tabs = st.tabs(["🔷 Clasificador Simple", "🧠 Red Neuronal", "🔗 Ensemble"])
+        
+        with template_tabs[0]:
+            st.markdown("**Clasificador Simple basado en Random Forest**")
+            st.markdown("Plantilla básica perfecta para empezar. Incluye:")
+            st.markdown("- Constructor con hiperparámetros configurables")
+            st.markdown("- Métodos fit() y predict_proba() completos")
+            st.markdown("- Gestión de parámetros con get_params() y set_params()")
+            st.code(TEMPLATE_SIMPLE_CLASSIFIER, language="python", line_numbers=True)
+        
+        with template_tabs[1]:
+            st.markdown("**Red Neuronal con Preprocessing Integrado**")
+            st.markdown("Plantilla avanzada con normalización automática. Incluye:")
+            st.markdown("- StandardScaler integrado")
+            st.markdown("- MLPClassifier con early stopping")
+            st.markdown("- Normalización en fit() y predict()")
+            st.code(TEMPLATE_NEURAL_NETWORK, language="python", line_numbers=True)
+        
+        with template_tabs[2]:
+            st.markdown("**Ensemble de Múltiples Modelos**")
+            st.markdown("Combina 3 modelos con votación ponderada. Incluye:")
+            st.markdown("- Random Forest + Gradient Boosting + Regresión Logística")
+            st.markdown("- Pesos configurables para cada modelo")
+            st.markdown("- Votación soft (promedio de probabilidades)")
+            st.code(TEMPLATE_ENSEMBLE, language="python", line_numbers=True)
+    
     # Enhanced code editor with syntax highlighting
     st.markdown("### 📝 Editor de Código con Syntax Highlighting")
     
@@ -954,15 +995,94 @@ def code_editor_section():
     
     with col2:
         save_enabled = len(code.strip()) > 0
-        save_btn = st.button("💾 Guardar Código", use_container_width=True, disabled=not save_enabled)
+        save_btn = st.button("💾 Guardar Código", use_container_width=True, disabled=not save_enabled, type="primary")
     
     with col3:
         clear_btn = st.button("🗑️ Limpiar", use_container_width=True)
     
-    # Handle buttons
+    # Handle clear button
     if clear_btn:
         st.session_state.custom_model_code = ""
         st.rerun()
+    
+    # Handle save button - show inline form
+    if save_btn:
+        st.markdown("---")
+        st.markdown("### 💾 Guardar Modelo")
+        
+        col_name, col_desc = st.columns([1, 2])
+        
+        with col_name:
+            filename = st.text_input(
+                "Nombre del archivo:",
+                value="mi_modelo_personalizado.py",
+                help="El archivo se guardará en src/models/custom/",
+                key="save_filename"
+            )
+        
+        with col_desc:
+            description = st.text_input(
+                "Descripción breve:",
+                placeholder="Ej: Clasificador RF con threshold personalizado",
+                help="Describe brevemente qué hace tu modelo",
+                key="save_description"
+            )
+        
+        col_cancel, col_confirm = st.columns([1, 1])
+        
+        with col_cancel:
+            if st.button("❌ Cancelar", use_container_width=True):
+                st.rerun()
+        
+        with col_confirm:
+            if st.button("✅ Confirmar Guardado", use_container_width=True, type="primary"):
+                with st.spinner("💾 Guardando modelo..."):
+                    try:
+                        # Validar primero
+                        validation = validate_model_code(code)
+                        
+                        if not validation['valid']:
+                            st.error("❌ Código con errores de sintaxis:")
+                            for error in validation['errors']:
+                                st.error(f"  • {error}")
+                        elif not validation['classes']:
+                            st.error("❌ No se encontraron clases válidas")
+                            st.warning("Debe heredar de BaseCustomClassifier o BaseCustomRegressor")
+                        else:
+                            # Guardar archivo
+                            filepath = save_model_code(code, filename)
+                            
+                            # Verificar guardado
+                            if not filepath.exists():
+                                st.error(f"❌ Error al guardar: {filepath}")
+                            else:
+                                # Guardar metadata
+                                metadata = {
+                                    'filename': filename,
+                                    'description': description,
+                                    'classes': validation['classes'],
+                                    'created_at': datetime.now().isoformat(),
+                                }
+                                
+                                metadata_path = filepath.with_suffix('.json')
+                                with open(metadata_path, 'w', encoding='utf-8') as f:
+                                    json.dump(metadata, f, indent=2, ensure_ascii=False)
+                                
+                                # ¡ÉXITO!
+                                st.success("✅ ¡Modelo guardado exitosamente!")
+                                st.balloons()
+                                st.info(f"📂 {filepath}")
+                                st.info(f"📦 {len(validation['classes'])} clase(s): " + ", ".join([c['name'] for c in validation['classes']]))
+                                
+                                # Recargar en 1 segundo
+                                time.sleep(1)
+                                st.rerun()
+                            
+                    except Exception as e:
+                        st.error(f"❌ Error: {e}")
+                        import traceback
+                        with st.expander("Ver detalles del error"):
+                            st.code(traceback.format_exc())
     
     if validate_btn and code.strip():
         with st.spinner("Validando código..."):
@@ -1010,58 +1130,6 @@ def code_editor_section():
                     st.warning("⚠️ Advertencias adicionales:")
                     for warning in validation['warnings']:
                         st.warning(f"• {warning}")
-    
-    if save_btn and code.strip():
-        # Show save dialog
-        with st.form("save_model_form"):
-            st.subheader("💾 Guardar Modelo")
-            
-            filename = st.text_input(
-                "Nombre del archivo:",
-                value="mi_modelo_personalizado.py",
-                help="El archivo se guardará en src/models/custom/"
-            )
-            
-            description = st.text_area(
-                "Descripción (opcional):",
-                help="Describe qué hace tu modelo"
-            )
-            
-            submitted = st.form_submit_button("Guardar", type="primary")
-            
-            if submitted:
-                try:
-                    # Validar primero
-                    validation = validate_model_code(code)
-                    
-                    if not validation['valid']:
-                        st.error("❌ No se puede guardar: el código tiene errores")
-                        for error in validation['errors']:
-                            st.error(f"• {error}")
-                    else:
-                        # Guardar archivo
-                        filepath = save_model_code(code, filename)
-                        
-                        # Guardar metadata
-                        metadata = {
-                            'filename': filename,
-                            'description': description,
-                            'classes': validation['classes'],
-                            'created_at': datetime.now().isoformat(),
-                        }
-                        
-                        metadata_path = filepath.with_suffix('.json')
-                        with open(metadata_path, 'w', encoding='utf-8') as f:
-                            json.dump(metadata, f, indent=2, ensure_ascii=False)
-                        
-                        st.success(f"✅ Modelo guardado en: `{filepath}`")
-                        st.info("Ahora puedes usar este modelo en la página de entrenamiento (🤖 Model Training)")
-                        
-                        # Actualizar lista de modelos cargados
-                        st.session_state.loaded_model_classes = get_model_class_from_file(filepath)
-                        
-                except Exception as e:
-                    st.error(f"❌ Error al guardar: {e}")
 
 
 def file_upload_section():
