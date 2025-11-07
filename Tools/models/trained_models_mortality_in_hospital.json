@@ -1,0 +1,24 @@
+{
+  "task": "mortality_in_hospital",
+  "timestamp": "2025-11-06T17:20:09.817540",
+  "checkpoint_id": "mortality_in_hospital_20251106_170544",
+  "models": {},
+  "training_params": {
+    "quick": true,
+    "imputer_mode": "iterative",
+    "n_cv_folds": 3,
+    "n_cv_repeats": 3
+  },
+  "completed_models": [],
+  "failed_models": [
+    "knn"
+  ],
+  "cv_results_summary": {
+    "knn": {
+      "mean_score": 0.48136048737031145,
+      "std_score": 0.02197562095234501,
+      "n_runs": 9
+    }
+  },
+  "best_model": "knn"
+}

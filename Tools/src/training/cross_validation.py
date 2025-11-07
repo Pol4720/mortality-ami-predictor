@@ -28,6 +28,7 @@ def nested_cross_validation(
     preprocessing_config: Optional[PreprocessingConfig] = None,
     quick: bool = False,
     progress_callback: Optional[Callable[[str, float], None]] = None,
+    checkpoint=None,  # NEW: checkpoint manager
 ) -> Dict[str, Dict]:
     """Perform nested cross-validation to evaluate models.
     
@@ -40,6 +41,7 @@ def nested_cross_validation(
         preprocessing_config: Preprocessing configuration
         quick: If True, use reduced splits
         progress_callback: Optional callback for progress
+        checkpoint: Optional TrainingCheckpoint for resuming
         
     Returns:
         Dictionary mapping model_name -> {'mean_score': float, 'std_score': float, 'fold_scores': List[float]}
@@ -54,12 +56,34 @@ def nested_cross_validation(
     total_models = len(models)
     
     for model_idx, (name, (model, grid)) in enumerate(models.items(), 1):
+        # Check if model was already completed
+        if checkpoint and checkpoint.should_skip_model(name):
+            cached_results = checkpoint.get_model_results(name)
+            if cached_results:
+                results[name] = cached_results
+                if progress_callback:
+                    progress_callback(
+                        f"✅ Modelo '{name}' cargado desde checkpoint (μ={cached_results['mean_score']:.4f})",
+                        model_idx / total_models
+                    )
+                continue
+        
         fold_scores = []
+        completed_folds = checkpoint.get_completed_folds(name) if checkpoint else []
         
         if progress_callback:
             progress_callback(f"Evaluating {name}...", (model_idx - 1) / total_models)
         
         for fold_idx, (train_idx, val_idx) in enumerate(outer_cv.split(X, y)):
+            # Skip already completed folds
+            if fold_idx in completed_folds:
+                # Load cached score
+                if checkpoint:
+                    cached_result = checkpoint.get_model_results(name)
+                    if cached_result and 'fold_scores' in cached_result:
+                        fold_scores.append(cached_result['fold_scores'][fold_idx])
+                continue
+            
             X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
             y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
             
@@ -67,9 +91,8 @@ def nested_cross_validation(
             preprocess_pipeline, _ = build_preprocessing_pipeline(X_train, preprocessing_config)
             
             # Extract the preprocessor from the pipeline (to avoid nested pipelines)
-            # build_preprocessing_pipeline returns Pipeline([("preprocessor", ColumnTransformer)])
             if hasattr(preprocess_pipeline, 'steps') and len(preprocess_pipeline.steps) > 0:
-                preprocess = preprocess_pipeline.steps[0][1]  # Get the ColumnTransformer
+                preprocess = preprocess_pipeline.steps[0][1]
             else:
                 preprocess = preprocess_pipeline
             
@@ -109,15 +132,35 @@ def nested_cross_validation(
             auroc = roc_auc_score(y_val, y_pred_proba)
             fold_scores.append(auroc)
             
+            # Save fold checkpoint
+            if checkpoint:
+                checkpoint.save_fold_result(
+                    model_name=name,
+                    fold_idx=fold_idx,
+                    score=auroc,
+                    fitted_pipeline=search.best_estimator_,
+                    metadata={
+                        'train_indices': train_idx.tolist(),
+                        'val_indices': val_idx.tolist(),
+                        'best_params': search.best_params_
+                    }
+                )
+            
             if progress_callback:
                 frac = (model_idx - 1 + (fold_idx + 1) / outer_splits) / total_models
                 progress_callback(f"{name}: fold {fold_idx+1}/{outer_splits} AUROC={auroc:.3f}", frac)
         
-        results[name] = {
+        # Calculate final results
+        final_result = {
             "mean_score": float(np.mean(fold_scores)),
             "std_score": float(np.std(fold_scores)),
             "fold_scores": fold_scores,
         }
+        results[name] = final_result
+        
+        # Mark model as completed in checkpoint
+        if checkpoint:
+            checkpoint.complete_model(name, final_result)
     
     return results
 
@@ -131,36 +174,10 @@ def rigorous_repeated_cv(
     n_repeats: int = 6,
     scoring: str = "roc_auc",
     progress_callback: Optional[Callable[[str, float], None]] = None,
+    checkpoint=None,
 ) -> Dict[str, Dict]:
-    """Perform rigorous repeated stratified k-fold cross-validation.
+    """Perform rigorous repeated stratified k-fold cross-validation with checkpointing."""
     
-    This implements the rigorous experimental protocol with 90+ runs:
-    - Repeated Stratified K-Fold (e.g., 10 splits × 10 repeats = 100 runs)
-    - For each model, estimate μ (mean) and σ (std) across all runs
-    - No hyperparameter tuning (use default or pre-tuned parameters)
-    
-    This is the TRAIN & VALIDATION phase from the experimental pipeline.
-    
-    Args:
-        X: Training features
-        y: Training labels
-        models: Dictionary of {name: (model, param_dict)} where param_dict contains
-                fixed hyperparameters (not grid search)
-        preprocessing_config: Preprocessing configuration
-        n_splits: Number of folds in each repetition
-        n_repeats: Number of repetitions
-        scoring: Scoring metric
-        progress_callback: Optional callback for progress
-        
-    Returns:
-        Dictionary mapping model_name -> {
-            'mean_score': float,  # μ
-            'std_score': float,   # σ
-            'all_scores': List[float],  # All 90+ scores
-            'best_params': dict  # Best hyperparameters found
-        }
-    """
-    # Create repeated stratified k-fold
     rskf = RepeatedStratifiedKFold(
         n_splits=n_splits,
         n_repeats=n_repeats,
@@ -172,20 +189,71 @@ def rigorous_repeated_cv(
     total_models = len(models)
     
     for model_idx, (name, (base_model, param_grid)) in enumerate(models.items(), 1):
+        # Check if model was already completed
+        if checkpoint and checkpoint.should_skip_model(name):
+            cached_results = checkpoint.get_model_results(name)
+            if cached_results:
+                results[name] = cached_results
+                if progress_callback:
+                    progress_callback(
+                        f"✅ Modelo '{name}' cargado desde checkpoint | μ={cached_results['mean_score']:.4f}, σ={cached_results['std_score']:.4f}",
+                        model_idx / total_models
+                    )
+                continue
+        
         all_scores = []
+        completed_folds = checkpoint.get_completed_folds(name) if checkpoint else []
+        
+        # ✅ CORREGIR: Cargar scores de folds ya completados
+        if completed_folds and checkpoint:
+            cached_data = checkpoint.state['current_model_results'].get(name, {})
+            cached_scores = cached_data.get('scores', [])
+            
+            # Verificar que los scores existen y son válidos
+            if len(cached_scores) >= len(completed_folds):
+                all_scores = cached_scores[:len(completed_folds)]
+                if progress_callback:
+                    progress_callback(
+                        f"♻️ Modelo '{name}': Recuperando {len(all_scores)} scores de {len(completed_folds)} folds completados",
+                        (model_idx - 1) / total_models
+                    )
+            else:
+                # Inconsistencia: reiniciar
+                completed_folds = []
+                all_scores = []
+                if progress_callback:
+                    progress_callback(
+                        f"⚠️ Modelo '{name}': Checkpoint inconsistente, reiniciando...",
+                        (model_idx - 1) / total_models
+                    )
         
         if progress_callback:
-            progress_callback(
-                f"Modelo '{name}': Iniciando {total_iterations} corridas (RepeatedStratifiedKFold: {n_splits}×{n_repeats})",
-                (model_idx - 1) / total_models
-            )
+            if completed_folds:
+                progress_callback(
+                    f"♻️ Modelo '{name}': Resumiendo desde fold {len(completed_folds)+1}/{total_iterations}",
+                    (model_idx - 1) / total_models
+                )
+            else:
+                progress_callback(
+                    f"Modelo '{name}': Iniciando {total_iterations} corridas",
+                    (model_idx - 1) / total_models
+                )
         
         for run_idx, (train_idx, val_idx) in enumerate(rskf.split(X, y), 1):
+            # ✅ CORREGIR: Skip basado en run_idx (1-indexed)
+            if run_idx in completed_folds:
+                if progress_callback and run_idx % 10 == 0:  # Log cada 10 folds
+                    progress_callback(
+                        f"⏩ Modelo '{name}': Saltando fold {run_idx}/{total_iterations} (ya completado)",
+                        (model_idx - 1 + run_idx / total_iterations) / total_models
+                    )
+                continue
+            
             X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
             y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
             
-            # Show class distribution only for first run
-            if run_idx == 1 and progress_callback:
+            # Show class distribution only for first NEW run
+            if run_idx == (len(completed_folds) + 1) and progress_callback:
                 train_dist = y_train.value_counts(normalize=True).sort_index()
                 val_dist = y_val.value_counts(normalize=True).sort_index()
                 dist_info = " | ".join([f"Clase {label}: Train={train_dist[label]*100:.1f}% Val={val_dist[label]*100:.1f}%" 
@@ -223,10 +291,6 @@ def rigorous_repeated_cv(
                     ("classifier", clone(base_model)),
                 ])
             
-            # Note: param_grid contains lists of values for search, not single values
-            # In rigorous_repeated_cv, we use the model's default parameters
-            # Hyperparameter tuning should be done separately with RandomizedSearchCV
-            
             # Train and evaluate
             try:
                 pipeline.fit(X_train, y_train)
@@ -237,7 +301,20 @@ def rigorous_repeated_cv(
                 score = roc_auc_score(y_val, y_pred_proba)
                 all_scores.append(score)
                 
-                # Update progress: every run if ≤20 total runs, else every 5 runs
+                # Save fold checkpoint
+                if checkpoint:
+                    checkpoint.save_fold_result(
+                        model_name=name,
+                        fold_idx=run_idx,
+                        score=score,
+                        fitted_pipeline=pipeline,
+                        metadata={
+                            'train_indices': train_idx.tolist(),
+                            'val_indices': val_idx.tolist(),
+                        }
+                    )
+                
+                # Update progress
                 update_frequency = 1 if total_iterations <= 20 else 5
                 if progress_callback and (run_idx % update_frequency == 0 or run_idx == total_iterations):
                     frac = (model_idx - 1 + run_idx / total_iterations) / total_models
@@ -252,13 +329,18 @@ def rigorous_repeated_cv(
                 continue
         
         # Calculate final statistics
-        results[name] = {
+        final_result = {
             "mean_score": float(np.mean(all_scores)),
             "std_score": float(np.std(all_scores, ddof=1)),  # Sample std
             "all_scores": all_scores,
             "n_runs": len(all_scores),
             "best_params": param_grid if param_grid else {},
         }
+        results[name] = final_result
+        
+        # Mark model as completed in checkpoint
+        if checkpoint:
+            checkpoint.complete_model(name, final_result)
         
         if progress_callback:
             progress_callback(

@@ -4,8 +4,8 @@ This module provides high-level functions for training ML models
 with nested cross-validation and SMOTE for class imbalance.
 """
 from __future__ import annotations
-
 import os
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Callable
 
@@ -21,11 +21,12 @@ from ..data_load import save_model_with_cleanup, save_dataset_with_timestamp, cl
 from .cross_validation import nested_cross_validation, rigorous_repeated_cv
 from .statistical_tests import compare_all_models, plot_model_comparison
 from .learning_curves import generate_learning_curve, plot_learning_curve
+from .checkpointing import TrainingCheckpoint, create_experiment_id  # NEW
 
 # Try to import imbalanced-learn for SMOTE support
 try:
-    from imblearn.over_sampling import SMOTE  # type: ignore
-    from imblearn.pipeline import Pipeline as ImbPipeline  # type: ignore
+    from imblearn.over_sampling import SMOTE
+    from imblearn.pipeline import Pipeline as ImbPipeline
 except ImportError:
     SMOTE = None
     ImbPipeline = None
@@ -42,51 +43,64 @@ def run_rigorous_experiment_pipeline(
     test_set: Optional[Tuple[pd.DataFrame, pd.Series]] = None,
     output_dir: Optional[str] = None,
     progress_callback: Optional[Callable[[str, float], None]] = None,
+    use_checkpointing: bool = True,
+    checkpoint_dir: Optional[str] = None,
+    experiment_id: Optional[str] = None,
 ) -> Dict:
-    """
-    Orchestrate rigorous experiment pipeline following academic standards:
+    """Orchestrate rigorous experiment pipeline with checkpointing."""
     
-    FASE 1: TRAIN + VALIDATION
-    1. Repeated stratified k-fold CV for all models (≥30 runs)
-       → Estimate μ (mean) and σ (std) for each model
-    2. Learning curves for model selection
-    3. Select best model based on validation performance
-    
-    FASE 2: TEST (Final Estimate on Hold-out Set)
-    4. Bootstrap resampling (with replacement) on test set
-    5. Jackknife resampling (leave-one-out) on test set
-       → Obtain final performance estimates with confidence intervals
-    
-    FASE 3: STATISTICAL COMPARISON
-    6. Compare all models pairwise:
-       - Shapiro-Wilk normality test
-       - If normal: Paired t-test (parametric)
-       - If not normal: Mann-Whitney U test (non-parametric)
-       → Determine if differences are statistically significant
-    
-    Args:
-        X: Training features
-        y: Training labels
-        models: Dictionary of {name: (model, param_dict)}
-        preprocessing_config: Preprocessing configuration
-        n_splits: Number of CV folds (default: 10)
-        n_repeats: Number of CV repetitions (default: 10, gives 100 runs)
-        scoring: Scoring metric
-        test_set: Optional (X_test, y_test) for final evaluation
-        output_dir: Directory to save results
-        progress_callback: Optional callback for progress updates
-        
-    Returns:
-        Dictionary with complete experiment results
-    """
-    import os
+    import time
+    start_time = time.time()
     results = {}
+    
     if output_dir is None:
-        output_dir = MODELS_DIR
+        output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models")
     os.makedirs(output_dir, exist_ok=True)
     
+    # Setup checkpointing
+    checkpoint = None
+    if use_checkpointing:
+        # ✅ CORREGIDO: Usar ruta absoluta por defecto
+        if checkpoint_dir is None:
+            # Get absolute path to Tools/dashboard/checkpoints
+            from pathlib import Path
+            tools_dir = Path(__file__).parent.parent.parent  # Tools/
+            checkpoint_dir = str(tools_dir / "dashboard" / "checkpoints")
+        
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        
+        # Generate or use provided experiment ID
+        if experiment_id is None:
+            task_name = y.name if hasattr(y, 'name') else 'unknown'
+            experiment_id = create_experiment_id(task_name, prefix="training")
+        
+        try:
+            checkpoint = TrainingCheckpoint(
+                checkpoint_dir=checkpoint_dir,
+                experiment_id=experiment_id,
+                models=models
+            )
+            
+            if progress_callback:
+                progress = checkpoint.get_progress()
+                if progress['completed_models'] > 0:
+                    progress_callback(
+                        f"♻️ Checkpoint detectado: {progress['completed_models']}/{progress['total_models']} modelos completados | Experiment ID: {experiment_id}",
+                        0.0
+                    )
+                else:
+                    progress_callback(
+                        f"💾 Checkpoint inicializado | Directorio: {checkpoint_dir} | ID: {experiment_id}",
+                        0.0
+                    )
+        except Exception as e:
+            if progress_callback:
+                progress_callback(f"⚠️ Error inicializando checkpoint: {e}. Continuando sin checkpointing...", 0.0)
+            checkpoint = None
+    
     if progress_callback:
-        progress_callback("🚀 Iniciando pipeline de experimentación riguroso...", 0.0)
+        checkpoint_status = f"✅ Activo (ID: {experiment_id})" if checkpoint else "❌ Desactivado"
+        progress_callback(f"🚀 Pipeline riguroso iniciado | Checkpointing: {checkpoint_status}", 0.0)
 
     # =========================================================================
     # FASE 1: TRAIN + VALIDATION (30+ corridas con k-fold estratificado)
@@ -94,7 +108,7 @@ def run_rigorous_experiment_pipeline(
     if progress_callback:
         progress_callback("📊 FASE 1: Entrenamiento y Validación con validación cruzada estratificada repetida", 0.1)
     
-    # 1. Rigorous repeated CV (≥30 runs to estimate μ and σ)
+    # 1. Rigorous repeated CV (≥30 runs to estimate μ and σ) WITH CHECKPOINTING
     cv_results = rigorous_repeated_cv(
         X, y, models,
         preprocessing_config=preprocessing_config,
@@ -102,6 +116,7 @@ def run_rigorous_experiment_pipeline(
         n_repeats=n_repeats,
         scoring=scoring,
         progress_callback=progress_callback,
+        checkpoint=checkpoint,  # Pass checkpoint manager
     )
     results['cv_results'] = cv_results
     
@@ -118,9 +133,6 @@ def run_rigorous_experiment_pipeline(
     
     lc_results = {}
     for idx, (name, (model, param_grid)) in enumerate(models.items(), 1):
-        # Use the base model (without hyperparameter tuning) for learning curves
-        # Learning curves show how model performs with different training sizes,
-        # not different hyperparameters
         from sklearn.base import clone
         model_for_lc = clone(model)
         
@@ -145,16 +157,13 @@ def run_rigorous_experiment_pipeline(
             progress_callback(f"💾 Guardando gráfica de curva de aprendizaje: {name}", 0.35 + 0.15 * (idx + 0.7) / len(models))
         
         fig = plot_learning_curve(lc_result, title=f"Learning Curve: {name}")
-        # Save as PNG using plotly's write_image (requires kaleido)
         save_path = os.path.join(output_dir, f"learning_curve_{name}.png")
         try:
             fig.write_image(save_path, width=1000, height=600)
-        except Exception as e:
-            # If write_image fails (missing kaleido), save as HTML instead
+        except Exception:
             html_path = os.path.join(output_dir, f"learning_curve_{name}.html")
             fig.write_html(html_path)
-            if progress_callback:
-                progress_callback(f"⚠️ Guardado como HTML (instalar kaleido para PNG): {html_path}", 0.35 + 0.15 * idx / len(models))
+    
     results['learning_curves'] = lc_results
     
     # 3. Select best model
@@ -166,17 +175,15 @@ def run_rigorous_experiment_pipeline(
         progress_callback(f"🏆 Mejor modelo seleccionado: {best_name} (μ={best_score:.4f})", 0.5)
 
     # =========================================================================
-    # FASE 3: COMPARACIÓN ESTADÍSTICA (hacer antes del test final)
+    # FASE 3: COMPARACIÓN ESTADÍSTICA
     # =========================================================================
     if progress_callback:
         progress_callback("📊 FASE 3: Comparación estadística entre modelos", 0.55)
     
-    # Statistical comparison with Shapiro-Wilk → t-test or Mann-Whitney
     model_scores = {name: res['all_scores'] for name, res in cv_results.items()}
     stat_results = compare_all_models(model_scores)
     results['statistical_comparison'] = stat_results
 
-    # Save pairwise comparison plots
     if progress_callback:
         progress_callback("Generando gráficos de comparación estadística...", 0.6)
     
@@ -184,49 +191,30 @@ def run_rigorous_experiment_pipeline(
         fig = plot_model_comparison(stat_res)
         save_path = os.path.join(output_dir, f"comparison_{m1}_vs_{m2}.png")
         try:
-            # Check if it's a Plotly figure
             if hasattr(fig, 'write_image'):
                 fig.write_image(save_path, width=1000, height=600)
             else:
-                # Matplotlib figure
-                fig.savefig(save_path, dpi=300, bbox_inches='tight')
-        except Exception as e:
-            # If save fails, try HTML for Plotly
+                fig.savefig(save_path, dpi=150, bbox_inches='tight')
+        except Exception:
             if hasattr(fig, 'write_html'):
-                html_path = os.path.join(output_dir, f"comparison_{m1}_vs_{m2}.html")
+                html_path = save_path.replace('.png', '.html')
                 fig.write_html(html_path)
-        
-        # Log statistical results
-        if progress_callback:
-            test_type = stat_res.test_used
-            p_val = stat_res.p_value
-            significant = "SÍ" if stat_res.significant else "NO"
-            msg = (f"   • {m1} vs {m2}:\n"
-                   f"     Test: {test_type}, p-value={p_val:.4f}\n"
-                   f"     Diferencia significativa: {significant}")
-            progress_callback(msg, 0.6)
     
-    # Create comparison matrix
     from .statistical_tests import create_comparison_matrix
     fig_matrix = create_comparison_matrix(stat_results)
     matrix_path = os.path.join(output_dir, "comparison_matrix.png")
     try:
         if hasattr(fig_matrix, 'write_image'):
-            fig_matrix.write_image(matrix_path, width=1000, height=600)
+            fig_matrix.write_image(matrix_path, width=1200, height=800)
         else:
-            fig_matrix.savefig(matrix_path, dpi=300, bbox_inches='tight')
-    except Exception as e:
+            fig_matrix.savefig(matrix_path, dpi=150, bbox_inches='tight')
+    except Exception:
         if hasattr(fig_matrix, 'write_html'):
-            html_path = os.path.join(output_dir, "comparison_matrix.html")
-            fig_matrix.write_html(html_path)
+            fig_matrix.write_html(matrix_path.replace('.png', '.html'))
     
     # =========================================================================
-    # FASE 2: TEST (Estimado final con Bootstrap y Jackknife)
+    # Train and save final model
     # =========================================================================
-    # NOTA: La evaluación en el test set se hará en el módulo de EVALUACIÓN,
-    # no aquí. Aquí solo entrenamos y guardamos el mejor modelo.
-    
-    # Fit best model on full training data and save
     if progress_callback:
         progress_callback(f"Entrenando modelo final '{best_name}' con todos los datos de entrenamiento...", 0.7)
     
@@ -234,18 +222,14 @@ def run_rigorous_experiment_pipeline(
     from sklearn.base import clone
     best_model = clone(best_model)
     
-    # Note: best_params is a param_grid for search, not a single set of params
-    # For the final model, we train with default params (which are already tuned in the model definition)
-    # If you want to use specific params, you would need to do hyperparameter search first
-    
-    # Build preprocessing pipeline for the best model
+    # Build preprocessing pipeline
     preprocess_pipeline, _ = build_preprocessing_pipeline(X, preprocessing_config)
     if hasattr(preprocess_pipeline, 'steps') and len(preprocess_pipeline.steps) > 0:
         preprocess = preprocess_pipeline.steps[0][1]
     else:
         preprocess = preprocess_pipeline
     
-    # Build full pipeline with SMOTE if available
+    # Build full pipeline with SMOTE
     try:
         from imblearn.pipeline import Pipeline as ImbPipeline
         from imblearn.over_sampling import SMOTE
@@ -264,36 +248,20 @@ def run_rigorous_experiment_pipeline(
     # Fit on all training data
     final_pipeline.fit(X, y)
     
-    # CRITICAL: Extract actual feature names from the fitted pipeline
-    # This ensures metadata reflects the EXACT features the model expects
+    # Extract actual feature names
     try:
-        # Try to get feature_names_in_ from the pipeline
         if hasattr(final_pipeline, 'feature_names_in_'):
-            actual_feature_names = final_pipeline.feature_names_in_.tolist()
-        # Try from the last step (classifier)
+            actual_feature_names = list(final_pipeline.feature_names_in_)
         elif hasattr(final_pipeline.steps[-1][1], 'feature_names_in_'):
-            actual_feature_names = final_pipeline.steps[-1][1].feature_names_in_.tolist()
-        # Try from preprocessor step
+            actual_feature_names = list(final_pipeline.steps[-1][1].feature_names_in_)
         elif hasattr(final_pipeline.steps[0][1], 'feature_names_in_'):
-            actual_feature_names = final_pipeline.steps[0][1].feature_names_in_.tolist()
+            actual_feature_names = list(final_pipeline.steps[0][1].feature_names_in_)
         else:
-            # Fallback to X columns
             actual_feature_names = X.columns.tolist()
-    except Exception as e:
-        if progress_callback:
-            progress_callback(f"⚠️ Could not extract feature_names_in_, using X.columns: {e}", 0.88)
+    except Exception:
         actual_feature_names = X.columns.tolist()
     
-    # Validate that feature names match
-    if set(actual_feature_names) != set(X.columns.tolist()):
-        if progress_callback:
-            progress_callback(f"⚠️ Feature mismatch detected! Model features: {len(actual_feature_names)}, X features: {len(X.columns)}", 0.89)
-    else:
-        if progress_callback:
-            progress_callback(f"✅ Feature validation passed: {len(actual_feature_names)} features", 0.89)
-    
-    # Extract model type from best_name for proper directory organization
-    # Map model names to directory names
+    # Extract model type
     model_type_map = {
         'logistic': 'logistic',
         'dtree': 'dtree',
@@ -304,7 +272,7 @@ def run_rigorous_experiment_pipeline(
     }
     model_type = model_type_map.get(best_name, best_name)
     
-    # Save test/train sets first to get paths for metadata
+    # Save test/train sets
     from pathlib import Path
     models_dir = Path(output_dir)
     testsets_dir = models_dir / "testsets"
@@ -313,7 +281,6 @@ def run_rigorous_experiment_pipeline(
         X_test, y_test = test_set
         test_df = pd.concat([X_test, y_test], axis=1)
         
-        # Save testset and trainset with timestamp
         test_path = save_dataset_with_timestamp(
             test_df,
             testsets_dir,
@@ -322,7 +289,6 @@ def run_rigorous_experiment_pipeline(
         )
         results['test_set_path'] = str(test_path)
         
-        # Also save the training set
         train_df = pd.concat([X, y], axis=1)
         train_path = save_dataset_with_timestamp(
             train_df,
@@ -332,52 +298,41 @@ def run_rigorous_experiment_pipeline(
         )
         results['train_set_path'] = str(train_path)
         
-        # Clean up old testsets/trainsets (keep only latest)
         cleanup_old_testsets(model_type, testsets_dir, keep_n_latest=1)
-        
-        if progress_callback:
-            progress_callback(f"Test/Train sets guardados en: {testsets_dir}", 0.92)
     else:
-        # If no test set, create dummy paths
         test_path = None
         train_path = None
         test_df = None
         train_df = pd.concat([X, y], axis=1)
     
-    # Create and save metadata
+    # Create metadata
     if progress_callback:
         progress_callback("💾 Guardando metadatos del modelo...", 0.94)
     
     from ..models import create_metadata_from_training
-    import time
     
-    # Get model type string
     model_type_str = str(type(best_model).__name__)
+    model_params = best_model.get_params() if hasattr(best_model, 'get_params') else {}
     
-    # Get hyperparameters
-    if hasattr(best_model, 'get_params'):
-        model_params = best_model.get_params()
-    else:
-        model_params = {}
-    
-    # Training configuration
+    training_duration = time.time() - start_time
     training_config = {
-        'duration': results.get('training_duration', 0.0),
+        'duration': training_duration,
         'cv_strategy': f"RepeatedStratifiedKFold(n_splits={n_splits}, n_repeats={n_repeats})",
         'n_splits': n_splits,
         'n_repeats': n_repeats,
         'total_runs': n_splits * n_repeats,
         'scoring': scoring,
         'preprocessing': preprocessing_config.__dict__ if preprocessing_config else {},
-        'random_seed': RANDOM_SEED
+        'random_seed': RANDOM_SEED,
+        'checkpointing_enabled': use_checkpointing,
+        'experiment_id': experiment_id if checkpoint else None
     }
     
-    # Create metadata WITH ACTUAL FEATURES FROM TRAINED MODEL
     metadata = create_metadata_from_training(
         model_name=best_name,
         model_type=model_type_str,
         task=y.name if hasattr(y, 'name') else 'unknown',
-        model_file_path='',  # Will be set when saving
+        model_file_path='',
         train_set_path=str(train_path) if train_path else '',
         test_set_path=str(test_path) if test_path else '',
         train_df=train_df,
@@ -389,12 +344,10 @@ def run_rigorous_experiment_pipeline(
         learning_curve_path=results.get('learning_curves_paths', {}).get(best_name),
         statistical_comparison=results.get('statistical_comparison'),
         notes=f"Best model selected from {len(models)} candidates",
-        actual_feature_names=actual_feature_names  # Pass actual features from trained model
+        actual_feature_names=actual_feature_names
     )
     
-    # Save the final trained model with metadata AND training data
-    # IMPORTANT: Pass the COMPLETE training dataframe (features + target)
-    # This ensures we can validate features later
+    # Save final model
     full_training_df = pd.concat([X, y], axis=1)
     
     final_model_path = save_model_with_cleanup(
@@ -403,13 +356,26 @@ def run_rigorous_experiment_pipeline(
         models_dir,
         keep_n_latest=1,
         metadata=metadata,
-        training_data=full_training_df  # Save exact data used for training
+        training_data=full_training_df
     )
     results['final_model_path'] = str(final_model_path)
     results['metadata_path'] = str(final_model_path.with_suffix('.metadata.json'))
+    results['training_duration'] = training_duration
     
     if progress_callback:
         progress_callback(f"✅ Modelo y metadatos guardados: {final_model_path}", 0.96)
+    
+    # Clean up checkpoints after successful completion
+    if checkpoint and checkpoint.is_complete():
+        if progress_callback:
+            progress_callback("🧹 Limpiando checkpoints temporales...", 0.98)
+        try:
+            checkpoint.cleanup_checkpoints(keep_final=False)
+            if progress_callback:
+                progress_callback("✅ Checkpoints limpiados", 0.99)
+        except Exception as e:
+            if progress_callback:
+                progress_callback(f"⚠️ Error limpiando checkpoints: {e}", 0.99)
     
     if progress_callback:
         progress_callback("✅ Pipeline de entrenamiento completado exitosamente!", 1.0)
@@ -417,9 +383,9 @@ def run_rigorous_experiment_pipeline(
     return results
 
 
+# Keep existing MODELS_DIR and other functions unchanged
 MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models")
 os.makedirs(MODELS_DIR, exist_ok=True)
-
 
 def train_best_classifier(
     X: pd.DataFrame,

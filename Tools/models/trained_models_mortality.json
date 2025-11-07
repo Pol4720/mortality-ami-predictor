@@ -1,0 +1,24 @@
+{
+  "task": "mortality",
+  "timestamp": "2025-11-06T16:53:53.785410",
+  "checkpoint_id": "mortality_20251106_163233",
+  "models": {},
+  "training_params": {
+    "quick": true,
+    "imputer_mode": "iterative",
+    "n_cv_folds": 3,
+    "n_cv_repeats": 3
+  },
+  "completed_models": [],
+  "failed_models": [
+    "knn"
+  ],
+  "cv_results_summary": {
+    "knn": {
+      "mean_score": 0.5023101455364448,
+      "std_score": 0.01843215889754333,
+      "n_runs": 9
+    }
+  },
+  "best_model": "knn"
+}

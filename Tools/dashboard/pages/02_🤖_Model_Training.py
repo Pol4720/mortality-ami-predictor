@@ -1,21 +1,24 @@
 """Model Training page."""
 from __future__ import annotations
 
+import io
 import sys
+import json  # ✅ AÑADIR IMPORT
+import tempfile
 from pathlib import Path
 from datetime import datetime
+
+import joblib
+import numpy as np
+import pandas as pd
+import streamlit as st
 
 # Add parent directories to path
 root_dir = Path(__file__).parents[2]
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
-import streamlit as st
-import pandas as pd
-import numpy as np
 from sklearn.decomposition import PCA
-import joblib
-import tempfile
 
 from app import (
     display_model_list,
@@ -55,7 +58,6 @@ else:
     st.stop()
 
 # Si no hay data_path o el path no existe, crear un archivo temporal
-import tempfile
 if not data_path or not Path(data_path).exists():
     st.info("ℹ️ Guardando datos en archivo temporal para el entrenamiento...")
     temp_dir = Path(tempfile.gettempdir())
@@ -69,7 +71,7 @@ task = st.session_state.get('target_column', 'mortality')
 if task == 'exitus':
     task = 'mortality'
 
-# Custom models section
+# Custom models section (mantener en sidebar)
 st.sidebar.markdown("---")
 st.sidebar.header("🔧 Custom Models")
 
@@ -105,8 +107,6 @@ if use_custom_models:
 st.sidebar.markdown("---")
 st.sidebar.header("⚙️ Training Configuration")
 
-
-
 quick, imputer_mode, selected_models = sidebar_training_controls()
 
 # Main content
@@ -127,6 +127,155 @@ if selected_models:
     st.info(f"📦 Selected models: {', '.join(selected_models)}")
 else:
     st.warning("⚠️ No models selected for training")
+
+st.markdown("---")
+
+# ==================== CHECKPOINTING SECTION (MOVED TO MAIN AREA) ====================
+st.subheader("💾 Checkpointing Configuration")
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    use_checkpointing = st.checkbox(
+        "Enable Checkpointing (Recommended)",
+        value=True,
+        help="Guarda progreso fold-a-fold. Permite reanudar entrenamiento si se interrumpe."
+    )
+
+with col2:
+    if use_checkpointing:
+        st.success("✅ Activo")
+    else:
+        st.error("❌ Desactivado")
+
+# Initialize selected_checkpoint_id
+selected_checkpoint_id = None
+
+if use_checkpointing:
+    st.info("""
+    **¿Qué hace el checkpointing?**
+    - 💾 Guarda progreso después de cada fold completado
+    - ♻️ Permite reanudar entrenamiento si se interrumpe (fallo, cierre accidental, etc.)
+    - 🧹 Se limpia automáticamente al completar con éxito
+    - 📂 Ubicación: `Tools/dashboard/checkpoints/`
+    """)
+    
+    # Show existing checkpoints
+    checkpoint_dir = root_dir / "dashboard" / "checkpoints"
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    
+    checkpoint_files = list(checkpoint_dir.glob(f"training_{task}_*_state.json"))
+    
+    if checkpoint_files:
+        st.markdown("### 📂 Checkpoints Existentes")
+        
+        # Parse and display checkpoints
+        checkpoint_data = []
+        for ckpt_file in sorted(checkpoint_files, reverse=True):
+            try:
+                with open(ckpt_file, 'r') as f:
+                    state = json.load(f)
+                
+                exp_id = state.get('experiment_id', 'unknown')
+                created = state.get('created_at', 'N/A')[:19]
+                updated = state.get('last_updated', 'N/A')[:19]
+                completed = len(state.get('completed_models', []))
+                total = len(state.get('models', []))
+                
+                # Get current model progress
+                current_model = state.get('current_model')
+                current_folds = 0
+                if current_model:
+                    current_results = state.get('current_model_results', {}).get(current_model, {})
+                    current_folds = len(current_results.get('completed_folds', []))
+                
+                checkpoint_data.append({
+                    'Experiment ID': exp_id,
+                    'Creado': created,
+                    'Última actualización': updated,
+                    'Modelos completados': f"{completed}/{total}",
+                    'Modelo actual': current_model or 'N/A',
+                    'Folds completados': current_folds,
+                    'Archivo': ckpt_file.name
+                })
+            except Exception as e:
+                st.warning(f"⚠️ Error leyendo {ckpt_file.name}: {e}")
+        
+        if checkpoint_data:
+            # Display as dataframe
+            checkpoint_df = pd.DataFrame(checkpoint_data)
+            st.dataframe(checkpoint_df, use_container_width=True, hide_index=True)
+            
+            # ✅ CORREGIDO: Allow user to select checkpoint to resume
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                selected_checkpoint_option = st.selectbox(
+                    "¿Qué deseas hacer?",
+                    ["🆕 Iniciar nuevo entrenamiento"] + [f"♻️ Resumir: {d['Experiment ID']}" for d in checkpoint_data],
+                    key="checkpoint_selector"
+                )
+            
+            with col2:
+                if st.button("🗑️ Limpiar todos", type="secondary", use_container_width=True, key="clean_all_checkpoints"):
+                    try:
+                        for ckpt_file in checkpoint_files:
+                            # Delete state file
+                            ckpt_file.unlink()
+                            
+                            # Delete associated files
+                            exp_id = ckpt_file.stem.replace('_state', '')
+                            for f in checkpoint_dir.glob(f"{exp_id}*"):
+                                try:
+                                    f.unlink()
+                                except Exception:
+                                    pass
+                        
+                        st.success("✅ Todos los checkpoints eliminados")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Error: {e}")
+            
+            # ✅ AÑADIR: Botón para eliminar checkpoint individual
+            if selected_checkpoint_option.startswith("♻️"):
+                selected_checkpoint_id = selected_checkpoint_option.split(": ")[1]
+                
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.success(f"✅ Se reanudará: `{selected_checkpoint_id}`")
+                with col2:
+                    if st.button("🗑️ Eliminar", type="secondary", use_container_width=True, key="delete_selected"):
+                        try:
+                            # Find and delete this specific checkpoint
+                            for ckpt_file in checkpoint_files:
+                                state_exp_id = ckpt_file.stem.replace('_state', '')
+                                if state_exp_id == selected_checkpoint_id:
+                                    # Delete state file
+                                    ckpt_file.unlink()
+                                    
+                                    # Delete associated files
+                                    for f in checkpoint_dir.glob(f"{selected_checkpoint_id}*"):
+                                        try:
+                                            f.unlink()
+                                        except Exception:
+                                            pass
+                                    break
+                            
+                            st.success(f"✅ Checkpoint `{selected_checkpoint_id}` eliminado")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Error: {e}")
+            else:
+                selected_checkpoint_id = None
+                st.info("🆕 Se iniciará un nuevo experimento")
+        else:
+            selected_checkpoint_id = None
+    else:
+        st.info("ℹ️ No hay checkpoints existentes para esta tarea")
+        selected_checkpoint_id = None
+else:
+    st.warning("⚠️ **Advertencia:** Sin checkpointing, si el entrenamiento se interrumpe, perderás todo el progreso.")
+    selected_checkpoint_id = None
 
 st.markdown("---")
 
@@ -252,92 +401,99 @@ if transformation_type == "📊 PCA Components" or transformation_type == "🧬 
                 df_for_transform = df[numeric_cols].dropna()
                 
                 if len(df_for_transform) == 0:
-                    st.error("❌ No hay datos válidos después de eliminar NaNs. Aplica imputación primero.")
+                    st.error("❌ No hay datos numéricos válidos para transformar")
                     st.stop()
                 
                 if transformation_type == "📊 PCA Components":
-                    # Apply PCA
                     from sklearn.preprocessing import StandardScaler
                     
                     # Standardize if requested
                     if standardize:
                         scaler = StandardScaler()
-                        data_scaled = scaler.fit_transform(df_for_transform)
+                        X_scaled = scaler.fit_transform(df_for_transform)
                     else:
-                        data_scaled = df_for_transform.values
                         scaler = None
+                        X_scaled = df_for_transform.values
                     
-                    # Fit PCA
+                    # Apply PCA
                     if pca_mode == "Varianza":
                         pca = PCA(n_components=variance_threshold, random_state=42)
                     else:
                         pca = PCA(n_components=n_components, random_state=42)
                     
-                    components = pca.fit_transform(data_scaled)
+                    X_transformed = pca.fit_transform(X_scaled)
                     
-                    # Create DataFrame
+                    # Create DataFrame with component names
                     component_names = [f'PC{i+1}' for i in range(pca.n_components_)]
                     transformed_df = pd.DataFrame(
-                        components,
+                        X_transformed,
                         columns=component_names,
                         index=df_for_transform.index
                     )
                     
-                    # Add target back
-                    transformed_df[task] = df.loc[transformed_df.index, task]
+                    # Add target column back
+                    transformed_df[task] = df.loc[df_for_transform.index, task]
                     
-                    # Store in session state
+                    # Store transformer and params
                     st.session_state.transformer = {'pca': pca, 'scaler': scaler}
-                    st.session_state.transformed_df = transformed_df
-                    st.session_state.transformation_applied = True
                     st.session_state.transformation_params = {
                         'type': 'pca',
                         'n_components': pca.n_components_,
-                        'variance_explained': sum(pca.explained_variance_ratio_),
+                        'variance_explained': pca.explained_variance_ratio_.sum(),
                         'standardize': standardize,
-                        'feature_names': numeric_cols
+                        'original_features': numeric_cols
                     }
                     
-                    st.success(
-                        f"✅ PCA aplicado exitosamente: {pca.n_components_} componentes | "
-                        f"Varianza explicada: {sum(pca.explained_variance_ratio_)*100:.2f}%"
-                    )
+                    st.success(f"""
+                    ✅ **PCA aplicado exitosamente**
+                    
+                    - Componentes: {pca.n_components_}
+                    - Varianza explicada: {pca.explained_variance_ratio_.sum()*100:.2f}%
+                    - Variables originales: {len(numeric_cols)}
+                    """)
                 
                 else:  # ICA
+                    from src.features import ICATransformer
+                    
                     # Apply ICA
                     ica = ICATransformer(
                         n_components=n_components,
                         algorithm=ica_algorithm,
                         fun=ica_fun,
                         whiten=whiten,
-                        max_iter=500,
                         random_state=42
                     )
                     
-                    ica.fit(df_for_transform)
-                    transformed_df = ica.transform(df_for_transform)
+                    X_transformed = ica.fit_transform(df_for_transform)
+                    transformed_df = X_transformed.copy()
                     
-                    # Add target back
-                    transformed_df[task] = df.loc[transformed_df.index, task]
+                    # Add target column back
+                    transformed_df[task] = df.loc[df_for_transform.index, task]
                     
-                    # Store in session state
+                    # Store transformer and params
                     st.session_state.transformer = ica
-                    st.session_state.transformed_df = transformed_df
-                    st.session_state.transformation_applied = True
+                    kurtosis_vals = [abs(x) for x in ica.kurtosis_]
                     st.session_state.transformation_params = {
                         'type': 'ica',
                         'n_components': n_components,
                         'algorithm': ica_algorithm,
                         'fun': ica_fun,
                         'whiten': whiten,
-                        'kurtosis_mean': float(np.mean(np.abs(ica.result.kurtosis))),
-                        'feature_names': numeric_cols
+                        'kurtosis_mean': np.mean(kurtosis_vals),
+                        'original_features': numeric_cols
                     }
                     
-                    st.success(
-                        f"✅ ICA aplicado exitosamente: {n_components} componentes independientes | "
-                        f"Kurtosis promedio: {np.mean(np.abs(ica.result.kurtosis)):.3f}"
-                    )
+                    st.success(f"""
+                    ✅ **ICA aplicado exitosamente**
+                    
+                    - Componentes independientes: {n_components}
+                    - Kurtosis promedio: {np.mean(kurtosis_vals):.3f}
+                    - Variables originales: {len(numeric_cols)}
+                    """)
+                
+                # Mark as applied
+                st.session_state.transformation_applied = True
+                st.session_state.transformed_df = transformed_df
                 
                 # Show preview
                 st.markdown("#### 📋 Preview de datos transformados")
@@ -346,9 +502,8 @@ if transformation_type == "📊 PCA Components" or transformation_type == "🧬 
                 
             except Exception as e:
                 st.error(f"❌ Error durante transformación: {e}")
-                import traceback
                 with st.expander("Ver traceback"):
-                    st.code(traceback.format_exc())
+                    st.exception(e)
 
 # Show transformation status
 if transformation_type != "🔤 Original Features":
@@ -369,7 +524,7 @@ if transformation_type != "🔤 Original Features":
 
 # Training section
 st.markdown("---")
-st.subheader("Train Models")
+st.subheader("🚀 Train Models")
 
 if not selected_models:
     st.error("❌ Please select at least one model from the sidebar")
@@ -380,331 +535,211 @@ else:
     
     # Show button or training message
     if not st.session_state.is_training:
-        start_button = st.button("🚀 Start Training", type="primary", use_container_width=True)
-    else:
-        st.info("⏳ **Training in progress, please wait...**")
-    
-    if not st.session_state.is_training and 'start_button' in locals() and start_button:
-        # Set training flag
-        st.session_state.is_training = True
+        st.markdown("### 🎯 ¿Listo para entrenar?")
         
+        if not selected_models:
+            st.error("❌ Selecciona al menos un modelo en la barra lateral")
+        else:
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                start_button = st.button(
+                    "🚀 INICIAR ENTRENAMIENTO",
+                    type="primary",
+                    use_container_width=True,
+                    help="Click para comenzar el entrenamiento de modelos"
+                )
+    else:
+        start_button = False
+        st.warning("⏳ **Entrenamiento en progreso...**")
+        st.info("💾 Checkpointing: " + ("✅ Activo" if use_checkpointing else "❌ Desactivado"))
+    
+    if start_button and not st.session_state.is_training:
+        st.session_state.is_training = True
+        st.rerun()
+    
+    if st.session_state.is_training:
         try:
-            # Determine which dataset to use based on transformation selection
+            st.markdown("---")
+            st.info(f"""
+            **🎯 Configuración del entrenamiento:**
+            - Modelos: {', '.join(selected_models)}
+            - Quick Mode: {'✅ Sí' if quick else '❌ No'}
+            - Checkpointing: {'✅ Activo' if use_checkpointing else '❌ Desactivado'}
+            - Reanudando checkpoint: {'✅ Sí - ' + selected_checkpoint_id if selected_checkpoint_id else '❌ No (nuevo)'}
+            """)
+            
+            # Determine which dataset to use
             if transformation_type != "🔤 Original Features":
                 if st.session_state.transformation_applied and st.session_state.transformed_df is not None:
                     df_for_training = st.session_state.transformed_df.copy()
-                    params = st.session_state.transformation_params
-                    transform_type = "PCA" if params['type'] == 'pca' else "ICA"
-                    st.info(
-                        f"ℹ️ Entrenando con **{transform_type}**: {params['n_components']} componentes "
-                        f"(transformación aplicada a {len(params['feature_names'])} variables originales)"
-                    )
+                    st.info(f"ℹ️ Entrenando con **{st.session_state.transformation_params['type'].upper()} components**: {st.session_state.transformation_params['n_components']} features")
                 else:
-                    st.error(
-                        f"❌ Has seleccionado transformación {transformation_type} pero no la has aplicado. "
-                        f"Haz clic en '🔄 Aplicar Transformación' primero."
-                    )
+                    st.error("❌ Transformación no aplicada. Haz clic en '🔄 Aplicar Transformación' primero.")
                     st.session_state.is_training = False
                     st.stop()
             else:
                 df_for_training = df.copy()
                 st.info(f"ℹ️ Entrenando con **features originales**: {len(df.columns)-1} variables")
             
-            # Save the DataFrame that will actually be used for training
-            # This ensures metadata will reflect the correct features
+            # Save training dataset
             temp_dir = Path(tempfile.gettempdir())
             training_data_path = temp_dir / f"streamlit_training_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
             df_for_training.to_csv(training_data_path, index=False)
-            st.success(f"✅ Dataset para entrenamiento guardado: {len(df_for_training.columns)} columnas (incluyendo target)")
+            st.success(f"✅ Dataset preparado: {len(df_for_training)} muestras, {len(df_for_training.columns)} columnas")
             
             # Save transformer if using transformation
             transformer_path = None
             if transformation_type != "🔤 Original Features" and st.session_state.transformer is not None:
                 transformer_path = temp_dir / f"streamlit_transformer_{datetime.now().strftime('%Y%m%d_%H%M%S')}.joblib"
                 joblib.dump(st.session_state.transformer, str(transformer_path))
-                st.success(f"✅ Transformer guardado temporalmente: {transformer_path.name}")
+                st.success(f"✅ Transformer guardado temporalmente")
             
-            # Create containers for progress display
-            progress_container = st.empty()
-            status_container = st.empty()
+            st.markdown("---")
+            st.markdown("### 📊 Progreso del Entrenamiento")
             
-            # Capture stdout to show progress
-            import io
-            from contextlib import redirect_stdout
+            progress_container = st.container()
             
-            with status_container.container():
-                st.markdown("### 📊 Progreso del Entrenamiento")
-                progress_area = st.empty()
+            with progress_container:
+                st.info("⏳ Iniciando entrenamiento...")
                 
-                # Redirect stdout
-                output_buffer = io.StringIO()
-                
-                with redirect_stdout(output_buffer):
-                    save_paths, experiment_results = train_models_with_progress(
-                        data_path=str(training_data_path),  # Use the actual training dataset
-                        task=task,
-                        quick=quick,
-                        imputer_mode=imputer_mode,
-                        selected_models=selected_models,
-                    )
-                
-                # Get the output
-                output = output_buffer.getvalue()
-                
-                # Display in expander
-                with st.expander("📋 Ver detalles completos del entrenamiento", expanded=False):
-                    st.code(output, language="text")
+                # ✅ LLAMADA PRINCIPAL con checkpoint_id correcto
+                save_paths, experiment_results = train_models_with_progress(
+                    data_path=str(training_data_path),
+                    task=task,
+                    quick=quick,
+                    imputer_mode=imputer_mode,
+                    selected_models=selected_models,
+                    use_checkpointing=use_checkpointing,
+                    resume_checkpoint_id=selected_checkpoint_id if use_checkpointing else None,
+                )
             
-            # Clean up temporary training dataset
+            # Clean up
             try:
                 if training_data_path.exists():
                     training_data_path.unlink()
             except Exception:
-                pass  # Ignore cleanup errors
+                pass
             
             # Update session state
             set_state("is_trained", True)
             set_state("last_train_task", task)
             set_state("last_train_models", list(save_paths.keys()))
-            
-            # Store training results for PDF report
             st.session_state.training_results = experiment_results
             
-            # Store trained models references
             if 'trained_models' not in st.session_state:
                 st.session_state.trained_models = {}
             
+            st.markdown("---")
             st.success(f"""
-            ✅ **Entrenamiento completado exitosamente**
+            ✅ **¡Entrenamiento completado exitosamente!**
             
-            - {len(save_paths)} modelo(s) entrenado(s)
-            - Validación cruzada estratificada completada
-            - Curvas de aprendizaje generadas
-            - Comparación estadística realizada
-            - Modelos guardados en `models/`
+            - ✅ {len(save_paths)} modelo(s) entrenado(s)
+            - ✅ Validación cruzada estratificada completada
+            - ✅ Curvas de aprendizaje generadas
+            - ✅ Comparación estadística realizada
+            - ✅ Modelos guardados en `models/`
             """)
             
-            # Display saved models
             with st.expander("📁 Ver rutas de modelos guardados"):
                 for name, path in save_paths.items():
-                    st.code(f"{name}: {path}", language="text")
+                    st.code(path, language="text")
             
-            # Save transformer alongside models and update metadata
+            # Save transformer
             if transformer_path is not None and st.session_state.transformer is not None:
                 st.markdown("---")
-                st.info("💾 **Guardando transformer y actualizando metadata de modelos...**")
+                st.info("💾 **Guardando transformer y actualizando metadata...**")
                 
                 try:
-                    from pathlib import Path as PathlibPath
-                    import json
+                    models_dir = root_dir / "models"
+                    permanent_transformer_path = models_dir / f"transformer_{task}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.joblib"
+                    joblib.dump(st.session_state.transformer, str(permanent_transformer_path))
                     
-                    # Save transformer permanently for each model
                     for model_name, model_path in save_paths.items():
-                        model_dir = PathlibPath(model_path).parent
-                        transformer_save_path = model_dir / f"{model_name}_transformer.joblib"
-                        
-                        # Copy transformer to model directory
-                        joblib.dump(st.session_state.transformer, str(transformer_save_path))
-                        
-                        # Update model metadata to include transformation info
-                        metadata_path = model_dir / f"{model_name}_metadata.json"
+                        metadata_path = Path(str(model_path).replace('.joblib', '.metadata.json'))
                         
                         if metadata_path.exists():
-                            with open(metadata_path, 'r', encoding='utf-8') as f:
-                                metadata_dict = json.load(f)
+                            with open(metadata_path, 'r') as f:
+                                metadata = json.load(f)
                             
-                            # Add transformation information
-                            metadata_dict['transformation'] = {
+                            metadata['transformation'] = {
                                 'type': st.session_state.transformation_params['type'],
                                 'n_components': st.session_state.transformation_params['n_components'],
-                                'transformer_path': str(transformer_save_path),
-                                'original_features': st.session_state.transformation_params['feature_names'],
+                                'transformer_path': str(permanent_transformer_path),
+                                'original_features': st.session_state.transformation_params['original_features'],
                                 'params': st.session_state.transformation_params
                             }
                             
-                            with open(metadata_path, 'w', encoding='utf-8') as f:
-                                json.dump(metadata_dict, f, indent=2)
-                        
-                        st.success(f"✅ Transformer guardado para {model_name}: `{transformer_save_path.name}`")
+                            with open(metadata_path, 'w') as f:
+                                json.dump(metadata, f, indent=2)
                     
-                    st.success(f"""
-                    ✅ **Transformers guardados exitosamente**
-                    
-                    - Tipo: {st.session_state.transformation_params['type'].upper()}
-                    - Componentes: {st.session_state.transformation_params['n_components']}
-                    - Variables originales transformadas: {len(st.session_state.transformation_params['feature_names'])}
-                    - Metadata actualizado para todos los modelos
-                    
-                    **Los modelos aplicarán automáticamente esta transformación durante la predicción.**
-                    """)
-                    
+                    st.success(f"✅ Transformer guardado: {permanent_transformer_path.name}")
                 except Exception as e:
                     st.error(f"❌ Error guardando transformer: {e}")
-                    import traceback
-                    with st.expander("Ver detalles del error"):
-                        st.code(traceback.format_exc())
-                
                 finally:
-                    # Clean up temporary transformer
                     try:
-                        if transformer_path.exists():
-                            transformer_path.unlink()
+                        if transformer_path and Path(transformer_path).exists():
+                            Path(transformer_path).unlink()
                     except Exception:
                         pass
             
-            # Display learning curves if available
+            # Display learning curves
             if hasattr(st.session_state, 'learning_curve_paths') and st.session_state.learning_curve_paths:
                 st.markdown("---")
                 st.subheader("📈 Curvas de Aprendizaje")
-                st.info("Las curvas de aprendizaje muestran cómo el rendimiento del modelo mejora con más datos de entrenamiento.")
                 
                 lc_paths = st.session_state.learning_curve_paths
-                lc_results = st.session_state.get('learning_curve_results', {})
                 
-                # Create tabs for each model
                 if len(lc_paths) > 0:
                     tabs = st.tabs([f"📊 {model}" for model in lc_paths.keys()])
                     
                     for tab, (model_name, img_path) in zip(tabs, lc_paths.items()):
                         with tab:
-                            # Display image if PNG exists
                             if Path(img_path).exists():
-                                st.image(img_path, use_container_width=True)
-                            else:
-                                # Try HTML version
-                                html_path = img_path.replace('.png', '.html')
-                                if Path(html_path).exists():
-                                    with open(html_path, 'r', encoding='utf-8') as f:
-                                        html_content = f.read()
-                                    st.components.v1.html(html_content, height=650, scrolling=True)
-                            
-                            # Display statistics
-                            if model_name in lc_results:
-                                lc_res = lc_results[model_name]
-                                col1, col2, col3 = st.columns(3)
-                                
-                                with col1:
-                                    final_train = lc_res.train_scores_mean[-1]
-                                    st.metric("Score Final (Train)", f"{final_train:.4f}")
-                                
-                                with col2:
-                                    final_val = lc_res.val_scores_mean[-1]
-                                    st.metric("Score Final (Val)", f"{final_val:.4f}")
-                                
-                                with col3:
-                                    gap = abs(final_train - final_val)
-                                    st.metric("Gap Train-Val", f"{gap:.4f}")
-                                
-                                # Interpretation
-                                if gap < 0.05:
-                                    st.success("✅ **Buen ajuste**: Gap pequeño entre train y validación")
-                                elif gap < 0.10:
-                                    st.warning("⚠️ **Ligero sobreajuste**: Gap moderado")
-                                else:
-                                    st.error("🔴 **Sobreajuste significativo**: Gap grande, considerar regularización")
+                                st.image(str(img_path), caption=f"Learning Curve: {model_name}", use_container_width=True)
             
-            # 🎉 Success! Show balloons
             st.balloons()
-            st.success("🎉 **¡Entrenamiento completado exitosamente!**")
             
-            # Show statistical comparison if available
+            # Statistical comparison
             st.markdown("---")
             st.subheader("📊 Comparación Estadística de Modelos")
             
-            # Get statistical results
             stat_results = experiment_results.get('statistical_comparison', {})
             
             if stat_results and len(selected_models) > 1:
-                st.info("""
-                **Análisis Estadístico:**
-                - 🧪 Prueba de normalidad (Shapiro-Wilk) para verificar distribución
-                - 📊 Test paramétrico (t-Student) si los datos son normales
-                - 📈 Test no paramétrico (Mann-Whitney U) si no son normales
-                - ⚖️ Determina si las diferencias entre modelos son estadísticamente significativas (p < 0.05)
-                """)
+                st.info("Comparación par-a-par entre todos los modelos entrenados")
                 
-                # Display comparison matrix
-                from src.data_load import get_latest_plot
-                matrix_plot = get_latest_plot(PLOTS_TRAINING_DIR, "comparison_matrix")
-                
-                if matrix_plot and matrix_plot.exists():
-                    st.markdown("### Matriz de Comparaciones")
-                    if matrix_plot.suffix == '.png':
-                        st.image(str(matrix_plot), use_container_width=True)
-                    elif matrix_plot.suffix == '.html':
-                        with open(matrix_plot, 'r', encoding='utf-8') as f:
-                            st.components.v1.html(f.read(), height=600, scrolling=True)
-                
-                # Display pairwise comparisons
-                st.markdown("### Comparaciones por Pares")
-                
-                # Create dataframe with results
-                comparison_data = []
-                for (m1, m2), res in stat_results.items():
-                    comparison_data.append({
-                        "Modelo 1": m1,
-                        "Modelo 2": m2,
-                        "Test Usado": res.test_used,
-                        "p-value": f"{res.p_value:.4f}",
-                        "Significativo (p<0.05)": "✅ SÍ" if res.significant else "❌ NO",
-                        "Diferencia de medias": f"{res.mean_diff:.4f}",
-                        "Normalidad M1": "✓" if res.normality_p1 > 0.05 else "✗",
-                        "Normalidad M2": "✓" if res.normality_p2 > 0.05 else "✗"
-                    })
-                
-                if comparison_data:
-                    comparison_df = pd.DataFrame(comparison_data)
-                    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
-                    
-                    # Show individual comparison plots
-                    with st.expander("📈 Ver gráficos de comparación individual"):
-                        for (m1, m2), res in stat_results.items():
-                            comp_plot = get_latest_plot(PLOTS_TRAINING_DIR, f"comparison_{m1}_vs_{m2}")
-                            if comp_plot and comp_plot.exists():
-                                st.markdown(f"**{m1} vs {m2}**")
-                                if comp_plot.suffix == '.png':
-                                    st.image(str(comp_plot), use_container_width=True)
-                                elif comp_plot.suffix == '.html':
-                                    with open(comp_plot, 'r', encoding='utf-8') as f:
-                                        st.components.v1.html(f.read(), height=500, scrolling=True)
-            elif len(selected_models) == 1:
-                st.info("ℹ️ Selecciona al menos 2 modelos para ver la comparación estadística.")
-            else:
-                st.warning("⚠️ No se encontraron resultados de comparación estadística.")
+                for (m1, m2), comparison in stat_results.items():
+                    with st.expander(f"🔬 {m1} vs {m2}"):
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            st.metric("Test Usado", comparison.get('test_type', 'N/A'))
+                        with col2:
+                            p_val = comparison.get('p_value', 0)
+                            st.metric("P-value", f"{p_val:.4f}")
+                        with col3:
+                            is_sig = comparison.get('significant', False)
+                            sig_label = "Sí ✅" if is_sig else "No ❌"
+                            st.metric("Significativo (α=0.05)", sig_label)
+                        
+                        st.write(f"**Interpretación:** {comparison.get('interpretation', 'N/A')}")
         
         except FileNotFoundError as e:
             st.error(f"❌ Dataset file not found: {e}")
-        except Exception as e:
-            st.error(f"❌ Error during training: {e}")
             st.exception(e)
+        except Exception as e:
+            st.error(f"❌ Error durante el entrenamiento: {e}")
+            st.exception(e)
+            
+            import traceback
+            with st.expander("🔍 Ver detalles técnicos del error"):
+                st.code(traceback.format_exc())
         finally:
-            # Reset training flag
             st.session_state.is_training = False
 
 st.markdown("---")
 
-# Display learning curves from previous training if available
-if not get_state("is_trained") and hasattr(st.session_state, 'learning_curve_paths'):
-    if st.session_state.learning_curve_paths:
-        st.subheader("📈 Curvas de Aprendizaje (del último entrenamiento)")
-        
-        lc_paths = st.session_state.learning_curve_paths
-        tabs = st.tabs([f"📊 {model}" for model in lc_paths.keys()])
-        
-        for tab, (model_name, img_path) in zip(tabs, lc_paths.items()):
-            with tab:
-                if Path(img_path).exists():
-                    st.image(img_path, use_container_width=True)
-                else:
-                    html_path = img_path.replace('.png', '.html')
-                    if Path(html_path).exists():
-                        with open(html_path, 'r', encoding='utf-8') as f:
-                            html_content = f.read()
-                        st.components.v1.html(html_content, height=650, scrolling=True)
-        
-        st.markdown("---")
-
-# Display saved models section
+# Display saved models
 st.subheader("Saved Models")
 
 last_task = get_state("last_train_task")
@@ -713,7 +748,7 @@ if last_task and last_task != task:
 
 display_model_list(task)
 
-# Training history/log
+# Training notes
 with st.expander("ℹ️ Training Notes"):
     st.markdown("""
     ### ⚙️ Configuración del Entrenamiento
@@ -724,69 +759,47 @@ with st.expander("ℹ️ Training Notes"):
     - ✅ Iteración rápida para depuración
     - ⚠️ Recomendado solo para exploración inicial
     
-    **Estrategias de Imputación:**
-    - **Iterative**: IterativeImputer de sklearn (MICE - Multiple Imputation by Chained Equations)
-    - **KNN**: K-Nearest Neighbors imputation (busca valores similares)
-    - **Simple**: Imputación básica (media/mediana/moda)
+    **Checkpointing:**
+    - ✅ Guarda progreso después de cada fold
+    - ✅ Permite reanudar entrenamiento si se interrumpe
+    - ✅ Gestión individual de checkpoints (eliminar selectivamente)
+    - ✅ Se limpia automáticamente al completar
+    - 📂 Ubicación: `Tools/dashboard/checkpoints/`
     
-    **Tipos de Modelos Disponibles:**
-    - 🌳 Decision Trees, Random Forest
-    - 🚀 XGBoost (Gradient Boosting)
-    - 📈 Logistic Regression
-    - 🎯 Support Vector Machine (SVM)
-    - 👥 K-Nearest Neighbors (KNN)
-    - 📊 Naive Bayes
+    **Estrategias de Imputación:**
+    - **Iterative**: IterativeImputer de sklearn (MICE)
+    - **KNN**: K-Nearest Neighbors imputation
+    - **Simple**: Imputación básica (media/mediana/moda)
     
     ### 📋 Pipeline de Experimentación
     
     El **Pipeline Riguroso** implementa el proceso científico completo:
     
-    1. **Validación Cruzada Estratificada Repetida**: Se entrena y evalúa cada modelo
-       múltiples veces (≥30 corridas) para obtener estimaciones robustas de μ y σ.
-       
-    2. **Curvas de Aprendizaje**: Diagnostican sobreajuste/subajuste y la necesidad
-       de más datos.
-       
-    3. **Comparación Estadística**: Determina si las diferencias entre modelos son
-       estadísticamente significativas usando:
-       - Prueba de normalidad (Shapiro-Wilk)
-       - Test paramétrico (t-Student) si los datos son normales
-       - Test no paramétrico (Mann-Whitney) si no lo son
-       
-    4. **Evaluación Final en Test Set**: Una vez seleccionado el mejor modelo:
-       - Bootstrap (1000 iteraciones con reemplazo)
-       - Jackknife (leave-one-out)
-       - Intervalos de confianza al 95%
-    
-    📚 Ver documentación completa en `Tools/docs/EXPERIMENT_PIPELINE.md`
+    1. **Validación Cruzada Estratificada Repetida**: ≥30 corridas para μ y σ robustos
+    2. **Curvas de Aprendizaje**: Diagnostican sobreajuste/subajuste
+    3. **Comparación Estadística**: Tests paramétricos/no paramétricos
+    4. **Evaluación Final**: Bootstrap + Jackknife con intervalos de confianza
     """)
 
-# Exportación PDF
+# PDF export
 st.markdown("---")
 st.subheader("📄 Exportar Reporte de Entrenamiento")
 
 if st.session_state.get('training_results'):
-    
     def generate_training_report():
-        """Generate training PDF report."""
         from pathlib import Path
         output_path = Path("reports") / "training_report.pdf"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # Get training results
         training_res = st.session_state.training_results
-        
-        # Extract models metadata from cv_results
         models_metadata = {}
         cv_results = training_res.get('cv_results', {})
         
         for model_name in cv_results.keys():
-            # Create basic metadata from CV results
             from src.models.metadata import ModelMetadata, PerformanceMetrics, TrainingMetadata, DatasetMetadata
             
             cv_data = cv_results[model_name]
             
-            # Performance metrics
             perf_metrics = PerformanceMetrics(
                 mean_score=cv_data['mean_score'],
                 std_score=cv_data['std_score'],
@@ -795,7 +808,6 @@ if st.session_state.get('training_results'):
                 all_scores=cv_data.get('all_scores', [])
             )
             
-            # Basic training metadata
             train_metadata = TrainingMetadata(
                 training_date=datetime.now().isoformat(),
                 training_duration_seconds=0.0,
@@ -808,7 +820,6 @@ if st.session_state.get('training_results'):
                 random_seed=42
             )
             
-            # Create metadata
             models_metadata[model_name] = ModelMetadata(
                 model_name=model_name,
                 model_type=model_name,

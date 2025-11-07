@@ -1,9 +1,10 @@
 """UI utilities and helper functions for dashboard pages."""
 from __future__ import annotations
 
+import json  # ✅ AÑADIR
 import os
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 import pandas as pd
 import streamlit as st
@@ -184,27 +185,11 @@ def train_models_with_progress(
     quick: bool,
     imputer_mode: str,
     selected_models: list[str],
+    use_checkpointing: bool = True,
+    resume_checkpoint_id: Optional[str] = None,  # ✅ NUEVO PARÁMETRO
 ) -> dict[str, str]:
-    """Train selected models using the rigorous experiment pipeline.
+    """Train selected models using the rigorous experiment pipeline."""
     
-    This function ALWAYS uses the rigorous academic pipeline with:
-    - 30+ repeated CV runs for model selection (FASE 1)
-    - Learning curves for diagnostics
-    - Statistical comparison (Shapiro-Wilk, t-test/Mann-Whitney) (FASE 3)
-    
-    NOTE: Bootstrap and Jackknife evaluation (FASE 2) is done in the 
-    EVALUATION module, not here.
-    
-    Args:
-        data_path: Path to dataset
-        task: Task name (mortality/arrhythmia)
-        quick: Whether to use quick mode (fewer CV splits)
-        imputer_mode: Imputation strategy
-        selected_models: List of model names to train
-        
-    Returns:
-        Dictionary mapping model names to saved file paths
-    """
     # Load data
     df = load_dataset(data_path)
     
@@ -337,9 +322,34 @@ def train_models_with_progress(
     
     # Set CV parameters based on quick mode
     n_splits = 3 if quick else 10
-    n_repeats = 3 if quick else 10  # 9 or 100 runs total
+    n_repeats = 3 if quick else 10
     
-    # Run pipeline (FASE 1 + FASE 3 - train/validation + statistical comparison)
+    # ✅ NEW: Configure checkpoint directory and experiment ID
+    checkpoint_dir = None
+    experiment_id = None
+    
+    if use_checkpointing:
+        from pathlib import Path
+        checkpoint_dir = Path(__file__).parent.parent / "checkpoints"
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        
+        if resume_checkpoint_id:
+            # Usuario eligió resumir un checkpoint existente
+            experiment_id = resume_checkpoint_id
+            st.success(f"✅ Reanudando experimento: `{experiment_id}`")
+        else:
+            # Crear nuevo experimento
+            from src.training import create_experiment_id
+            experiment_id = create_experiment_id(task, prefix="training")
+            st.info(f"🆕 Iniciando nuevo experimento: `{experiment_id}`")
+        
+        st.info(f"""
+        💾 **Checkpointing configurado:**
+        - Directorio: `{checkpoint_dir}`
+        - Experiment ID: `{experiment_id}`
+        """)
+    
+    # Run pipeline with checkpointing parameters
     experiment_results = run_rigorous_experiment_pipeline(
         X=X_train,
         y=y_train,
@@ -348,9 +358,12 @@ def train_models_with_progress(
         n_splits=n_splits,
         n_repeats=n_repeats,
         scoring="roc_auc",
-        test_set=(X_test, y_test),  # Saved for later evaluation
+        test_set=(X_test, y_test),
         output_dir=str(MODELS_DIR),
         progress_callback=progress_callback,
+        use_checkpointing=use_checkpointing,
+        checkpoint_dir=str(checkpoint_dir) if checkpoint_dir else None,
+        experiment_id=experiment_id,
     )
     
     # Extract save paths

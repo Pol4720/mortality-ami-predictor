@@ -23,12 +23,10 @@ from .custom_integration import (
     train_mixed_models_with_cv,
     is_custom_model,
 )
+from .checkpointing import TrainingCheckpoint, create_experiment_id  # NEW
 
-# Backward compatibility aliases for old API
-# fit_and_save_best_classifier -> train_best_classifier (same function, different name)
+# Backward compatibility aliases
 fit_and_save_best_classifier = train_best_classifier
-
-# fit_and_save_selected_classifiers -> train_selected_classifiers (same function, different name)
 fit_and_save_selected_classifiers = train_selected_classifiers
 
 __all__ = [
@@ -56,6 +54,9 @@ __all__ = [
     "integrate_custom_models_in_pipeline",
     "train_mixed_models_with_cv",
     "is_custom_model",
+    # Checkpointing (NEW)
+    "TrainingCheckpoint",
+    "create_experiment_id",
     # Backward compatibility
     "fit_and_save_best_classifier",
     "fit_and_save_selected_classifiers",
