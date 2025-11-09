@@ -248,6 +248,82 @@ save_custom_model(
 3. Use in **Model Training** page alongside standard models
 4. Evaluate in **Model Evaluation** page with full metrics
 
+---
+
+## 🎯 Inverse Optimization & Treatment Recommendations
+
+**NEW in v2.1**: Find optimal feature values (treatments, interventions) to achieve desired predictions!
+
+The Inverse Optimization module answers: *"What treatment strategy minimizes mortality risk?"*
+
+### Key Features
+
+- **Treatment Optimization**: Find optimal medication dosages and interventions
+- **Uncertainty Quantification**: Bootstrap confidence intervals for optimal values
+- **Sensitivity Analysis**: Understand robustness of recommendations
+- **Interactive Visualizations**: Modern Plotly charts with zoom, pan, export
+- **Multiple Optimization Methods**: SLSQP, COBYLA, Differential Evolution
+- **Counterfactual Explanations**: Minimal changes to flip predictions
+
+### Quick Example
+
+```python
+from src.explainability import InverseOptimizer
+
+# Create optimizer
+optimizer = InverseOptimizer(
+    model=trained_model,
+    feature_names=feature_list
+)
+
+# Find optimal treatment
+result = optimizer.optimize(
+    target_value=0.1,  # Target 10% mortality
+    modifiable_features=['aspirin_dose', 'statin_dose', 'reperfusion_time'],
+    fixed_features={'age': 68, 'sex': 1, 'diabetes': 1},
+    reference_data=patient_data,
+    method='SLSQP',
+    n_iterations=10
+)
+
+print(f"Optimal treatment: {result['optimal_values']}")
+print(f"Achieved mortality: {result['achieved_prediction']:.1%}")
+
+# Compute confidence intervals
+ci_result = optimizer.compute_confidence_intervals(
+    target_value=0.1,
+    modifiable_features=['aspirin_dose', 'statin_dose'],
+    n_bootstrap=50,
+    confidence_level=0.95
+)
+```
+
+### Streamlit Interface
+
+Navigate to **🎯 Inverse Optimization** page in the dashboard for:
+- Interactive feature selection (modifiable vs fixed)
+- Real-time optimization with progress tracking
+- Confidence interval computation
+- Sensitivity analysis with interactive plots
+- Multiple export formats (CSV, JSON)
+- Comprehensive help and clinical examples
+
+### Documentation
+
+- **[Complete Guide](docs/user-guide/inverse-optimization.md)** - Full documentation with examples
+- **[Quick Reference](src/explainability/INVERSE_OPTIMIZATION_README.md)** - Fast lookup
+- **[Demo Notebook](notebooks/inverse_optimization_demo.md)** - Step-by-step tutorial
+- **[Implementation Summary](INVERSE_OPTIMIZATION_SUMMARY.md)** - Technical details
+
+### Use Cases
+
+1. **Mortality Risk Reduction**: Find treatment strategies to reduce patient mortality
+2. **Intervention Planning**: Optimize timing and dosages for maximum benefit
+3. **Personalized Medicine**: Patient-specific treatment recommendations
+4. **What-If Analysis**: Explore counterfactual scenarios
+
+⚠️ **Important**: Always validate computational recommendations with clinical experts!
+
 📖 **Complete guide:** [Custom Models Guide](docs/CUSTOM_MODELS_GUIDE.md)
 
 ---

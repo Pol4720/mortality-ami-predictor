@@ -1,7 +1,8 @@
 """Model explainability module.
 
 This module provides SHAP analysis, permutation importance,
-partial dependence plots, and custom models explainability for model interpretation.
+partial dependence plots, inverse optimization, and custom models explainability 
+for comprehensive model interpretation.
 """
 
 from .shap_analysis import (
@@ -23,6 +24,18 @@ from .custom_integration import (
     explain_prediction_custom,
     batch_explain_models,
 )
+from .inverse_optimization import InverseOptimizer, find_counterfactuals
+from .inverse_plots import (
+    plot_optimal_values_comparison,
+    plot_confidence_intervals,
+    plot_sensitivity_analysis,
+    plot_sensitivity_heatmap,
+    plot_optimization_convergence,
+    plot_feature_importance_for_optimization,
+    plot_bootstrap_distributions,
+    plot_parallel_coordinates,
+    create_optimization_summary_figure,
+)
 
 __all__ = [
     "compute_shap_values",
@@ -42,4 +55,16 @@ __all__ = [
     "get_feature_importance_universal",
     "explain_prediction_custom",
     "batch_explain_models",
+    # Inverse optimization
+    "InverseOptimizer",
+    "find_counterfactuals",
+    "plot_optimal_values_comparison",
+    "plot_confidence_intervals",
+    "plot_sensitivity_analysis",
+    "plot_sensitivity_heatmap",
+    "plot_optimization_convergence",
+    "plot_feature_importance_for_optimization",
+    "plot_bootstrap_distributions",
+    "plot_parallel_coordinates",
+    "create_optimization_summary_figure",
 ]
