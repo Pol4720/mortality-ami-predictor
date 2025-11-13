@@ -85,6 +85,7 @@ custom_model_classes = {}
 if use_custom_models:
     import importlib.util
     import inspect
+    import sys
     from src.models.custom_base import BaseCustomModel, BaseCustomClassifier, BaseCustomRegressor
     
     # Buscar archivos .py con definiciones de modelos custom
@@ -100,9 +101,17 @@ if use_custom_models:
         available_classes = []
         for filepath in available_files:
             try:
-                spec = importlib.util.spec_from_file_location("custom_model", filepath)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
+                # Use unique module name for each file to avoid conflicts
+                module_name = f"custom_models.{filepath.stem}"
+                
+                # Check if module is already loaded
+                if module_name in sys.modules:
+                    module = sys.modules[module_name]
+                else:
+                    spec = importlib.util.spec_from_file_location(module_name, filepath)
+                    module = importlib.util.module_from_spec(spec)
+                    sys.modules[module_name] = module  # Register in sys.modules for pickle
+                    spec.loader.exec_module(module)
                 
                 for name, obj in inspect.getmembers(module, inspect.isclass):
                     if issubclass(obj, (BaseCustomClassifier, BaseCustomRegressor)):

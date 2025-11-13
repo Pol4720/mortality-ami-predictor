@@ -116,6 +116,17 @@ def run_rigorous_experiment_pipeline(
     if progress_callback:
         progress_callback("📈 Generando curvas de aprendizaje para cada modelo...", 0.35)
     
+    # Crear timestamp único para esta sesión de entrenamiento
+    from datetime import datetime
+    from ..data_load.path_utils import get_plots_dir
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    plots_training_dir = get_plots_dir('training')
+    os.makedirs(plots_training_dir, exist_ok=True)
+    
+    # Guardar el timestamp en los resultados para referencia en el dashboard
+    results['training_timestamp'] = timestamp
+    
     lc_results = {}
     for idx, (name, (model, param_grid)) in enumerate(models.items(), 1):
         # Use the base model (without hyperparameter tuning) for learning curves
@@ -145,13 +156,13 @@ def run_rigorous_experiment_pipeline(
             progress_callback(f"💾 Guardando gráfica de curva de aprendizaje: {name}", 0.35 + 0.15 * (idx + 0.7) / len(models))
         
         fig = plot_learning_curve(lc_result, title=f"Learning Curve: {name}")
-        # Save as PNG using plotly's write_image (requires kaleido)
-        save_path = os.path.join(output_dir, f"learning_curve_{name}.png")
+        # Save as PNG using plotly's write_image (requires kaleido) with timestamp
+        save_path = os.path.join(plots_training_dir, f"learning_curve_{name}_{timestamp}.png")
         try:
             fig.write_image(save_path, width=1000, height=600)
         except Exception as e:
             # If write_image fails (missing kaleido), save as HTML instead
-            html_path = os.path.join(output_dir, f"learning_curve_{name}.html")
+            html_path = os.path.join(plots_training_dir, f"learning_curve_{name}_{timestamp}.html")
             fig.write_html(html_path)
             if progress_callback:
                 progress_callback(f"⚠️ Guardado como HTML (instalar kaleido para PNG): {html_path}", 0.35 + 0.15 * idx / len(models))
@@ -182,7 +193,7 @@ def run_rigorous_experiment_pipeline(
     
     for (m1, m2), stat_res in stat_results.items():
         fig = plot_model_comparison(stat_res)
-        save_path = os.path.join(output_dir, f"comparison_{m1}_vs_{m2}.png")
+        save_path = os.path.join(plots_training_dir, f"comparison_{m1}_vs_{m2}_{timestamp}.png")
         try:
             # Check if it's a Plotly figure
             if hasattr(fig, 'write_image'):
@@ -193,7 +204,7 @@ def run_rigorous_experiment_pipeline(
         except Exception as e:
             # If save fails, try HTML for Plotly
             if hasattr(fig, 'write_html'):
-                html_path = os.path.join(output_dir, f"comparison_{m1}_vs_{m2}.html")
+                html_path = os.path.join(plots_training_dir, f"comparison_{m1}_vs_{m2}_{timestamp}.html")
                 fig.write_html(html_path)
         
         # Log statistical results
@@ -209,7 +220,7 @@ def run_rigorous_experiment_pipeline(
     # Create comparison matrix
     from .statistical_tests import create_comparison_matrix
     fig_matrix = create_comparison_matrix(stat_results)
-    matrix_path = os.path.join(output_dir, "comparison_matrix.png")
+    matrix_path = os.path.join(plots_training_dir, f"comparison_matrix_{timestamp}.png")
     try:
         if hasattr(fig_matrix, 'write_image'):
             fig_matrix.write_image(matrix_path, width=1000, height=600)
@@ -217,7 +228,7 @@ def run_rigorous_experiment_pipeline(
             fig_matrix.savefig(matrix_path, dpi=300, bbox_inches='tight')
     except Exception as e:
         if hasattr(fig_matrix, 'write_html'):
-            html_path = os.path.join(output_dir, "comparison_matrix.html")
+            html_path = os.path.join(plots_training_dir, f"comparison_matrix_{timestamp}.html")
             fig_matrix.write_html(html_path)
     
     # =========================================================================

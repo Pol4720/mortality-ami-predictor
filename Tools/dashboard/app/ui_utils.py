@@ -22,7 +22,7 @@ from src.data_load import (
 from src.features import safe_feature_columns
 from src.preprocessing import PreprocessingConfig
 from src.training import fit_and_save_best_classifier, fit_and_save_selected_classifiers
-from .config import MODELS_DIR, TESTSETS_DIR, CLEANED_DATASETS_DIR
+from .config import MODELS_DIR, TESTSETS_DIR, CLEANED_DATASETS_DIR, PLOTS_TRAINING_DIR
 
 
 def display_dataframe_info(df: pd.DataFrame, title: str = "Dataset Info"):
@@ -377,16 +377,29 @@ def train_models_with_progress(
     best_model_name = experiment_results.get('best_model')
     final_model_path = experiment_results.get('final_model_path')
     learning_curves = experiment_results.get('learning_curves', {})
+    training_timestamp = experiment_results.get('training_timestamp', '')
     
     save_paths = {}
     if final_model_path:
         save_paths[best_model_name] = final_model_path
     
     # Store learning curve results and figure paths in session state
+    # Use the training timestamp to locate the correct plots
     if learning_curves:
         lc_figure_paths = {}
         for model_name in learning_curves.keys():
-            lc_path = MODELS_DIR / f"learning_curve_{model_name}.png"
+            # Try with timestamp first (new format)
+            if training_timestamp:
+                lc_path = PLOTS_TRAINING_DIR / f"learning_curve_{model_name}_{training_timestamp}.png"
+                if not lc_path.exists():
+                    # Try HTML version
+                    lc_path = PLOTS_TRAINING_DIR / f"learning_curve_{model_name}_{training_timestamp}.html"
+            else:
+                # Fallback to old format (without timestamp) for backward compatibility
+                lc_path = MODELS_DIR / f"learning_curve_{model_name}.png"
+                if not lc_path.exists():
+                    lc_path = MODELS_DIR / f"learning_curve_{model_name}.html"
+            
             if lc_path.exists():
                 lc_figure_paths[model_name] = str(lc_path)
         

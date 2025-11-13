@@ -236,8 +236,24 @@ def load_model_with_metadata(model_path: Path):
     import joblib
     from ..models.metadata import ModelMetadata
     
-    # Load model
-    model = joblib.load(model_path)
+    # Try loading with joblib first
+    try:
+        model = joblib.load(model_path)
+    except Exception as e:
+        # If joblib fails, try dill (for custom models)
+        try:
+            import dill
+            with open(model_path, 'rb') as f:
+                model = dill.load(f)
+        except ImportError:
+            # Try cloudpickle as fallback
+            try:
+                import cloudpickle
+                with open(model_path, 'rb') as f:
+                    model = cloudpickle.load(f)
+            except ImportError:
+                # Re-raise original exception if no alternative works
+                raise e
     
     # Try to load metadata
     metadata_path = get_model_metadata(model_path)
@@ -400,7 +416,43 @@ def save_model_with_cleanup(
     # Save new model
     timestamp = get_timestamp()
     save_path = model_dir / f"model_{model_type}_{timestamp}.joblib"
-    joblib.dump(model, save_path)
+    
+    # Check if model contains custom classes (which may have pickle issues)
+    # Try to detect custom models by checking the module
+    try:
+        from src.models.custom_base import BaseCustomModel, BaseCustomClassifier, BaseCustomRegressor
+        
+        # Check if the model or any component is a custom model
+        is_custom = False
+        if hasattr(model, 'steps'):  # Pipeline
+            for name, component in model.steps:
+                if isinstance(component, (BaseCustomClassifier, BaseCustomRegressor)):
+                    is_custom = True
+                    break
+        elif isinstance(model, (BaseCustomClassifier, BaseCustomRegressor)):
+            is_custom = True
+        
+        if is_custom:
+            # Use dill for custom models (handles dynamic classes better)
+            try:
+                import dill
+                with open(save_path, 'wb') as f:
+                    dill.dump(model, f)
+            except ImportError:
+                # Fallback to cloudpickle
+                try:
+                    import cloudpickle
+                    with open(save_path, 'wb') as f:
+                        cloudpickle.dump(model, f)
+                except ImportError:
+                    # Last resort: try joblib with protocol 4
+                    joblib.dump(model, save_path, protocol=4)
+        else:
+            # Standard joblib for regular models
+            joblib.dump(model, save_path)
+    except ImportError:
+        # If custom model base classes not available, use joblib
+        joblib.dump(model, save_path)
     
     # Save metadata if provided
     if metadata is not None:
