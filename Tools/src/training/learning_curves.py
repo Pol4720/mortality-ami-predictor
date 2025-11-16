@@ -15,6 +15,8 @@ from plotly.subplots import make_subplots
 from sklearn.base import clone
 from sklearn.model_selection import learning_curve as sklearn_learning_curve
 
+from src.models.custom_base import BaseCustomModel
+
 
 @dataclass
 class LearningCurveResult:
@@ -73,6 +75,10 @@ def generate_learning_curve(
     """
     if train_sizes is None:
         train_sizes = np.linspace(0.1, 1.0, 10)
+    
+    # Custom models may not be picklable, so disable parallel processing for them
+    if isinstance(model, BaseCustomModel):
+        n_jobs = 1
     
     # Generate learning curve
     train_sizes_abs, train_scores, val_scores = sklearn_learning_curve(

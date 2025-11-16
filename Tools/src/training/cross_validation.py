@@ -12,6 +12,7 @@ from sklearn.base import clone
 
 from ..config import RANDOM_SEED
 from ..preprocessing import build_preprocessing_pipeline, PreprocessingConfig
+from ..models.custom_base import BaseCustomModel
 
 try:
     from imblearn.over_sampling import SMOTE
@@ -19,6 +20,17 @@ try:
 except ImportError:
     SMOTE = None
     ImbPipeline = None
+
+
+def _contains_custom_model(estimator) -> bool:
+    """Check if estimator or any step in pipeline contains a custom model."""
+    if isinstance(estimator, BaseCustomModel):
+        return True
+    if isinstance(estimator, (Pipeline, ImbPipeline)):
+        for step in estimator.steps:
+            if isinstance(step[1], BaseCustomModel):
+                return True
+    return False
 
 
 def nested_cross_validation(
@@ -91,13 +103,16 @@ def nested_cross_validation(
             # Inner CV for hyperparameter tuning
             param_grid = {f"classifier__{k}": v for k, v in grid.items()}
             
+            # Custom models may not be picklable, so disable parallel processing
+            n_jobs = 1 if _contains_custom_model(pipeline) else -1
+            
             search = RandomizedSearchCV(
                 pipeline,
                 param_distributions=param_grid,
                 n_iter=inner_iter,
                 cv=StratifiedKFold(n_splits=inner_splits, shuffle=True, random_state=RANDOM_SEED),
                 scoring="roc_auc",
-                n_jobs=-1,
+                n_jobs=n_jobs,
                 random_state=RANDOM_SEED + fold_idx,
                 refit=True,
             )

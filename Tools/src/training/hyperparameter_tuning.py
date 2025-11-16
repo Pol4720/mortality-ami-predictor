@@ -4,6 +4,20 @@ from __future__ import annotations
 from typing import Dict
 
 from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+from sklearn.pipeline import Pipeline
+
+from src.models.custom_base import BaseCustomModel
+
+
+def _contains_custom_model(estimator) -> bool:
+    """Check if estimator or any step in pipeline contains a custom model."""
+    if isinstance(estimator, BaseCustomModel):
+        return True
+    if isinstance(estimator, Pipeline):
+        for step in estimator.steps:
+            if isinstance(step[1], BaseCustomModel):
+                return True
+    return False
 
 
 def randomized_search(
@@ -31,13 +45,16 @@ def randomized_search(
     Returns:
         Fitted RandomizedSearchCV object
     """
+    # Custom models may not be picklable, so disable parallel processing
+    n_jobs = 1 if _contains_custom_model(pipeline) else -1
+    
     search = RandomizedSearchCV(
         pipeline,
         param_distributions=param_distributions,
         n_iter=n_iter,
         cv=cv,
         scoring=scoring,
-        n_jobs=-1,
+        n_jobs=n_jobs,
         random_state=random_state,
         refit=True,
     )
@@ -68,12 +85,15 @@ def grid_search(
     Returns:
         Fitted GridSearchCV object
     """
+    # Custom models may not be picklable, so disable parallel processing
+    n_jobs = 1 if _contains_custom_model(pipeline) else -1
+    
     search = GridSearchCV(
         pipeline,
         param_grid=param_grid,
         cv=cv,
         scoring=scoring,
-        n_jobs=-1,
+        n_jobs=n_jobs,
         refit=True,
     )
     

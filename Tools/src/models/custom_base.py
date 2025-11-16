@@ -138,6 +138,15 @@ class BaseCustomModel(BaseEstimator, ABC):
             setattr(self, key, value)
         return self
     
+    def __getstate__(self):
+        """Support for pickling."""
+        state = self.__dict__.copy()
+        return state
+    
+    def __setstate__(self, state):
+        """Support for unpickling."""
+        self.__dict__.update(state)
+    
     def save(self, path: str | Path) -> Path:
         """
         Save model to disk.

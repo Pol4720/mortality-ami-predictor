@@ -618,3 +618,21 @@ def get_all_model_types(models_dir: Path) -> List[str]:
                 model_types.append(subdir.name)
     
     return sorted(model_types)
+
+
+def get_plots_dir(plot_type: str) -> Path:
+    """Get the path to a specific plots subdirectory.
+    
+    Args:
+        plot_type: Type of plots ('eda', 'evaluation', 'explainability', 'training')
+        
+    Returns:
+        Path to the plots subdirectory
+    """
+    from ..config import CONFIG
+    
+    plots_dir = Path(CONFIG.plots_dir)
+    plots_subdir = plots_dir / plot_type
+    plots_subdir.mkdir(parents=True, exist_ok=True)
+    
+    return plots_subdir

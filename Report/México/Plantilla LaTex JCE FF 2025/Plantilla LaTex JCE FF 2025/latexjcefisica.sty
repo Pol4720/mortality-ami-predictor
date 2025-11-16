@@ -1,0 +1,304 @@
+%   Last edited 08/09/2022, by J. Nieves
+
+
+% Authors:  Jesús Alba, Bárbara Pérez
+
+
+\typeout{Document Style `jcefisica' -- Noviembre 2022.}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                             REQUIRED PACKAGES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\RequirePackage[spanish,english]{babel}
+\RequirePackage{epsfig}
+\RequirePackage{amssymb}
+\RequirePackage{graphicx}
+\RequirePackage[margin=1in]{geometry}
+\RequirePackage[utf8]{inputenc}
+\RequirePackage{amsmath}
+\RequirePackage{amsfonts}
+\RequirePackage{listings}
+\RequirePackage[pdftex]{hyperref}
+\RequirePackage{epstopdf}
+\RequirePackage{wrapfig}
+\RequirePackage{subcaption}
+\RequirePackage{setspace}
+\RequirePackage[rightcaption]{sidecap}
+\RequirePackage [autostyle, english = american]{csquotes}
+\RequirePackage{flushend}
+\RequirePackage{xcolor}
+\RequirePackage{color}
+\RequirePackage{colortbl}
+\RequirePackage{algorithm}
+\RequirePackage{algpseudocode}
+
+\bibliographystyle{plain}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                             P A G E   S I Z E
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Change the overall width of the page.  If these parameters are
+%       changed, they will require corresponding changes in the
+%       maketitle section.
+%
+
+\geometry{margin=2cm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                               S E C T I O N S
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\@startsiction#1#2#3#4#5#6{\if@noskipsec \leavevmode \fi
+   \par \@tempskipa #4\relax
+   \@afterindenttrue
+   \ifdim \@tempskipa <\z@ \@tempskipa -\@tempskipa \@afterindentfalse\fi
+   \if@nobreak \everypar{}\else
+     \addpenalty{\@secpenalty}\addvspace{\@tempskipa}\fi \@ifstar
+     {\@ssect{#3}{#4}{#5}{#6}}{\@dblarg{\@sict{#1}{#2}{#3}{#4}{#5}{#6}}}}
+
+\def\@sict#1#2#3#4#5#6[#7]#8{\ifnum #2>\c@secnumdepth
+     \def\@svsec{}\else
+     \refstepcounter{#1}\edef\@svsec{\csname the#1\endcsname}\fi
+     \@tempskipa #5\relax
+      \ifdim \@tempskipa>\z@
+        \begingroup #6\relax
+          \@hangfrom{\hskip #3\relax\@svsec.\hskip 0.1em}
+                    {\interlinepenalty \@M #8\par}
+        \endgroup
+       \csname #1mark\endcsname{#7}\addcontentsline
+         {toc}{#1}{\ifnum #2>\c@secnumdepth \else
+                      \protect\numberline{\csname the#1\endcsname}\fi
+                    #7}\else
+        \def\@svsechd{#6\hskip #3\@svsec #8\csname #1mark\endcsname
+                      {#7}\addcontentsline
+                           {toc}{#1}{\ifnum #2>\c@secnumdepth \else
+                             \protect\numberline{\csname the#1\endcsname}\fi
+                       #7}}\fi
+     \@xsect{#5}\vspace\aftertitskip{\begin{center}\color{blue}\rule{.95\linewidth}{.2mm} \end{center}}}
+
+\def\@sect#1#2#3#4#5#6[#7]#8{\ifnum #2>\c@secnumdepth
+     \def\@svsec{}\else
+     \refstepcounter{#1}\edef\@svsec{\csname the#1\endcsname\hskip 0.5em }\fi
+     \@tempskipa #5\relax
+      \ifdim \@tempskipa>\z@
+        \begingroup #6\relax
+          \@hangfrom{\hskip #3\relax\@svsec}{\interlinepenalty \@M #8\par}
+        \endgroup
+       \csname #1mark\endcsname{#7}\addcontentsline
+         {toc}{#1}{\ifnum #2>\c@secnumdepth \else
+                      \protect\numberline{\csname the#1\endcsname}\fi
+                    #7}\else
+        \def\@svsechd{#6\hskip #3\@svsec #8\csname #1mark\endcsname
+                      {#7}\addcontentsline
+                           {toc}{#1}{\ifnum #2>\c@secnumdepth \else
+                             \protect\numberline{\csname the#1\endcsname}\fi
+                       #7}}\fi
+     \@xsect{#5}}
+
+\def\thesection {\arabic{section}}
+\def\thesubsection {\thesection.\arabic{subsection}}
+\def\section{\@startsiction{section}{1}{\z@}{-0.24in}{0.10in}
+             {\large\bf\raggedright}}
+\def\subsection{\@startsection{subsection}{2}{\z@}{-0.20in}{0.08in}
+                {\normalsize\bf\raggedright}}
+\def\subsubsection{\@startsection{subsubsection}{3}{\z@}{-0.18in}{0.08in}
+                {\normalsize\sc\raggedright}}
+\def\paragraph{\@startsiction{paragraph}{4}{\z@}{1.5ex plus
+  0.5ex minus .2ex}{-1em}{\normalsize\bf}}
+\def\subparagraph{\@startsiction{subparagraph}{5}{\z@}{1.5ex plus
+  0.5ex minus .2ex}{-1em}{\normalsize\bf}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                              F O O T N O T E S
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Change the size of the footnote rule
+%
+% \renewcommand{\footnoterule}{\vspace{10pt}\hrule width 0mm}
+
+\long\def\@makefntext#1{\@setpar{\@@par\@tempdima \hsize
+             \advance\@tempdima-15pt\parshape \@ne 15pt \@tempdima}\par
+             \parindent 2em\noindent \hbox to \z@{\hss{\@thefnmark}. \hfil}#1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                               A B S T R A C T
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% use \begin{abstract} .. \end{abstract} for abstracts.
+\renewenvironment{abstract}
+{\centerline{\large\bf Resumen}\vspace{0.7ex}%
+  \bgroup\leftskip 20pt\rightskip 20pt\small\noindent}%
+{\par\egroup\vskip 0.25ex}
+
+\newenvironment{enabstract}
+{\centerline{\large\bf \\Abstract}\vspace{0.7ex}%
+  \bgroup\leftskip 20pt\rightskip 20pt\small\noindent}%
+{\par\egroup\vskip 0.25ex}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                               KEYWORDS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% use \begin{keywords} .. \end{keywords} for keywordss.
+\newenvironment{keywords}
+{\bgroup\leftskip 20pt\rightskip 20pt \small\noindent{\bf \\Palabras Clave:} }%
+{\par\egroup\vskip 0.25ex}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                               TEMAS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Use \begin{topics} .. \end{topics} para los temas.
+\newenvironment{topics}
+{\bgroup\leftskip 20pt\rightskip 20pt \small\noindent{\bf Tema:} }%
+{\par\egroup\vskip 0.25ex}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                        FIRST PAGE, TITLE, AUTHOR
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newlength\aftertitskip     \newlength\beforetitskip
+\newlength\interauthorskip  \newlength\aftermaketitskip
+\newlength\linespace
+
+\newcounter{instn}
+\setcounter{instn}{1}
+\newcommand{\instnum}{\arabic{instn}}
+\newcommand{\inst}[1]{\ensuremath{^{#1}}}
+\newcommand{\institute}{\\\mbox{}\\[-20pt]\inst{\instnum}}
+\newcommand{\nextinstitute}{\\\mbox{}\\[-10pt]\addtocounter{instn}{1}\inst{\instnum}}
+
+\newcounter{tinstn}
+\setcounter{tinstn}{1}
+\newcommand{\tinstnum}{\arabic{tinstn}}
+\newcommand{\tinst}[1]{\ensuremath{^{#1}}}
+\newcommand{\tinstitute}{\\\mbox{}\\[-20pt]\tinst{\tinstnum}}
+\newcommand{\tnextinstitute}{\\\mbox{}\\[-10pt]\addtocounter{tinstn}{1}\tinst{\tinstnum}}
+
+%% Changeable parameters.
+\setlength\aftertitskip{-.5cm}
+\setlength\beforetitskip{0.05in plus 0.08in minus 0.08in}
+\setlength\interauthorskip{0.1in plus 0.1in minus 0.1in}
+\setlength\aftermaketitskip{.2cm}
+\setlength\linespace{-.9cm}
+
+%% overall definition of maketitle, @maketitle does the real work
+\def\maketitle{\par
+ \begingroup
+   \def\thefootnote{\fnsymbol{footnote}}
+   \def\@makefnmark{\hbox to 0pt{$^{\@thefnmark}$\hss}}
+   \@maketitle \@thanks
+ \endgroup
+\setcounter{footnote}{0}
+ \let\maketitle\relax \let\@maketitle\relax
+ \gdef\@thanks{}\gdef\@author{}\gdef\@title{}\let\thanks\relax}
+
+\def\@startauthor{\noindent \normalsize\bf}
+\def\@endauthor{}
+\def\@starttutors{\noindent \small {\bf Tutor(es):~}}
+\def\@endtutors{\normalsize}
+\def\@maketitle{\vbox{\hsize\textwidth
+ \linewidth\hsize \vskip \beforetitskip
+ {\begin{center} \Large\bf \@title \par \end{center}} \vspace \linespace
+{\begin{center}\color{blue}\rule{.95\textwidth}{.2mm} \end{center}}\vskip  \aftertitskip 
+ {\def\and{\unskip\enspace{\rm y}\enspace}%
+  \def\addr{\small\it}%
+  \def\email{\noindent\small{\bf E-mail:~}\small\it}%
+  \def\name{\normalsize\bf}%
+  \def\AND{\@endauthor\rm\hss \vskip \interauthorskip \@startauthor}
+  \@startauthor \@author \@endauthor}
+
+  \vskip \aftermaketitskip
+  \noindent \@starttutors \@tutors \@endtutors
+  \vskip \aftermaketitskip
+}}
+
+\newcommand\kernelmachines{(for {\sc{http://www.kernel-machines.org}})}
+\def\tutors#1{\gdef\@tutors{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%
+%%% Pagestyle
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Defines the pagestyle for the title page.
+
+\def\firstpageno#1{\setcounter{page}{#1}}
+
+\def\jcefisicaheading#1#2#3{\def\ps@jmlrtps{\let\@mkboth\@gobbletwo%
+\def\@oddhead{\color{blue}\scriptsize Jornada Científica Estudiantil. #1 %
+\hfill Páginas #2}%
+\def\@oddfoot{\scriptsize \copyright #1 #3. \hfill}%
+\def\@evenhead{}\def\@evenfoot{}}%
+\thispagestyle{jmlrtps}}
+
+%% Defines the pagestyle for the rest of the pages
+
+\def\ShortHeadings#1#2#3{\def\ps@jmlrps{\let\@mkboth\@gobbletwo%
+\def\@oddhead{\color{blue}\scriptsize Jornada Científica Estudiantil \hfill #3}%
+\def\@oddfoot{\hfill \small\rm \thepage \hfill}%
+\def\@evenhead{\hfill \color{blue}\scriptsize #1 $|$ #2}%
+\def\@evenfoot{\hfill \small\rm \thepage \hfill}}%
+\pagestyle{jmlrps}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                               MISCELLANY
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Define macros for figure captions and table titles
+
+% Figurecaption prints the caption title flush left.
+
+\def\figurecaption#1#2{\noindent\hangindent 40pt
+                       \hbox to 36pt {\small\sl #1 \hfil}
+                       \ignorespaces {\small #2}}
+
+% Figurecenter prints the caption title centered.
+
+\def\figurecenter#1#2{\centerline{{\sl #1} #2}}
+\def\figurecenter#1#2{\centerline{{\small\sl #1} {\small #2}}}
+
+%
+%  Allow ``hanging indents'' in long captions
+%
+\long\def\@makecaption#1#2{
+   \vskip 10pt
+   \setbox\@tempboxa\hbox{#1: #2}
+   \ifdim \wd\@tempboxa >\hsize               % IF longer than one line:
+       \begin{list}{#1:}{
+       \settowidth{\labelwidth}{#1:}
+       \setlength{\leftmargin}{\labelwidth}
+       \addtolength{\leftmargin}{\labelsep}
+        }\item #2 \end{list}\par   % Output in quote mode
+     \else                                    %   ELSE  center.
+       \hbox to\hsize{\hfil\box\@tempboxa\hfil}
+   \fi}
+
+
+
+% Define strut macros for skipping spaces above and below text in a
+% tabular environment.
+\def\abovestrut#1{\rule[0in]{0in}{#1}\ignorespaces}
+\def\belowstrut#1{\rule[-#1]{0in}{#1}\ignorespaces}
+
+% Acknowledgments
+\long\def\acks#1{\vskip 0.3in\noindent{\large\bf Agradecimientos}\vskip 0.2in
+\noindent #1}
+
+% Research Note
+\long\def\researchnote#1{\noindent {\LARGE\it Research Note} #1}
+
+\renewcommand{\appendix}{\par
+  \setcounter{section}{0}
+  \setcounter{subsection}{0}
+  \def\thesection{\Alph{section}}
+\def\section{\@ifnextchar*{\@startsiction{section}{1}{\z@}{-0.24in}{0.10in}%
+             {\large\bf\raggedright}}%
+{\@startsiction{section}{1}{\z@}{-0.24in}{0.10in}
+             {\large\bf\raggedright Appendix\ }}}}

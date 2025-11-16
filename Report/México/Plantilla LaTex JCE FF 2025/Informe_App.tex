@@ -1,0 +1,173 @@
+%===================================================================================
+% ARTÍCULO: Documentación Científica de la App "mortality-ami-predictor"
+% Basado en la plantilla `Informe JCE.tex` adaptada para describir la aplicación,
+% su arquitectura, metodología y resultados resumidos a partir de la carpeta `Tools/docs`.
+%===================================================================================
+\documentclass[a4paper,10pt,twoside]{article}
+\usepackage{latexjcefisica}
+\MakeOuterQuote{"}
+\hypersetup{colorlinks, citecolor=blue, filecolor=blue, linkcolor=blue, urlcolor=blue}
+
+\title{Predictor de Mortalidad en Infarto Agudo de Miocardio: \\ Documento Científico de la Aplicación}
+\author{\name Equipo de Desarrollo\inst{1}\\
+\institute \addr Proyecto `mortality-ami-predictor`.\\ Universidad / Organización\\
+\email \href{mailto:equipo@ejemplo.org}{equipo@ejemplo.org}}
+\tutors{Repositorio: \texttt{Pol4720/mortality-ami-predictor}}
+\jcefisicaheading{2025}{1-\pageref{end}}{Equipo de Desarrollo}
+\ShortHeadings{Predictor mortalidad IAM}{Equipo de Desarrollo}{2025}
+
+\begin{document}
+\twocolumn[
+\begin{@twocolumnfalse}
+\maketitle
+\selectlanguage{spanish}
+\vspace*{-.5cm}
+\begin{center}\rule{.95\textwidth}{.5mm} \end{center}
+\begin{abstract}
+Presentamos la adaptación de la plantilla de la Jornada Científica Estudiantil para
+documentar la aplicación `mortality-ami-predictor`. El artículo describe el objetivo
+de la app, la estructura de datos, los pasos de preprocesamiento, la selección de
+variables, el entrenamiento de modelos, la evaluación, la exportación de modelos y
+las herramientas de despliegue (dashboard). El contenido está basado en la
+documentación interna disponible en `Tools/docs` y en el código del repositorio.
+\end{abstract}
+\begin{keywords}
+Infarto agudo de miocardio, predicción de mortalidad, machine learning, reproducibilidad, explainability
+\end{keywords}
+]\vspace*{-.5cm}
+
+\section{Introducción}
+La aplicación `mortality-ami-predictor` provee un flujo reproducible para la
+predicción de riesgo de mortalidad en pacientes con infarto agudo de miocardio (IAM).
+El proyecto integra:
+- conjuntos de datos clínicos (carpeta `DATA/`),
+- módulos para carga y limpieza (`Tools/docs/data_load`, `src/data_load`),
+- componentes de preprocesamiento y extracción de características (`Tools/docs/preprocessing`, `src/preprocessing`),
+- implementaciones de modelos y pipelines (`Tools/docs/models`, `src/models`),
+y una interfaz de despliegue tipo dashboard (`Tools/dashboard`).
+
+El objetivo del artículo es describir la arquitectura y metodología,
+documentar decisiones clave y reportar resultados de evaluación para facilitar
+la reproducibilidad y la transferencia del sistema a entornos clínicos de prueba.
+
+\section{Datos}
+Los datos utilizados se encuentran en `DATA/` (por ejemplo `recuima-020425.csv`).
+La estructura contiene variables demográficas, signos vitales, resultados de laboratorio
+y variables clínicas relevantes para IAM. El repositorio incluye además
+`variable_metadata.json` con metadatos describiendo cada variable.
+
+De acuerdo con la documentación de carga y utilitarios (`Tools/docs/data_load`),
+los pasos iniciales son:
+\begin{itemize}
+  \item validación y lectura eficiente de CSVs,
+  \item preservación de metadatos y mapeo de nombres de columnas,
+  \item particionado reproducible (train/validation/test) con splitters configurables.
+\end{itemize}
+
+\section{Preprocesamiento y Features}
+La etapa de limpieza y preprocesamiento sigue las guías de `Tools/docs/api/cleaning` y
+`Tools/docs/preprocessing/pipelines` e incluye:
+\begin{itemize}
+  \item imputación de valores faltantes (métodos configurables),
+  \item discretización/encoding de variables categóricas,
+  \item detección y manejo de outliers,
+  \item ingeniería y selección de características según `features/`.
+\end{itemize}
+
+Los transformadores y selectores están encapsulados en pipelines y son reutilizables
+en entrenamiento y en la predicción en producción, garantizando congruencia entre
+entrenamiento y servicio.
+
+\section{Modelos y Entrenamiento}
+La carpeta `Tools/docs/models` y `src/training` documentan el conjunto de modelos
+soportados (clasificadores clásicos y redes) y la estrategia de entrenamiento:
+\begin{itemize}
+  \item búsqueda y ajuste de hiperparámetros (`hyperparameter_tuning`),
+  \item validación cruzada y particionado temporal/estratificado según disponibilidad de datos,
+  \item persistencia de modelos y artefactos con `joblib` y registro en `mlruns`.
+\end{itemize}
+
+En el repositorio hay modelos serializados (`models/best_classifier_test.joblib`) y
+experimentos registrados en `mlruns/` que documentan métricas y parámetros.
+
+\section{Evaluación}
+La evaluación se adhiere a las recomendaciones en `Tools/docs/evaluation` e incluye:
+\begin{itemize}
+  \item métricas de discriminación: AUC-ROC, AUC-PR,
+  \item métricas de calibración y curvas de calibrado,
+  \item análisis de sensibilidad y curvas de decisión para soporte clínico,
+  \item generación de reportes PDF con resúmenes y visualizaciones (`eda/pdf_reports`, `evaluation/pdf_reports`).
+\end{itemize}
+
+Donde es posible, los informes automatizados y las gráficas se guardan en `processed/plots`.
+
+\section{Explainability y Análisis}
+La documentación sobre explainability (`Tools/docs/explainability`) detalla
+implementaciones de SHAP, parcial dependence y análisis por permutación, usadas para:
+\begin{itemize}
+  \item interpretar contribuciones de variables a predicciones individuales y de población,
+  \item identificar variables clínicamente relevantes y validar coherencia con la literatura,
+  \item producir visualizaciones para usuarios clínicos en el dashboard.
+\end{itemize}
+
+\section{Despliegue y Dashboard}
+El componente de despliegue incluye un dashboard (carpeta `Tools/dashboard`) que
+proporciona páginas para:
+\begin{itemize}
+  \item carga de casos y predicción en lote o por paciente,
+  \item visualización de explicaciones y reportes PDF,
+  \item generación de reportes para descarga.
+\end{itemize}
+
+La infraestructura está documentada en `Tools/docker` y archivos de entorno
+(`Tools/environment.yml`, `requirements.txt`) para facilitar despliegue reproducible.
+
+\section{Resultados (Resumen)}
+Presentamos un resumen de resultados reproducible desde los artefactos del repo:
+\begin{itemize}
+  \item modelos serializados (ver `models/`) muestran rendimiento competitivo en métricas internas;
+  \item experimentos registrados en `mlruns/` permiten replicar los pasos y métricas reportadas.
+\end{itemize}
+
+Una evaluación exhaustiva con tablas y figuras detalladas debería extraerse de los
+reportes en `Tools/docs/evaluation/pdf_reports` y de los `mlruns` para incluir en
+la versión final del artículo.
+
+\section{Reproducibilidad y Buenas Prácticas}
+El proyecto contiene recursos para reproducibilidad:
+\begin{itemize}
+  \item `Tools/environment.yml` y `requirements.txt` para reconstruir entornos,
+  \item scripts en `Tools/scripts` y `docker/` para ejecución reproducible,
+  \item pruebas unitarias en `tests/` que validan componentes claves.
+\end{itemize}
+
+Recomendamos ejecutar pipelines en un entorno controlado (conda / Docker) e
+usar los experimentos de `mlruns` para conservar trazabilidad.
+
+\section{Conclusiones}
+La aplicación `mortality-ami-predictor` consolida un flujo completo desde la
+ingesta de datos hasta la entrega de predicciones y explicaciones clínicas.
+Este artículo adapta la plantilla de la Jornada Científica para dejar constancia
+de la arquitectura, metodología y recursos disponibles para validación
+posterior en entornos clínicos.
+
+\section*{Recomendaciones}
+Se recomienda:
+\begin{itemize}
+  \item añadir un apartado de evaluación clínica y validación externa con cohortes independientes,
+  \item documentar cuidadosamente los criterios de inclusión/exclusión en los datos,
+  \item preparar una sección de implicaciones éticas y manejo de datos sensibles.
+\end{itemize}
+
+\section*{Agradecimientos}
+Agradecemos al equipo del repositorio y a los autores de la documentación interna
+(`Tools/docs`) por facilitar la trazabilidad del proyecto.
+
+\begin{thebibliography}{9}
+  \bibitem{repo} Pol4720. ``mortality-ami-predictor'' repository. URL: \texttt{https://github.com/Pol4720/mortality-ami-predictor}.
+  \bibitem{docsindex} Documentación del proyecto, carpeta `Tools/docs` en el repositorio.
+  \bibitem{latexjce} Plantilla `Informe JCE.tex` adaptada para este artículo.
+\end{thebibliography}
+
+\label{end}
+\end{document}
