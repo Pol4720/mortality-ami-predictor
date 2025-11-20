@@ -28,12 +28,50 @@ The study is based on a real clinical dataset of approximately **4,500 patients*
 - pip package manager
 
 ### Installation
+
 ```bash
 cd Tools
 pip install -r requirements.txt
 ```
 
+## 🚀 Running the Application
+
+### Option 1: Using Docker (Recommended)
+
+The easiest way to run the full environment (Dashboard + Jupyter + MLflow).
+
+```bash
+# Run the application (Dashboard only)
+cd Tools
+make up
+
+# Run in development mode (Dashboard + Jupyter + MLflow)
+cd Tools
+make dev
+
+# Stop the application
+cd Tools
+make down
+```
+
+- **Dashboard**: <http://localhost:8501>
+- **Jupyter Lab**: <http://localhost:8888> (dev mode only)
+- **MLflow UI**: <http://localhost:5000> (dev mode only)
+
+### Option 2: Local Python Environment
+
+If you prefer running it directly with Python:
+
+1. Ensure dependencies are installed (see Installation above).
+2. Run the Streamlit dashboard:
+
+```bash
+cd Tools
+streamlit run dashboard/Dashboard.py
+```
+
 ### Running Tests
+
 The project includes comprehensive unit tests to ensure code quality and reliability:
 
 ```bash
