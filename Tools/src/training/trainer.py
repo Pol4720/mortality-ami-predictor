@@ -138,34 +138,44 @@ def run_rigorous_experiment_pipeline(
         if progress_callback:
             progress_callback(f"🔄 Generando curva de aprendizaje: {name} (evaluando 10 tamaños × {n_splits} folds)...", 0.35 + 0.15 * idx / len(models))
         
-        lc_result = generate_learning_curve(
-            model_for_lc,
-            X.values,
-            y.values,
-            cv=n_splits,
-            scoring=scoring,
-            n_jobs=-1,
-        )
-        
-        if progress_callback:
-            progress_callback(f"✓ Curva generada: {name} (Train={lc_result.train_scores_mean[-1]:.3f}, Val={lc_result.val_scores_mean[-1]:.3f})", 0.35 + 0.15 * (idx + 0.5) / len(models))
-        
-        lc_results[name] = lc_result
-        
-        if progress_callback:
-            progress_callback(f"💾 Guardando gráfica de curva de aprendizaje: {name}", 0.35 + 0.15 * (idx + 0.7) / len(models))
-        
-        fig = plot_learning_curve(lc_result, title=f"Learning Curve: {name}")
-        # Save as PNG using plotly's write_image (requires kaleido) with timestamp
-        save_path = os.path.join(plots_training_dir, f"learning_curve_{name}_{timestamp}.png")
         try:
-            fig.write_image(save_path, width=1000, height=600)
-        except Exception as e:
-            # If write_image fails (missing kaleido), save as HTML instead
-            html_path = os.path.join(plots_training_dir, f"learning_curve_{name}_{timestamp}.html")
-            fig.write_html(html_path)
+            lc_result = generate_learning_curve(
+                model_for_lc,
+                X.values,
+                y.values,
+                cv=n_splits,
+                scoring=scoring,
+                n_jobs=-1,
+            )
+            
+            # Check if results are valid
+            if np.all(np.isnan(lc_result.train_scores_mean)):
+                if progress_callback:
+                    progress_callback(f"⚠️ No se pudo generar curva para {name} (Scores NaN)", 0.35 + 0.15 * (idx + 0.5) / len(models))
+            else:
+                if progress_callback:
+                    progress_callback(f"✓ Curva generada: {name} (Train={lc_result.train_scores_mean[-1]:.3f}, Val={lc_result.val_scores_mean[-1]:.3f})", 0.35 + 0.15 * (idx + 0.5) / len(models))
+            
+            lc_results[name] = lc_result
+            
             if progress_callback:
-                progress_callback(f"⚠️ Guardado como HTML (instalar kaleido para PNG): {html_path}", 0.35 + 0.15 * idx / len(models))
+                progress_callback(f"💾 Guardando gráfica de curva de aprendizaje: {name}", 0.35 + 0.15 * (idx + 0.7) / len(models))
+            
+            fig = plot_learning_curve(lc_result, title=f"Learning Curve: {name}")
+            # Save as PNG using plotly's write_image (requires kaleido) with timestamp
+            save_path = os.path.join(plots_training_dir, f"learning_curve_{name}_{timestamp}.png")
+            try:
+                fig.write_image(save_path, width=1000, height=600)
+            except Exception as e:
+                # If write_image fails (missing kaleido), save as HTML instead
+                html_path = os.path.join(plots_training_dir, f"learning_curve_{name}_{timestamp}.html")
+                fig.write_html(html_path)
+                if progress_callback:
+                    progress_callback(f"⚠️ Guardado como HTML (instalar kaleido para PNG): {html_path}", 0.35 + 0.15 * idx / len(models))
+        except Exception as e:
+            print(f"Error generating learning curve for {name}: {e}")
+            if progress_callback:
+                progress_callback(f"❌ Error generando curva para {name}: {e}", 0.35 + 0.15 * idx / len(models))
     results['learning_curves'] = lc_results
     
     # 3. Select best model

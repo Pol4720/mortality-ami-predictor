@@ -81,23 +81,48 @@ def generate_learning_curve(
         n_jobs = 1
     
     # Generate learning curve
-    train_sizes_abs, train_scores, val_scores = sklearn_learning_curve(
-        estimator=model,
-        X=X,
-        y=y,
-        cv=cv,
-        train_sizes=train_sizes,
-        scoring=scoring,
-        n_jobs=n_jobs,
-        random_state=random_state,
-        shuffle=True,
-    )
+    try:
+        train_sizes_abs, train_scores, val_scores = sklearn_learning_curve(
+            estimator=model,
+            X=X,
+            y=y,
+            cv=cv,
+            train_sizes=train_sizes,
+            scoring=scoring,
+            n_jobs=n_jobs,
+            random_state=random_state,
+            shuffle=True,
+            error_score='raise'
+        )
+    except Exception as e:
+        # Fallback: try with error_score=np.nan to see if we can get partial results
+        # and avoid crashing the whole pipeline
+        print(f"Warning: Learning curve generation failed with error: {e}. Retrying with error_score=nan")
+        train_sizes_abs, train_scores, val_scores = sklearn_learning_curve(
+            estimator=model,
+            X=X,
+            y=y,
+            cv=cv,
+            train_sizes=train_sizes,
+            scoring=scoring,
+            n_jobs=n_jobs,
+            random_state=random_state,
+            shuffle=True,
+            error_score=np.nan
+        )
     
-    # Calculate mean and std
-    train_scores_mean = np.mean(train_scores, axis=1)
-    train_scores_std = np.std(train_scores, axis=1)
-    val_scores_mean = np.mean(val_scores, axis=1)
-    val_scores_std = np.std(val_scores, axis=1)
+    # Calculate mean and std using nanmean/nanstd to handle potential failures
+    with np.errstate(invalid='ignore'): # Suppress warnings for Mean of empty slice
+        train_scores_mean = np.nanmean(train_scores, axis=1)
+        train_scores_std = np.nanstd(train_scores, axis=1)
+        val_scores_mean = np.nanmean(val_scores, axis=1)
+        val_scores_std = np.nanstd(val_scores, axis=1)
+        
+    # Check if we have valid results
+    if np.all(np.isnan(train_scores_mean)) or np.all(np.isnan(val_scores_mean)):
+        # If all results are NaN, it might be due to small dataset or scoring issues
+        # Try to provide a helpful message in the logs (or just return what we have)
+        print("Warning: All learning curve scores are NaN. Check if dataset is too small or scoring metric is appropriate.")
     
     return LearningCurveResult(
         train_sizes=train_sizes_abs.tolist(),

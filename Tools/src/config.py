@@ -7,11 +7,13 @@ Never hardcode other data paths in the codebase.
 """
 from __future__ import annotations
 import os
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
 
 
 RANDOM_SEED: int = 42
+ROOT_DIR = Path(__file__).parent.parent
 
 
 @dataclass
@@ -42,18 +44,18 @@ class ProjectConfig:
     regression_target: Optional[str] = os.environ.get("REGRESSION_TARGET", None)
     
     # New processed directory structure
-    processed_dir: str = os.environ.get("PROCESSED_DIR", "processed")
-    cleaned_datasets_dir: str = os.environ.get("CLEANED_DATASETS_DIR", "processed/cleaned_datasets")
-    plots_dir: str = os.environ.get("PLOTS_DIR", "processed/plots")
-    models_dir: str = os.environ.get("MODELS_DIR", "processed/models")
-    testsets_dir: str = os.environ.get("TESTSETS_DIR", "processed/models/testsets")
-    metadata_path: str = os.environ.get("METADATA_PATH", "processed/variable_metadata.json")
-    preprocessing_config_path: str = os.environ.get("PREPROCESSING_CONFIG_PATH", "processed/preprocessing_config.json")
-    eda_cache_path: str = os.environ.get("EDA_CACHE_PATH", "processed/eda_cache.pkl")
+    processed_dir: str = os.environ.get("PROCESSED_DIR", str(ROOT_DIR / "processed"))
+    cleaned_datasets_dir: str = os.environ.get("CLEANED_DATASETS_DIR", str(ROOT_DIR / "processed/cleaned_datasets"))
+    plots_dir: str = os.environ.get("PLOTS_DIR", str(ROOT_DIR / "processed/plots"))
+    models_dir: str = os.environ.get("MODELS_DIR", str(ROOT_DIR / "processed/models"))
+    testsets_dir: str = os.environ.get("TESTSETS_DIR", str(ROOT_DIR / "processed/models/testsets"))
+    metadata_path: str = os.environ.get("METADATA_PATH", str(ROOT_DIR / "processed/variable_metadata.json"))
+    preprocessing_config_path: str = os.environ.get("PREPROCESSING_CONFIG_PATH", str(ROOT_DIR / "processed/preprocessing_config.json"))
+    eda_cache_path: str = os.environ.get("EDA_CACHE_PATH", str(ROOT_DIR / "processed/eda_cache.pkl"))
     
     # Legacy paths (kept for backwards compatibility during migration)
-    data_dir: str = os.environ.get("DATA_DIR", "DATA")
-    cleaned_data_dir: str = os.environ.get("CLEANED_DATA_DIR", "processed/cleaned_datasets")
+    data_dir: str = os.environ.get("DATA_DIR", str(ROOT_DIR.parent / "DATA"))
+    cleaned_data_dir: str = os.environ.get("CLEANED_DATA_DIR", str(ROOT_DIR / "processed/cleaned_datasets"))
 
 
 CONFIG = ProjectConfig()

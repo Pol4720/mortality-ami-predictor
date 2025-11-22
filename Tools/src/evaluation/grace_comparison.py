@@ -100,7 +100,19 @@ class ComparisonResult:
             'grace_specificity': self.grace_specificity,
             'is_model_superior': self.is_model_superior,
             'superiority_level': self.superiority_level,
+            'p_value': self.auc_p_value,
         }
+
+    @property
+    def p_value(self) -> float:
+        """Backward-compatible alias for the primary p-value (AUC p-value).
+
+        Some parts of the codebase expect `ComparisonResult` to expose a
+        `p_value` attribute. The primary test used in this comparison is the
+        DeLong test for AUC differences, so expose `auc_p_value` via this
+        property to avoid attribute errors and preserve semantics.
+        """
+        return float(self.auc_p_value)
 
 
 def delong_test(y_true: np.ndarray, pred1: np.ndarray, pred2: np.ndarray) -> Tuple[float, float]:

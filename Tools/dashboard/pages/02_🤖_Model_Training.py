@@ -30,6 +30,7 @@ from src.data_load import get_latest_plot
 from src.training import generate_training_pdf
 from src.reporting import pdf_export_section
 from src.features import ICATransformer
+from src.config import CONFIG
 
 # Initialize
 initialize_state()
@@ -68,6 +69,25 @@ if not data_path or not Path(data_path).exists():
 task = st.session_state.get('target_column', 'mortality')
 if task == 'exitus':
     task = 'mortality'
+
+# Map logical task name to actual dataframe column name from config
+target_col = CONFIG.target_column if task == "mortality" else CONFIG.arrhythmia_column
+
+# If configured target column is not present in the dataframe, try sensible fallbacks
+if target_col not in df.columns:
+    # If the logical task name exists as a column, prefer it
+    if task in df.columns:
+        target_col = task
+    else:
+        # Case-insensitive or short-start match
+        matches = [c for c in df.columns if c.lower() == (task or '').lower() or c.lower().startswith((task or '').lower())]
+        if matches:
+            target_col = matches[0]
+        else:
+            st.error(
+                f"❌ Target column '{target_col}' not found in dataset. Available columns: {list(df.columns[:20])}"
+            )
+            st.stop()
 
 # Custom models section
 st.sidebar.markdown("---")
@@ -223,8 +243,8 @@ if transformation_type == "📊 PCA Components" or transformation_type == "🧬 
     
     # Get numeric columns (exclude target)
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    if task in numeric_cols:
-        numeric_cols.remove(task)
+    if target_col in numeric_cols:
+        numeric_cols.remove(target_col)
     
     n_features = len(numeric_cols)
     
@@ -327,7 +347,7 @@ if transformation_type == "📊 PCA Components" or transformation_type == "🧬 
                     )
                     
                     # Add target back
-                    transformed_df[task] = df.loc[transformed_df.index, task]
+                    transformed_df[target_col] = df.loc[transformed_df.index, target_col]
                     
                     # Store in session state
                     st.session_state.transformer = {'pca': pca, 'scaler': scaler}
@@ -348,11 +368,14 @@ if transformation_type == "📊 PCA Components" or transformation_type == "🧬 
                 
                 else:  # ICA
                     # Apply ICA
+                    # Convert boolean whiten to string for newer sklearn versions
+                    whiten_param = 'unit-variance' if whiten else False
+                    
                     ica = ICATransformer(
                         n_components=n_components,
                         algorithm=ica_algorithm,
                         fun=ica_fun,
-                        whiten=whiten,
+                        whiten=whiten_param,
                         max_iter=500,
                         random_state=42
                     )
@@ -361,31 +384,32 @@ if transformation_type == "📊 PCA Components" or transformation_type == "🧬 
                     transformed_df = ica.transform(df_for_transform)
                     
                     # Add target back
-                    transformed_df[task] = df.loc[transformed_df.index, task]
+                    transformed_df[target_col] = df.loc[transformed_df.index, target_col]
                     
                     # Store in session state
                     st.session_state.transformer = ica
                     st.session_state.transformed_df = transformed_df
-                    st.session_state.transformation_applied = True
+                    
                     st.session_state.transformation_params = {
                         'type': 'ica',
                         'n_components': n_components,
                         'algorithm': ica_algorithm,
                         'fun': ica_fun,
                         'whiten': whiten,
-                        'kurtosis_mean': float(np.mean(np.abs(ica.result.kurtosis))),
+                        'kurtosis_mean': float(np.mean(np.abs(ica.result_.component_kurtosis))),
                         'feature_names': numeric_cols
                     }
+                    st.session_state.transformation_applied = True
                     
                     st.success(
                         f"✅ ICA aplicado exitosamente: {n_components} componentes independientes | "
-                        f"Kurtosis promedio: {np.mean(np.abs(ica.result.kurtosis)):.3f}"
+                        f"Kurtosis promedio: {np.mean(np.abs(ica.result_.component_kurtosis)):.3f}"
                     )
                 
                 # Show preview
                 st.markdown("#### 📋 Preview de datos transformados")
                 st.dataframe(transformed_df.head(10), width='stretch')
-                st.info(f"Shape: {transformed_df.shape} | Target: {task}")
+                st.info(f"Shape: {transformed_df.shape} | Target column: {target_col}")
                 
             except Exception as e:
                 st.error(f"❌ Error durante transformación: {e}")
