@@ -91,6 +91,30 @@ def make_classifiers() -> Dict[str, Tuple[object, Dict]]:
                 "gamma": [0, 0.1, 0.5],
             },
         )
+
+        # Balanced XGBoost for imbalanced datasets (High Recall)
+        # Ratio calculation: 2819 (negative) / 274 (positive) ~= 10.28
+        models["xgb_balanced"] = (
+            XGBClassifier(
+                n_estimators=200,
+                learning_rate=0.05,
+                subsample=0.8,        # Reduced to prevent overfitting
+                colsample_bytree=0.8, # Reduced to prevent overfitting
+                eval_metric="logloss",
+                random_state=42,
+                tree_method="hist",
+                n_jobs=-1,
+            ),
+            {
+                "max_depth": [3, 4, 5],          # Lower depth to prevent overfitting
+                "min_child_weight": [3, 5, 7],   # Higher weight to be more conservative
+                "gamma": [0.1, 0.5, 1.0],        # Minimum loss reduction required
+                # Adjusted for specific ratio ~10.3. Range covers under/over-sampling effects
+                "scale_pos_weight": [8, 10, 10.3, 12, 15], 
+                "reg_alpha": [0, 0.1, 1.0],      # L1 regularization
+                "reg_lambda": [1, 1.5, 2.0],     # L2 regularization
+            },
+        )
     
     # LightGBM (if available)
     if LGBMClassifier is not None:
