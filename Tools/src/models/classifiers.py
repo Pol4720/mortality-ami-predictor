@@ -10,6 +10,7 @@ from typing import Dict, Tuple
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.calibration import CalibratedClassifierCV
 import inspect
 
@@ -68,6 +69,22 @@ def make_classifiers() -> Dict[str, Tuple[object, Dict]]:
             "max_depth": [3, 5, 7, None],
             "min_samples_split": [2, 10, 20],
             "min_samples_leaf": [1, 5, 10],
+        },
+    )
+
+    # Random Forest (Robust to overfitting and imbalance)
+    models["rf"] = (
+        RandomForestClassifier(
+            random_state=42,
+            class_weight="balanced",  # Handle 1:10 imbalance
+            n_jobs=-1
+        ),
+        {
+            "n_estimators": [100, 200, 300],
+            "max_depth": [5, 10, 15, None],  # Limit depth to prevent overfitting
+            "min_samples_split": [5, 10, 20],
+            "min_samples_leaf": [2, 5, 10],  # Higher leaf size for regularization
+            "max_features": ["sqrt", "log2"],
         },
     )
     

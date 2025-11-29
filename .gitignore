@@ -249,3 +249,7 @@ DATA/
 
 to-do.txt
 Tools/src/models/custom
+
+#data
+
+Tools/notebooks/cleaned_dataset_20251104_200505.csv
