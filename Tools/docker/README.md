@@ -1,6 +1,6 @@
 # Docker Setup para Mortality AMI Predictor
 
-Este directorio contiene la configuración de Docker para ejecutar la aplicación Mortality AMI Predictor en contenedores.
+Este directorio contiene la configuración de Docker para ejecutar la aplicación Mortality AMI Predictor en contenedores, incluyendo soporte completo para **AutoML**.
 
 ## 📋 Requisitos Previos
 
@@ -8,6 +8,43 @@ Este directorio contiene la configuración de Docker para ejecutar la aplicació
   - Windows/Mac: [Descargar Docker Desktop](https://www.docker.com/products/docker-desktop)
   - Linux: [Instalar Docker Engine](https://docs.docker.com/engine/install/)
 - **Docker Compose** (incluido en Docker Desktop, puede requerir instalación separada en Linux)
+
+## 🤖 Soporte AutoML
+
+La imagen de Docker incluye soporte para AutoML:
+
+| Backend | Incluido por defecto | Plataforma | Notas |
+|---------|---------------------|------------|-------|
+| **FLAML** | ✅ Sí | Linux, Windows, Mac | Cross-platform, recomendado |
+| **auto-sklearn** | ❌ Opcional | Solo Linux | Más completo, requiere build especial |
+
+### Instalar con auto-sklearn (opcional)
+
+```bash
+# Build con auto-sklearn (solo funciona en contenedores Linux)
+docker-compose build --build-arg INSTALL_AUTOSKLEARN=true
+
+# O usando variable de entorno
+INSTALL_AUTOSKLEARN=true docker-compose build
+```
+
+### Configurar AutoML via variables de entorno
+
+Crear archivo `.env` en el directorio `docker/`:
+
+```env
+# Backend: flaml (default) o autosklearn
+AUTOML_BACKEND=flaml
+
+# Tiempo máximo de búsqueda en segundos (default: 3600 = 1 hora)
+AUTOML_TIME_BUDGET=3600
+
+# Métrica de optimización
+AUTOML_METRIC=roc_auc
+
+# Instalar auto-sklearn durante build
+INSTALL_AUTOSKLEARN=false
+```
 
 ## 🚀 Inicio Rápido
 
@@ -99,10 +136,11 @@ docker-compose up -d
 
 ```
 docker/
-├── Dockerfile              # Imagen principal para la aplicación
-├── Dockerfile.jupyter      # Imagen para Jupyter Lab
+├── Dockerfile              # Imagen principal (incluye FLAML AutoML)
+├── Dockerfile.jupyter      # Imagen para Jupyter Lab con AutoML
 ├── docker-compose.yml      # Configuración de servicios
-└── .dockerignore          # Archivos excluidos del build
+├── .env                    # Variables de entorno (crear manualmente)
+└── README.md               # Esta documentación
 
 scripts/
 ├── run-app.bat/.sh        # Iniciar aplicación (Windows/Linux-Mac)
@@ -118,8 +156,39 @@ Los siguientes directorios se montan como volúmenes para persistir datos:
 - `DATA/` → Datos de entrada (solo lectura)
 - `processed/` → Datos procesados
 - `models/` → Modelos entrenados
+- `models/automl/` → Modelos AutoML exportados (volumen Docker)
 - `mlruns/` → Experimentos de MLflow
 - `logs/` → Logs de la aplicación
+
+## 🤖 Uso de AutoML en Docker
+
+### Desde el Dashboard
+
+1. Accede a http://localhost:8501
+2. Ve a la página **🤖 AutoML**
+3. Selecciona un preset (quick, balanced, high_performance)
+4. Inicia el entrenamiento
+
+### Desde Jupyter
+
+```python
+from src.automl import FLAMLClassifier, is_flaml_available
+
+# Verificar disponibilidad
+print(f"FLAML disponible: {is_flaml_available()}")
+
+# Entrenar modelo AutoML
+clf = FLAMLClassifier(time_budget=300, metric="roc_auc")
+clf.fit(X_train, y_train)
+```
+
+### Variables de entorno para AutoML
+
+| Variable | Descripción | Default |
+|----------|-------------|---------|
+| `AUTOML_BACKEND` | Backend a usar: `flaml` o `autosklearn` | `flaml` |
+| `AUTOML_TIME_BUDGET` | Tiempo máximo en segundos | `3600` |
+| `AUTOML_METRIC` | Métrica de optimización | `roc_auc` |
 
 ## 🔧 Personalización
 

@@ -1916,11 +1916,14 @@ def multivariate_analysis_page():
                             st.stop()
                         
                         # Crear y ajustar ICA
+                        # Convert boolean whiten to string for newer sklearn versions
+                        whiten_param = 'unit-variance' if whiten_ica else False
+                        
                         ica = ICATransformer(
                             n_components=n_components_ica,
                             algorithm=ica_algorithm,
                             fun=ica_fun,
-                            whiten=whiten_ica,
+                            whiten=whiten_param,
                             max_iter=max_iter_ica,
                             random_state=42
                         )

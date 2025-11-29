@@ -4,7 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import streamlit as st
-import plotly.io as pio
 
 
 # Path configuration
@@ -50,8 +49,17 @@ PLOTLY_CONFIG = {
     "showAxisRangeEntryBoxes": True,
 }
 
-# Set Plotly default template
-pio.templates.default = "plotly_white"
+# Flag to track if plotly has been configured
+_plotly_configured = False
+
+
+def _configure_plotly():
+    """Configure Plotly template (lazy initialization to avoid circular imports)."""
+    global _plotly_configured
+    if not _plotly_configured:
+        import plotly.io as pio
+        pio.templates.default = "plotly_white"
+        _plotly_configured = True
 
 
 def get_plotly_config():
@@ -60,6 +68,7 @@ def get_plotly_config():
     Returns:
         Dictionary with Plotly display and interaction settings
     """
+    _configure_plotly()
     return PLOTLY_CONFIG
 
 

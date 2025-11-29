@@ -30,6 +30,15 @@ torchvision
 dill
 cloudpickle
 
+# --- AutoML ---
+# FLAML: Cross-platform AutoML from Microsoft (Windows, Linux, macOS)
+flaml[automl]
+
+# --- Opcional: auto-sklearn (solo Linux/WSL) ---
+# Más completo que FLAML pero requiere Linux. Instalar manualmente:
+#   pip install auto-sklearn
+# Nota: No compatible con Windows nativo. Usar WSL o Docker.
+
 # --- Opcional: pila PyTorch (solo si activas el modelo NN) ---
 # Nota: Instálala por separado para evitar errores de compatibilidad en Windows.
 # Requiere Python 3.10 o 3.11. Consulta https://pytorch.org/get-started/locally/

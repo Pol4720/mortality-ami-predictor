@@ -1,13 +1,15 @@
 """Training module for ML model training workflows.
 
 This module provides utilities for training, cross-validation,
-hyperparameter tuning, custom models integration, and PDF report generation.
+hyperparameter tuning, custom models integration, AutoML, and PDF report generation.
 """
 
 from .trainer import (
     train_best_classifier,
     train_selected_classifiers,
     run_rigorous_experiment_pipeline,
+    run_automl_experiment_pipeline,
+    is_automl_available,
 )
 from .cross_validation import nested_cross_validation, rigorous_repeated_cv
 from .hyperparameter_tuning import randomized_search
@@ -36,6 +38,9 @@ __all__ = [
     "train_best_classifier",
     "train_selected_classifiers",
     "run_rigorous_experiment_pipeline",
+    # AutoML training
+    "run_automl_experiment_pipeline",
+    "is_automl_available",
     # Cross-validation
     "nested_cross_validation",
     "rigorous_repeated_cv",

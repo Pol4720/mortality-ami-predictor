@@ -112,32 +112,6 @@ class BaseCustomModel(BaseEstimator, ABC):
             return X.values
         return X
     
-    def get_params(self, deep: bool = True) -> Dict[str, Any]:
-        """
-        Get model parameters.
-        
-        Args:
-            deep: If True, return parameters of sub-objects.
-        
-        Returns:
-            Dictionary of parameters.
-        """
-        return {'name': self.name}
-    
-    def set_params(self, **params) -> 'BaseCustomModel':
-        """
-        Set model parameters.
-        
-        Args:
-            **params: Parameters to set.
-        
-        Returns:
-            Self.
-        """
-        for key, value in params.items():
-            setattr(self, key, value)
-        return self
-    
     def __getstate__(self):
         """Support for pickling."""
         state = self.__dict__.copy()
@@ -205,6 +179,7 @@ class BaseCustomClassifier(BaseCustomModel, ClassifierMixin):
     
     Extends BaseCustomModel with classification-specific functionality.
     """
+    _estimator_type = "classifier"
     
     def __init__(self, name: str = "CustomClassifier"):
         super().__init__(name=name)
@@ -269,6 +244,7 @@ class BaseCustomRegressor(BaseCustomModel, RegressorMixin):
     
     Extends BaseCustomModel with regression-specific functionality.
     """
+    _estimator_type = "regressor"
     
     def __init__(self, name: str = "CustomRegressor"):
         super().__init__(name=name)

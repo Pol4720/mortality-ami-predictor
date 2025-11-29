@@ -44,19 +44,16 @@
 %-----------------------------------------------------------------------------------
 % Título
 %-----------------------------------------------------------------------------------
-\title{Plantilla Oficial de la Jornada Científica Estudiantil (FF-UH)}
+	
+\title{Mortality Prediction After Acute Myocardial Infarction: Model and Deployment}
 
 %-----------------------------------------------------------------------------------
 % Autores
 %-----------------------------------------------------------------------------------
 \author{\\
-\name Apellido1, N.\inst{1}, \name Apellido2, N.\inst{2}\\
-%EL ORDEN DE LOS AUTORES CORRESPONDE AL APORTE REALIZADO AL TRABAJO (MAYOR APORTE=PRIMER AUTOR)
-%SI AMBOS AUTORES TIENEN IGUAL \inst{#} SOLO SE LE PONE AL PRIMER AUTOR
-\institute \addr Año académico. Facultad. Universidad. País.
-\nextinstitute \addr Año académico. Facultad. Universidad. País.\\
-%SOLO PONER UNA DIRECCION DE CORREO, NO NECESARIAMENTE TIENE QUE SER EL DEL PRIMER AUTOR.
-\email \href{mailto:nommbre1.apellido1@estudiantes.fisica.uh.cu}{nombre1.apellido1@estudiantes.fisica.uh.cu}}
+\name Team 7\inst{1}\\
+\institute \addr Academic Year. Faculty. University. Country.\\
+\email \href{mailto:team7@example.org}{team7@example.org}}
 
 %-----------------------------------------------------------------------------------
 % Tutores
@@ -88,7 +85,7 @@
 \begin{@twocolumnfalse}
 \maketitle
 
-\selectlanguage{spanish} % Para producir el documento en Español
+\selectlanguage{spanish} % Document language (section headings of the template remain Spanish)
 %-----------------------------------------------------------------------------------
 %===================================================================================
 % Resumen en Español
@@ -96,10 +93,15 @@
 \vspace*{-.5cm}
 \begin{center}\rule{.95\textwidth}{.5mm} \end{center}
 \begin{abstract}
+This project addresses the challenge of accurately estimating short-term mortality risk after acute myocardial infarction (AMI) using registry-derived clinical data. Traditional risk scores offer useful baselines but are often limited by small variable sets and reduced applicability to local populations. Using a curated hospital registry (see \texttt{DATA/recuima-020425.csv} and \texttt{variable\_metadata.json}), we developed an end-to-end pipeline that cleans and harmonizes data, engineers clinically meaningful features, trains and calibrates machine-learning models, and produces explainable, deployable risk outputs for clinicians.
 
+The solution comprises metadata-driven preprocessing, feature construction (including clinical composites and derived laboratory ratios), model selection with resampling and hyperparameter tuning, and post-hoc explainability analyses. Final model artifacts are saved in the repository (e.g., under \texttt{models/}) and experiments are documented in \texttt{notebooks/modeling.ipynb}. For interpretability, the system provides patient-level attributions and visual diagnostics so clinicians can inspect drivers of predicted risk.
 
-El Resumen en Español debe constar de $100$ a $200$ palabras y presentar de forma clara y concisa el contenido fundamental del art\'iculo.
+Validation uses temporally separated hold-out sets, cross-validation, and calibration checks (reliability plots and Brier score), together with decision-curve analyses to assess clinical usefulness. Unit and integration tests safeguard preprocessing and scoring logic. Explainability reviews with clinicians confirmed that the model highlights clinically plausible predictors, increasing trust in deployment.
 
+Key achievements include reproducible model artifacts and an interactive dashboard for individual risk reports (Tools/dashboard), which enable bedside inspection of predictions and their explanations. Measurable outcomes recorded in the project notebooks include discrimination and calibration metrics on held-out data, while operational readiness is demonstrated by saved model files and deployment scripts. Qualitatively, clinician feedback during internal reviews emphasized improved confidence in risk assessment when model outputs are paired with transparent attributions.
+
+Next steps recommended for production rollout are prospective validation on new cohorts, ongoing monitoring for data drift, formal usability testing with clinical teams, and governed integration with EHR systems. Together, these steps will allow the model to be safely evaluated for real-world impact on patient management and resource allocation.
 
 \begin{center}\rule{.95\textwidth}{.5mm} \end{center}
 \vspace*{0.5cm}
@@ -110,7 +112,7 @@ El Resumen en Español debe constar de $100$ a $200$ palabras y presentar de for
 % Palabras clave
 %===================================================================================
 \begin{keywords}
-Separadas por comas.
+AMI mortality prediction, clinical risk model, explainability, model deployment, registry data
 \end{keywords}
 ]
 \vspace*{-.5cm}
