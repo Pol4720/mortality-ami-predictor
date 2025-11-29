@@ -16,6 +16,7 @@ import logging
 import sys
 import time
 import io
+import threading
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from contextlib import redirect_stdout, redirect_stderr
@@ -30,82 +31,190 @@ from .config import AutoMLConfig, AutoMLPreset
 logger = logging.getLogger(__name__)
 
 
-class AutoMLLogger:
-    """Custom logger to capture FLAML output and route to callback."""
+class FLAMLProgressTracker:
+    """Tracks FLAML progress and provides real-time updates via callback.
     
-    def __init__(self, callback: Optional[Callable[[str, float], None]] = None, 
-                 start_time: Optional[float] = None,
-                 time_budget: int = 3600):
+    Uses a background thread to periodically report progress even when
+    FLAML is not emitting logs. Also monitors FLAML's log file for real updates.
+    """
+    
+    def __init__(
+        self,
+        callback: Optional[Callable[[str, float], None]] = None,
+        time_budget: int = 3600,
+        update_interval: float = 2.0,  # Update every 2 seconds
+        log_file: Optional[str] = None,
+    ):
         self.callback = callback
-        self.logs: List[str] = []
-        self.start_time = start_time or time.time()
         self.time_budget = time_budget
-        self.last_update = time.time()
+        self.update_interval = update_interval
+        self.log_file = log_file
+        
+        self.start_time: Optional[float] = None
+        self.logs: List[str] = []
+        self.lock = threading.Lock()
+        
+        # Progress tracking
         self.models_evaluated = 0
-        self.best_score = float('inf')
-        self.best_estimator = None
+        self.best_loss = float('inf')
+        self.best_estimator: Optional[str] = None
+        self.current_estimator: Optional[str] = None
+        self.is_running = False
+        self._thread: Optional[threading.Thread] = None
+        self._last_log_pos = 0
     
-    def write(self, message: str) -> None:
-        """Capture log messages."""
-        if message.strip():
-            self.logs.append(message.strip())
-            self._parse_and_update(message)
+    def start(self) -> None:
+        """Start the progress tracker."""
+        self.start_time = time.time()
+        self.is_running = True
+        self._thread = threading.Thread(target=self._progress_loop, daemon=True)
+        self._thread.start()
+        self._log("🚀 Iniciando búsqueda AutoML...")
     
-    def flush(self) -> None:
-        """Flush buffer."""
-        pass
+    def stop(self) -> None:
+        """Stop the progress tracker."""
+        self.is_running = False
+        if self._thread:
+            self._thread.join(timeout=1.0)
     
-    def _parse_and_update(self, message: str) -> None:
-        """Parse FLAML output and update callback."""
-        now = time.time()
-        elapsed = now - self.start_time
-        progress = min(elapsed / self.time_budget, 0.99)
+    def _read_flaml_log(self) -> None:
+        """Read updates from FLAML's log file if available."""
+        if not self.log_file:
+            return
         
-        # Parse different types of messages
-        msg_lower = message.lower()
-        
-        if 'best' in msg_lower and 'loss' in msg_lower:
-            # Extract best model info
-            try:
-                parts = message.split()
-                for i, part in enumerate(parts):
-                    if 'loss' in part.lower() and i + 1 < len(parts):
-                        try:
-                            self.best_score = float(parts[i + 1].strip(':,'))
-                        except:
-                            pass
-            except:
-                pass
+        try:
+            from pathlib import Path
+            log_path = Path(self.log_file)
+            if log_path.exists():
+                with open(log_path, 'r') as f:
+                    f.seek(self._last_log_pos)
+                    new_content = f.read()
+                    self._last_log_pos = f.tell()
+                    
+                    if new_content.strip():
+                        # Parse FLAML log entries
+                        for line in new_content.strip().split('\n'):
+                            self._parse_log_line(line)
+        except Exception:
+            pass
+    
+    def _parse_log_line(self, line: str) -> None:
+        """Parse a FLAML log line and extract info."""
+        try:
+            import json
+            data = json.loads(line)
             
+            estimator = data.get('learner', 'unknown')
+            loss = data.get('validation_loss')
+            
+            if loss is not None:
+                with self.lock:
+                    self.models_evaluated = data.get('record_id', self.models_evaluated) + 1
+                    
+                    if loss < self.best_loss:
+                        self.best_loss = loss
+                        self.best_estimator = estimator
+                        score = 1 - loss if loss >= 0 else -loss
+                        self._log(f"⭐ Nuevo mejor: {estimator} (score={score:.4f})")
+                    else:
+                        self._log(f"🧪 Evaluado: {estimator} (#{self.models_evaluated})")
+        except json.JSONDecodeError:
+            pass
+        except Exception:
+            pass
+    
+    def _progress_loop(self) -> None:
+        """Background thread that reports progress periodically."""
+        last_models = 0
+        animation_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        frame_idx = 0
+        
+        while self.is_running:
+            time.sleep(self.update_interval)
+            if not self.is_running:
+                break
+            
+            # Try to read FLAML log file
+            self._read_flaml_log()
+            
+            with self.lock:
+                elapsed = time.time() - self.start_time if self.start_time else 0
+                progress = min(elapsed / self.time_budget, 0.99)
+                remaining = max(0, self.time_budget - elapsed)
+                
+                mins_elapsed = int(elapsed // 60)
+                secs_elapsed = int(elapsed % 60)
+                mins_remaining = int(remaining // 60)
+                secs_remaining = int(remaining % 60)
+                
+                # Animation frame
+                spinner = animation_frames[frame_idx % len(animation_frames)]
+                frame_idx += 1
+                
+                # Build status message
+                if self.models_evaluated > 0:
+                    if self.best_estimator and self.best_loss < float('inf'):
+                        score = 1 - self.best_loss if self.best_loss >= 0 else -self.best_loss
+                        status = (
+                            f"{spinner} {mins_elapsed:02d}:{secs_elapsed:02d} | "
+                            f"🔍 {self.models_evaluated} modelos | "
+                            f"🏆 {self.best_estimator}: {score:.4f}"
+                        )
+                    else:
+                        status = (
+                            f"{spinner} {mins_elapsed:02d}:{secs_elapsed:02d} | "
+                            f"🔍 {self.models_evaluated} modelos evaluados"
+                        )
+                    
+                    if self.current_estimator:
+                        status += f" | 🔄 {self.current_estimator}"
+                else:
+                    status = (
+                        f"{spinner} {mins_elapsed:02d}:{secs_elapsed:02d} | "
+                        f"🔄 Inicializando y evaluando estimadores..."
+                    )
+                
+                # Add remaining time info
+                status += f" | ⏳ {mins_remaining:02d}:{secs_remaining:02d}"
+                
+                # Only log status changes periodically
+                if self.models_evaluated != last_models or frame_idx % 5 == 0:
+                    if self.models_evaluated != last_models:
+                        last_models = self.models_evaluated
+                
+                if self.callback:
+                    self.callback(status, progress)
+    
+    def update(
+        self,
+        estimator: Optional[str] = None,
+        loss: Optional[float] = None,
+        is_best: bool = False,
+    ) -> None:
+        """Update progress with new trial info."""
+        with self.lock:
             self.models_evaluated += 1
-            status = f"🔍 Modelos evaluados: {self.models_evaluated} | Mejor score: {-self.best_score:.4f}"
+            self.current_estimator = estimator
             
-        elif 'trial' in msg_lower or 'iteration' in msg_lower:
-            self.models_evaluated += 1
-            status = f"🔄 Evaluando modelo #{self.models_evaluated}..."
-            
-        elif 'fitting' in msg_lower or 'training' in msg_lower:
-            status = f"⚙️ Entrenando: {message[:50]}..."
-            
-        elif any(est in msg_lower for est in ['lgbm', 'xgboost', 'rf', 'catboost', 'extra']):
-            # Estimator being evaluated
-            for est in ['lgbm', 'xgboost', 'rf', 'catboost', 'extra_tree', 'kneighbor', 'lrl1', 'lrl2']:
-                if est in msg_lower:
-                    status = f"🧪 Probando: {est.upper()}"
-                    break
-            else:
-                status = f"🔬 {message[:60]}"
-        else:
-            status = f"📊 {message[:60]}"
-        
-        # Only update callback every 0.5 seconds to avoid flooding
-        if self.callback and (now - self.last_update > 0.5):
-            self.callback(status, progress)
-            self.last_update = now
+            if loss is not None and loss < self.best_loss:
+                self.best_loss = loss
+                self.best_estimator = estimator
+                score = 1 - loss if loss >= 0 else -loss
+                self._log(f"⭐ Nuevo mejor modelo: {estimator} (score={score:.4f})")
+            elif estimator:
+                self._log(f"🧪 Evaluando: {estimator} (modelo #{self.models_evaluated})")
+    
+    def _log(self, message: str) -> None:
+        """Add a log entry."""
+        timestamp = time.strftime("%H:%M:%S")
+        entry = f"[{timestamp}] {message}"
+        self.logs.append(entry)
     
     def get_logs(self) -> List[str]:
-        """Get all captured logs."""
-        return self.logs.copy()
+        """Get all log entries."""
+        with self.lock:
+            return self.logs.copy()
+
 
 
 def is_flaml_available() -> bool:
@@ -248,6 +357,21 @@ class FLAMLClassifier(BaseCustomClassifier):
         
         start_time = time.time()
         
+        # Create temp log file for tracking if not specified
+        import tempfile
+        if self.log_file_name:
+            log_file_path = self.log_file_name
+        else:
+            log_file_path = tempfile.mktemp(suffix='_flaml.log')
+        
+        # Initialize progress tracker with background thread
+        progress_tracker = FLAMLProgressTracker(
+            callback=self.progress_callback,
+            time_budget=self.time_budget,
+            update_interval=2.0,  # Update every 2 seconds
+            log_file=log_file_path,
+        )
+        
         if self.progress_callback:
             self.progress_callback("🚀 Iniciando FLAML AutoML...", 0.0)
         
@@ -269,8 +393,8 @@ class FLAMLClassifier(BaseCustomClassifier):
         if self.max_iter is not None:
             flaml_settings["max_iter"] = self.max_iter
         
-        if self.log_file_name is not None:
-            flaml_settings["log_file_name"] = self.log_file_name
+        # Always use log file for tracking progress
+        flaml_settings["log_file_name"] = log_file_path
         
         # Add extra kwargs
         flaml_settings.update(self.extra_kwargs)
@@ -279,56 +403,14 @@ class FLAMLClassifier(BaseCustomClassifier):
         # Initialize and fit with progress tracking
         self.automl_ = AutoML()
         
-        # Create custom logger to capture output
-        automl_logger = AutoMLLogger(
-            callback=self.progress_callback,
-            start_time=start_time,
-            time_budget=self.time_budget
-        )
-        
-        # Configure FLAML logging
-        import logging as std_logging
-        flaml_logger = std_logging.getLogger('flaml.automl')
-        
-        # Add custom handler
-        class CallbackHandler(std_logging.Handler):
-            def __init__(self, automl_log: AutoMLLogger):
-                super().__init__()
-                self.automl_log = automl_log
-                
-            def emit(self, record):
-                msg = self.format(record)
-                self.automl_log.write(msg)
-        
-        handler = CallbackHandler(automl_logger)
-        handler.setLevel(std_logging.INFO)
-        flaml_logger.addHandler(handler)
-        
-        # Set FLAML verbosity
-        if self.verbose >= 2:
-            flaml_logger.setLevel(std_logging.INFO)
-        elif self.verbose >= 1:
-            flaml_logger.setLevel(std_logging.WARNING)
-        else:
-            flaml_logger.setLevel(std_logging.ERROR)
+        # Start progress tracker thread
+        progress_tracker.start()
         
         try:
-            # Fit with output capture for additional logging
-            if self.verbose >= 2 and self.progress_callback:
-                # Capture stdout for verbose output
-                old_stdout = sys.stdout
-                sys.stdout = automl_logger
-                
-                try:
-                    self.automl_.fit(X_train, y_train, **flaml_settings)
-                finally:
-                    sys.stdout = old_stdout
-            else:
-                self.automl_.fit(X_train, y_train, **flaml_settings)
-        
+            self.automl_.fit(X_train, y_train, **flaml_settings)
         finally:
-            # Remove handler
-            flaml_logger.removeHandler(handler)
+            # Stop progress tracker
+            progress_tracker.stop()
         
         # Store results
         self.best_estimator_ = self.automl_.best_estimator
@@ -336,7 +418,22 @@ class FLAMLClassifier(BaseCustomClassifier):
         self.best_model_ = self.automl_.model
         self.best_loss_ = self.automl_.best_loss
         self.fit_time_ = time.time() - start_time
-        self.training_logs_ = automl_logger.get_logs()
+        self.training_logs_ = progress_tracker.get_logs()
+        
+        # Add final summary to logs
+        score = -self.best_loss_ if self.best_loss_ < 0 else 1 - self.best_loss_
+        self.training_logs_.append(
+            f"[{time.strftime('%H:%M:%S')}] ✅ Entrenamiento completado!"
+        )
+        self.training_logs_.append(
+            f"[{time.strftime('%H:%M:%S')}] 🏆 Mejor modelo: {self.best_estimator_} (score={score:.4f})"
+        )
+        self.training_logs_.append(
+            f"[{time.strftime('%H:%M:%S')}] ⏱️ Tiempo total: {self.fit_time_:.1f}s"
+        )
+        self.training_logs_.append(
+            f"[{time.strftime('%H:%M:%S')}] 🔍 Modelos evaluados: {progress_tracker.models_evaluated}"
+        )
         
         # Extract feature importances if available
         self._extract_feature_importances()
@@ -346,7 +443,7 @@ class FLAMLClassifier(BaseCustomClassifier):
         if self.progress_callback:
             self.progress_callback(
                 f"✅ FLAML completado: {self.best_estimator_} "
-                f"(score={-self.best_loss_:.4f}, time={self.fit_time_:.1f}s)",
+                f"(score={score:.4f}, time={self.fit_time_:.1f}s)",
                 1.0
             )
         
@@ -541,7 +638,6 @@ class FLAMLRegressor(BaseCustomRegressor):
             raise ImportError("FLAML is not installed")
         
         from flaml import AutoML
-        import logging as std_logging
         
         self._validate_input(X, training=True)
         
@@ -553,6 +649,21 @@ class FLAMLRegressor(BaseCustomRegressor):
         y_train = y.values if isinstance(y, pd.Series) else y
         
         start_time = time.time()
+        
+        # Create temp log file for tracking if not specified
+        import tempfile
+        if self.log_file_name:
+            log_file_path = self.log_file_name
+        else:
+            log_file_path = tempfile.mktemp(suffix='_flaml_reg.log')
+        
+        # Initialize progress tracker with background thread
+        progress_tracker = FLAMLProgressTracker(
+            callback=self.progress_callback,
+            time_budget=self.time_budget,
+            update_interval=2.0,
+            log_file=log_file_path,
+        )
         
         if self.progress_callback:
             self.progress_callback("🚀 Iniciando FLAML Regressor...", 0.0)
@@ -570,53 +681,51 @@ class FLAMLRegressor(BaseCustomRegressor):
         if self.estimator_list:
             settings["estimator_list"] = self.estimator_list
         
-        if self.log_file_name:
-            settings["log_file_name"] = self.log_file_name
+        # Always use log file for tracking progress
+        settings["log_file_name"] = log_file_path
         
         settings.update(self.extra_kwargs)
         settings.update(kwargs)
         
-        # Create logger
-        automl_logger = AutoMLLogger(
-            callback=self.progress_callback,
-            start_time=start_time,
-            time_budget=self.time_budget
-        )
+        # Create FLAML's native callback for real-time updates
+        def flaml_callback(config: dict, metric_name: str, score: float, 
+                          time_used: float, estimator: str, best_config: dict):
+            """FLAML native callback - called after each trial."""
+            # For regression metrics, score is typically the negative loss
+            loss = -score if self.metric in ['r2'] else score
+            progress_tracker.update(estimator=estimator, loss=loss)
         
-        # Configure logging
-        flaml_logger = std_logging.getLogger('flaml.automl')
+        # Add callback to settings
+        settings["cb"] = flaml_callback
         
-        class CallbackHandler(std_logging.Handler):
-            def __init__(self, automl_log: AutoMLLogger):
-                super().__init__()
-                self.automl_log = automl_log
-                
-            def emit(self, record):
-                msg = self.format(record)
-                self.automl_log.write(msg)
+        # Initialize and fit with progress tracking
+        self.automl_ = AutoML()
         
-        handler = CallbackHandler(automl_logger)
-        handler.setLevel(std_logging.INFO)
-        flaml_logger.addHandler(handler)
-        
-        if self.verbose >= 2:
-            flaml_logger.setLevel(std_logging.INFO)
-        elif self.verbose >= 1:
-            flaml_logger.setLevel(std_logging.WARNING)
-        else:
-            flaml_logger.setLevel(std_logging.ERROR)
+        # Start progress tracker thread
+        progress_tracker.start()
         
         try:
-            self.automl_ = AutoML()
             self.automl_.fit(X_train, y_train, **settings)
         finally:
-            flaml_logger.removeHandler(handler)
+            progress_tracker.stop()
         
         self.best_estimator_ = self.automl_.best_estimator
         self.best_model_ = self.automl_.model
         self.best_loss_ = self.automl_.best_loss
         self.fit_time_ = time.time() - start_time
-        self.training_logs_ = automl_logger.get_logs()
+        self.training_logs_ = progress_tracker.get_logs()
+        
+        # Add final summary to logs
+        self.training_logs_.append(
+            f"[{time.strftime('%H:%M:%S')}] ✅ Entrenamiento completado!"
+        )
+        self.training_logs_.append(
+            f"[{time.strftime('%H:%M:%S')}] 🏆 Mejor modelo: {self.best_estimator_} (loss={self.best_loss_:.4f})"
+        )
+        self.training_logs_.append(
+            f"[{time.strftime('%H:%M:%S')}] ⏱️ Tiempo total: {self.fit_time_:.1f}s"
+        )
+        
         self.is_fitted_ = True
         
         if self.progress_callback:

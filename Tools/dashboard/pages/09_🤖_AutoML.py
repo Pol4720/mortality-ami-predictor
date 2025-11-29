@@ -10,6 +10,8 @@ This page provides a comprehensive AutoML interface for:
 
 import streamlit as st
 import sys
+import threading
+import queue
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -233,18 +235,52 @@ with tab1:
         
         if start_btn:
             st.session_state.automl_training = True
+            st.session_state.automl_logs = []
+            st.session_state.automl_progress = 0.0
+            st.session_state.automl_status = "Iniciando..."
+            st.session_state.automl_result = None
+            st.session_state.automl_error = None
+            st.session_state.automl_start_time = time.time()
             st.rerun()
     
     if st.session_state.automl_training:
         st.warning("⏳ **Entrenamiento en progreso...** No cierres esta página.")
         
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        log_container = st.empty()
-        
-        # Initialize log list in session state
+        # Initialize session state for async training
+        if 'automl_queue' not in st.session_state:
+            st.session_state.automl_queue = queue.Queue()
+        if 'automl_thread' not in st.session_state:
+            st.session_state.automl_thread = None
         if 'automl_logs' not in st.session_state:
             st.session_state.automl_logs = []
+        if 'automl_progress' not in st.session_state:
+            st.session_state.automl_progress = 0.0
+        if 'automl_status' not in st.session_state:
+            st.session_state.automl_status = "Iniciando..."
+        if 'automl_result' not in st.session_state:
+            st.session_state.automl_result = None
+        if 'automl_error' not in st.session_state:
+            st.session_state.automl_error = None
+        
+        # Display current progress
+        progress_bar = st.progress(st.session_state.automl_progress)
+        status_text = st.empty()
+        status_text.markdown(f"**{st.session_state.automl_status}**")
+        
+        # Display logs
+        log_container = st.empty()
+        with log_container.container():
+            st.markdown("#### 📋 Log de Entrenamiento en Tiempo Real")
+            if st.session_state.automl_logs:
+                # Deduplicate consecutive similar logs
+                unique_logs = []
+                for log in st.session_state.automl_logs[-25:]:
+                    if not unique_logs or log != unique_logs[-1]:
+                        unique_logs.append(log)
+                log_text = "\n".join(unique_logs[-20:])
+                st.code(log_text, language="text")
+            else:
+                st.code("Esperando logs del entrenamiento...", language="text")
         
         # Prepare data
         feature_cols = [c for c in df.columns if c != target_col]
@@ -256,54 +292,162 @@ with tab1:
         for col in X.select_dtypes(include=['object', 'category']).columns:
             X[col] = X[col].fillna(X[col].mode().iloc[0] if len(X[col].mode()) > 0 else "Unknown")
         
-        # Progress callback with log capture
-        def progress_callback(message: str, progress: float):
-            progress_bar.progress(progress)
-            status_text.markdown(f"**{message}**")
-            # Add to logs
-            timestamp = datetime.now().strftime("%H:%M:%S")
-            st.session_state.automl_logs.append(f"[{timestamp}] {message}")
-            # Show last 10 logs
-            with log_container.container():
-                st.markdown("#### 📋 Log de Entrenamiento")
-                log_text = "\n".join(st.session_state.automl_logs[-15:])
-                st.code(log_text, language="text")
+        # Training function to run in background thread
+        def train_automl_background(X_data, y_data, msg_queue, config):
+            """Run AutoML training in background thread."""
+            try:
+                # Progress callback that puts messages in queue
+                def queue_callback(message: str, progress: float):
+                    msg_queue.put(('progress', message, progress))
+                
+                # Create AutoML model
+                if config['backend'] == "flaml":
+                    from src.automl.flaml_integration import FLAMLClassifier
+                    automl = FLAMLClassifier(
+                        time_budget=config['time_budget'],
+                        metric=config['metric'],
+                        estimator_list=config['estimators'],
+                        ensemble=config['ensemble'],
+                        verbose=2,
+                        name="AutoML-Dashboard",
+                        progress_callback=queue_callback,
+                    )
+                else:
+                    from src.automl.autosklearn_integration import AutoMLClassifier
+                    automl = AutoMLClassifier(
+                        preset=AutoMLPreset(config['preset']) if config['preset'] != "custom" else AutoMLPreset.CUSTOM,
+                        time_left_for_this_task=config['time_budget'],
+                        ensemble_size=config['ensemble_size'],
+                        metric=config['metric'],
+                        name="AutoML-Dashboard",
+                        progress_callback=queue_callback,
+                    )
+                
+                # Fit model
+                automl.fit(X_data, y_data)
+                
+                # Send result
+                msg_queue.put(('done', automl, None))
+                
+            except Exception as e:
+                import traceback
+                msg_queue.put(('error', str(e), traceback.format_exc()))
         
-        try:
-            start_time = time.time()
-            
-            # Create AutoML model based on backend
-            if BACKEND == "flaml":
-                automl = FLAMLClassifier(
-                    time_budget=time_budget,
-                    metric=metric,
-                    estimator_list=selected_estimators,
-                    ensemble=ensemble_size > 1,
-                    verbose=2,  # Enable verbose logging
-                    name="AutoML-Dashboard",
-                    progress_callback=progress_callback,
-                )
+        # Start training thread if not already running
+        if st.session_state.automl_thread is None or not st.session_state.automl_thread.is_alive():
+            # Check if we already have a result
+            if st.session_state.automl_result is not None:
+                # Training completed, show results
+                automl = st.session_state.automl_result
+                st.session_state.automl_training = False
+                st.session_state.automl_model = automl
+                st.rerun()
+            elif st.session_state.automl_error is not None:
+                # Training failed
+                st.error(f"❌ Error en el entrenamiento: {st.session_state.automl_error}")
+                st.session_state.automl_training = False
+                st.session_state.automl_error = None
+                if st.button("🔄 Reintentar"):
+                    st.rerun()
             else:
-                automl = AutoMLClassifier(
-                    preset=AutoMLPreset(preset) if preset != "custom" else AutoMLPreset.CUSTOM,
-                    time_left_for_this_task=time_budget,
-                    ensemble_size=ensemble_size,
-                    metric=metric,
-                    name="AutoML-Dashboard",
-                    progress_callback=progress_callback,
+                # Start new training thread
+                config = {
+                    'backend': BACKEND,
+                    'time_budget': time_budget,
+                    'metric': metric,
+                    'estimators': selected_estimators if selected_estimators else None,
+                    'ensemble': ensemble_size > 1,
+                    'ensemble_size': ensemble_size,
+                    'preset': preset,
+                }
+                
+                # Add initial logs
+                st.session_state.automl_logs = [
+                    f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 Iniciando FLAML AutoML...",
+                    f"[{datetime.now().strftime('%H:%M:%S')}] ⏱️ Time budget: {time_budget}s",
+                    f"[{datetime.now().strftime('%H:%M:%S')}] 📊 Métrica: {metric}",
+                ]
+                if selected_estimators:
+                    st.session_state.automl_logs.append(
+                        f"[{datetime.now().strftime('%H:%M:%S')}] 🔧 Estimadores: {', '.join(selected_estimators)}"
+                    )
+                
+                st.session_state.automl_queue = queue.Queue()
+                thread = threading.Thread(
+                    target=train_automl_background,
+                    args=(X.copy(), y.copy(), st.session_state.automl_queue, config),
+                    daemon=True
                 )
+                thread.start()
+                st.session_state.automl_thread = thread
+        
+        # Process messages from queue
+        try:
+            while True:
+                msg = st.session_state.automl_queue.get_nowait()
+                msg_type = msg[0]
+                
+                if msg_type == 'progress':
+                    _, message, progress = msg
+                    st.session_state.automl_status = message
+                    st.session_state.automl_progress = progress
+                    timestamp = datetime.now().strftime("%H:%M:%S")
+                    st.session_state.automl_logs.append(f"[{timestamp}] {message}")
+                    
+                elif msg_type == 'done':
+                    _, automl, _ = msg
+                    st.session_state.automl_result = automl
+                    st.session_state.automl_progress = 1.0
+                    st.session_state.automl_status = "✅ Entrenamiento completado!"
+                    
+                elif msg_type == 'error':
+                    _, error_msg, tb = msg
+                    st.session_state.automl_error = error_msg
+                    st.session_state.automl_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Error: {error_msg}")
+                    
+        except queue.Empty:
+            pass
+        
+        # Calculate elapsed time for display
+        if 'automl_start_time' in st.session_state:
+            elapsed = time.time() - st.session_state.automl_start_time
+            remaining = max(0, time_budget - elapsed)
+            mins_elapsed = int(elapsed // 60)
+            secs_elapsed = int(elapsed % 60)
+            mins_remaining = int(remaining // 60)
+            secs_remaining = int(remaining % 60)
             
-            # Fit
-            status_text.markdown("**🔄 Iniciando búsqueda de modelos...**")
-            st.session_state.automl_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 Iniciando FLAML AutoML...")
-            st.session_state.automl_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] ⏱️ Time budget: {time_budget}s")
-            st.session_state.automl_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] 📊 Métrica: {metric}")
-            if selected_estimators:
-                st.session_state.automl_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] 🔧 Estimadores: {', '.join(selected_estimators)}")
+            # Always update progress based on time
+            time_progress = min(elapsed / time_budget, 0.99)
+            if time_progress > st.session_state.automl_progress:
+                st.session_state.automl_progress = time_progress
             
-            automl.fit(X, y)
+            # Update progress bar with current time-based progress
+            progress_bar.progress(st.session_state.automl_progress)
             
-            elapsed = time.time() - start_time
+            # Update status with time info if no recent updates
+            if "Iniciando" in st.session_state.automl_status or "Inicializando" in st.session_state.automl_status:
+                animation_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+                frame_idx = int(elapsed * 2) % len(animation_frames)
+                spinner = animation_frames[frame_idx]
+                st.session_state.automl_status = f"{spinner} {mins_elapsed:02d}:{secs_elapsed:02d} | 🔄 Buscando mejores modelos... | ⏳ {mins_remaining:02d}:{secs_remaining:02d}"
+                status_text.markdown(f"**{st.session_state.automl_status}**")
+            
+            time_info = st.empty()
+            time_info.info(
+                f"⏱️ Tiempo transcurrido: **{mins_elapsed:02d}:{secs_elapsed:02d}** | "
+                f"Tiempo restante: **{mins_remaining:02d}:{secs_remaining:02d}**"
+            )
+        
+        # Check if training is still running
+        if st.session_state.automl_thread and st.session_state.automl_thread.is_alive():
+            # Auto-refresh every 2 seconds
+            time.sleep(2)
+            st.rerun()
+        elif st.session_state.automl_result is not None:
+            # Training completed
+            elapsed = time.time() - st.session_state.get('automl_start_time', time.time())
+            automl = st.session_state.automl_result
             
             # Get training logs from model
             if hasattr(automl, 'get_training_logs'):
@@ -317,12 +461,15 @@ with tab1:
             st.session_state.automl_training = False
             st.session_state.automl_elapsed = elapsed
             st.session_state.automl_feature_names = feature_cols
+            st.session_state.automl_result = None  # Clear result
+            st.session_state.automl_thread = None  # Clear thread
             
             progress_bar.progress(1.0)
             status_text.markdown("**✅ ¡Entrenamiento completado!**")
             
             # Final log entry
-            st.session_state.automl_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Completado: {automl.best_estimator_} (score={-automl.best_loss_:.4f})")
+            best_score = -automl.best_loss_ if automl.best_loss_ < 0 else 1 - automl.best_loss_
+            st.session_state.automl_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Completado: {automl.best_estimator_} (score={best_score:.4f})")
             
             st.success(f"""
             ### ✅ AutoML Completado
@@ -330,18 +477,12 @@ with tab1:
             - **Tiempo:** {elapsed:.1f} segundos
             - **Backend:** {BACKEND}
             - **Mejor modelo:** {getattr(automl, 'best_estimator_', 'ensemble')}
-            - **Mejor score:** {-getattr(automl, 'best_loss_', 0):.4f}
+            - **Mejor score:** {best_score:.4f}
             """)
             
             st.balloons()
-            
-        except Exception as e:
-            st.session_state.automl_training = False
-            st.session_state.automl_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Error: {str(e)}")
-            st.error(f"❌ Error durante el entrenamiento: {e}")
-            import traceback
-            with st.expander("Ver detalles del error"):
-                st.code(traceback.format_exc())
+            time.sleep(1)
+            st.rerun()
     
     # Show results if model exists
     if st.session_state.automl_model is not None and not st.session_state.automl_training:
