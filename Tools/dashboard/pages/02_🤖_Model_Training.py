@@ -156,6 +156,78 @@ if use_custom_models:
     else:
         st.sidebar.info("📭 No custom models available. Create one in Custom Models page (🔧).")
 
+# ==================== AUTOML SECTION ====================
+st.sidebar.markdown("---")
+st.sidebar.header("🤖 AutoML")
+
+# Check AutoML availability
+try:
+    from src.training import is_automl_available
+    automl_available = is_automl_available()
+except ImportError:
+    automl_available = False
+
+if automl_available:
+    use_automl = st.sidebar.checkbox(
+        "Enable AutoML",
+        value=False,
+        help="Use automated machine learning to find the best model"
+    )
+    
+    if use_automl:
+        # AutoML preset selection
+        automl_preset = st.sidebar.selectbox(
+            "AutoML Preset",
+            ["quick", "balanced", "high_performance"],
+            index=0,
+            help="quick: 5 min | balanced: 1 hour | high_performance: 4 hours"
+        )
+        
+        # Time budget override (optional)
+        automl_time = st.sidebar.number_input(
+            "Custom Time Budget (seconds)",
+            min_value=60,
+            max_value=28800,
+            value={"quick": 300, "balanced": 3600, "high_performance": 14400}[automl_preset],
+            help="Override the preset time budget"
+        )
+        
+        # Backend info
+        try:
+            from src.automl import is_flaml_available, is_autosklearn_available
+            if is_autosklearn_available():
+                backend = "auto-sklearn"
+            elif is_flaml_available():
+                backend = "FLAML"
+            else:
+                backend = "Not available"
+            st.sidebar.info(f"📦 Backend: **{backend}**")
+        except ImportError:
+            st.sidebar.info("📦 Backend: FLAML (default)")
+        
+        # Store in session state
+        st.session_state.automl_enabled = True
+        st.session_state.automl_preset = automl_preset
+        st.session_state.automl_time = automl_time
+        
+        st.sidebar.success("✅ AutoML enabled")
+        st.sidebar.markdown(f"⏱️ Time: {automl_time//60} min")
+        
+        # Link to full AutoML page
+        st.sidebar.markdown("---")
+        st.sidebar.info("💡 For advanced AutoML options, visit **🤖 AutoML** page")
+    else:
+        st.session_state.automl_enabled = False
+else:
+    st.sidebar.warning("⚠️ AutoML not available")
+    st.sidebar.markdown("""
+    Install FLAML to enable:
+    ```
+    pip install flaml[automl]
+    ```
+    """)
+    st.session_state.automl_enabled = False
+
 # Training settings
 st.sidebar.markdown("---")
 st.sidebar.header("⚙️ Training Configuration")
@@ -438,8 +510,17 @@ if transformation_type != "🔤 Original Features":
 st.markdown("---")
 st.subheader("Train Models")
 
-if not all_selected_models:
-    st.error("❌ Please select at least one model from the sidebar")
+# Show AutoML status if enabled
+if st.session_state.get('automl_enabled', False):
+    st.info(f"""
+    🤖 **AutoML Enabled**
+    - Preset: {st.session_state.get('automl_preset', 'balanced')}
+    - Time Budget: {st.session_state.get('automl_time', 3600) // 60} minutes
+    - AutoML will search for the best model automatically
+    """)
+
+if not all_selected_models and not st.session_state.get('automl_enabled', False):
+    st.error("❌ Please select at least one model from the sidebar or enable AutoML")
 else:
     # Initialize training state
     if 'is_training' not in st.session_state:
@@ -447,7 +528,12 @@ else:
     
     # Show button or training message
     if not st.session_state.is_training:
-        start_button = st.button("🚀 Start Training", type="primary", use_container_width=True)
+        # Different button text based on AutoML status
+        if st.session_state.get('automl_enabled', False):
+            button_text = "🤖 Start AutoML Training"
+        else:
+            button_text = "🚀 Start Training"
+        start_button = st.button(button_text, type="primary", use_container_width=True)
     else:
         st.info("⏳ **Training in progress, please wait...**")
     
@@ -477,6 +563,86 @@ else:
                 df_for_training = df.copy()
                 st.info(f"ℹ️ Entrenando con **features originales**: {len(df.columns)-1} variables")
             
+            # ==================== AUTOML TRAINING ====================
+            if st.session_state.get('automl_enabled', False):
+                st.markdown("### 🤖 AutoML Training")
+                
+                # Prepare data
+                X = df_for_training.drop(columns=[target_col])
+                y = df_for_training[target_col]
+                
+                # Progress display
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                def automl_progress_callback(msg: str, progress: float):
+                    progress_bar.progress(progress)
+                    status_text.markdown(f"**{msg}**")
+                
+                try:
+                    from src.training import run_automl_experiment_pipeline
+                    
+                    # Run AutoML
+                    automl_results = run_automl_experiment_pipeline(
+                        X=X,
+                        y=y,
+                        preset=st.session_state.get('automl_preset', 'quick'),
+                        time_budget=st.session_state.get('automl_time', 300),
+                        metric="roc_auc",
+                        include_suggestions=True,
+                        compare_with_manual=len(all_selected_models) > 0,
+                        progress_callback=automl_progress_callback,
+                    )
+                    
+                    # Display results
+                    st.success(f"""
+                    ✅ **AutoML Completed!**
+                    
+                    - Best Model: {automl_results.get('best_estimator', 'Unknown')}
+                    - Best Score (AUC): {automl_results.get('best_score', 0):.4f}
+                    - Training Time: {automl_results.get('training_duration', 0) / 60:.1f} minutes
+                    - Backend: {automl_results.get('backend', 'FLAML')}
+                    """)
+                    
+                    # Show leaderboard
+                    if 'leaderboard' in automl_results and not automl_results['leaderboard'].empty:
+                        st.markdown("### 📊 Model Leaderboard")
+                        st.dataframe(automl_results['leaderboard'].head(10), use_container_width=True)
+                    
+                    # Show suggestions
+                    if 'suggestions' in automl_results and automl_results['suggestions']:
+                        with st.expander("💡 Dataset Suggestions", expanded=False):
+                            for s in automl_results['suggestions'][:5]:
+                                priority_icon = "🔴" if s['priority'] == 'high' else "🟡" if s['priority'] == 'medium' else "🟢"
+                                st.markdown(f"**{priority_icon} {s['title']}**")
+                                st.markdown(f"  {s['description']}")
+                                if s.get('module_link'):
+                                    st.markdown(f"  → Module: `{s['module_link']}`")
+                    
+                    # Store results
+                    st.session_state.automl_results = automl_results
+                    st.session_state.training_results = automl_results
+                    set_state("is_trained", True)
+                    
+                    # Show model path
+                    if 'final_model_path' in automl_results:
+                        st.info(f"📁 Model saved to: `{automl_results['final_model_path']}`")
+                    
+                    st.balloons()
+                    
+                except ImportError as e:
+                    st.error(f"❌ AutoML not available: {e}")
+                    st.info("Install FLAML: `pip install flaml[automl]`")
+                except Exception as e:
+                    st.error(f"❌ AutoML Error: {e}")
+                    import traceback
+                    with st.expander("Error details"):
+                        st.code(traceback.format_exc())
+                
+                st.session_state.is_training = False
+                st.stop()  # Stop here if AutoML was used
+            
+            # ==================== STANDARD TRAINING ====================
             # Save the DataFrame that will actually be used for training
             # This ensures metadata will reflect the correct features
             temp_dir = Path(tempfile.gettempdir())

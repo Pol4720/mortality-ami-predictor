@@ -2,12 +2,13 @@
 
 This module provides high-level functions for training ML models
 with nested cross-validation and SMOTE for class imbalance.
+Includes AutoML training pipeline integration.
 """
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Callable
+from typing import Dict, List, Optional, Tuple, Callable, Any, Union
 
 import joblib
 import numpy as np
@@ -21,6 +22,27 @@ from ..data_load import save_model_with_cleanup, save_dataset_with_timestamp, cl
 from .cross_validation import nested_cross_validation, rigorous_repeated_cv
 from .statistical_tests import compare_all_models, plot_model_comparison
 from .learning_curves import generate_learning_curve, plot_learning_curve
+
+# AutoML imports (optional)
+try:
+    from ..automl import (
+        AutoMLClassifier,
+        FLAMLClassifier,
+        AutoMLConfig,
+        AutoMLPreset,
+        is_flaml_available,
+        is_autosklearn_available,
+        export_best_model,
+        analyze_dataset,
+        get_suggestions,
+    )
+    AUTOML_AVAILABLE = is_flaml_available() or is_autosklearn_available()
+except ImportError:
+    AUTOML_AVAILABLE = False
+    AutoMLClassifier = None
+    FLAMLClassifier = None
+    AutoMLConfig = None
+    AutoMLPreset = None
 
 # Try to import imbalanced-learn for SMOTE support
 try:
@@ -665,3 +687,371 @@ def train_selected_classifiers(
         progress_callback("Training complete!", 1.0)
     
     return save_paths
+
+
+# =============================================================================
+# AUTOML TRAINING PIPELINE
+# =============================================================================
+
+def run_automl_experiment_pipeline(
+    X: pd.DataFrame,
+    y: pd.Series,
+    preset: str = "balanced",
+    metric: str = "roc_auc",
+    time_budget: Optional[int] = None,
+    test_set: Optional[Tuple[pd.DataFrame, pd.Series]] = None,
+    output_dir: Optional[str] = None,
+    estimator_list: Optional[List[str]] = None,
+    progress_callback: Optional[Callable[[str, float], None]] = None,
+    include_suggestions: bool = True,
+    compare_with_manual: bool = False,
+    manual_models: Optional[Dict[str, Tuple[object, Dict]]] = None,
+) -> Dict[str, Any]:
+    """
+    Run AutoML experiment pipeline with optional comparison to manual models.
+    
+    This pipeline automates model selection and hyperparameter tuning using
+    auto-sklearn or FLAML, with intelligent suggestions linked to other modules.
+    
+    WORKFLOW:
+    1. ANALYSIS: Analyze dataset characteristics
+    2. SUGGESTIONS: Generate technique suggestions (linked to app modules)
+    3. AUTOML: Run AutoML search (auto-sklearn or FLAML)
+    4. COMPARISON: Optionally compare with manual models
+    5. EXPORT: Save best model with metadata
+    
+    Args:
+        X: Training features DataFrame
+        y: Training labels Series
+        preset: AutoML preset ('quick', 'balanced', 'high_performance', 'overnight')
+        metric: Optimization metric ('roc_auc', 'f1', 'balanced_accuracy', etc.)
+        time_budget: Override time budget in seconds (None = use preset default)
+        test_set: Optional (X_test, y_test) tuple for final evaluation
+        output_dir: Directory to save results (default: models/automl)
+        estimator_list: Optional list of estimators to search (FLAML)
+        progress_callback: Optional callback(message, progress) for updates
+        include_suggestions: Whether to analyze dataset and provide suggestions
+        compare_with_manual: Whether to also train manual models for comparison
+        manual_models: Dictionary of {name: (model, param_dict)} for comparison
+        
+    Returns:
+        Dictionary with complete AutoML experiment results:
+        - 'automl_model': Fitted AutoML classifier
+        - 'best_estimator': Name of best estimator found
+        - 'best_score': Best validation score
+        - 'leaderboard': DataFrame with model rankings
+        - 'suggestions': List of technique suggestions (if include_suggestions)
+        - 'dataset_analysis': Dataset analysis results
+        - 'comparison': Statistical comparison with manual models (if compare_with_manual)
+        - 'final_model_path': Path to saved model
+        - 'metadata_path': Path to metadata JSON
+        
+    Raises:
+        ImportError: If neither FLAML nor auto-sklearn is available
+        ValueError: If invalid preset or metric
+        
+    Example:
+        >>> from src.training import run_automl_experiment_pipeline
+        >>> results = run_automl_experiment_pipeline(
+        ...     X_train, y_train,
+        ...     preset="balanced",
+        ...     metric="roc_auc",
+        ...     progress_callback=lambda msg, prog: print(f"{prog*100:.0f}% - {msg}")
+        ... )
+        >>> print(f"Best model: {results['best_estimator']}")
+        >>> print(f"Best AUC: {results['best_score']:.4f}")
+    """
+    if not AUTOML_AVAILABLE:
+        raise ImportError(
+            "AutoML is not available. Please install FLAML: pip install flaml[automl] "
+            "or auto-sklearn (Linux only): pip install auto-sklearn"
+        )
+    
+    results = {}
+    
+    # Setup output directory
+    if output_dir is None:
+        output_dir = os.path.join(MODELS_DIR, "automl")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Convert preset string to enum if needed
+    preset_enum = AutoMLPreset[preset.upper()] if isinstance(preset, str) else preset
+    
+    if progress_callback:
+        backend = "auto-sklearn" if is_autosklearn_available() else "FLAML"
+        progress_callback(f"🚀 Iniciando pipeline AutoML ({backend})...", 0.0)
+    
+    # =========================================================================
+    # PHASE 1: DATASET ANALYSIS
+    # =========================================================================
+    if include_suggestions:
+        if progress_callback:
+            progress_callback("📊 FASE 1: Analizando características del dataset...", 0.05)
+        
+        target_column = y.name if hasattr(y, 'name') and y.name else 'target'
+        
+        # Create combined dataframe for analysis
+        df_combined = pd.concat([X, y.rename(target_column)], axis=1)
+        
+        analysis = analyze_dataset(df_combined, target_column=target_column)
+        results['dataset_analysis'] = {
+            'n_samples': analysis.n_samples,
+            'n_features': analysis.n_features,
+            'imbalance_ratio': analysis.imbalance_ratio,
+            'is_imbalanced': analysis.is_imbalanced,
+            'missing_percentage': analysis.missing_percentage,
+            'high_cardinality_features': analysis.high_cardinality_features,
+            'highly_correlated_pairs': len(analysis.highly_correlated_pairs),
+            'skewed_features': len(analysis.skewed_features),
+        }
+        
+        if progress_callback:
+            msg = (f"   • Muestras: {analysis.n_samples}, Features: {analysis.n_features}\n"
+                   f"   • Desbalanceado: {'Sí' if analysis.is_imbalanced else 'No'} "
+                   f"(ratio: {analysis.imbalance_ratio:.2f})\n"
+                   f"   • Datos faltantes: {analysis.missing_percentage:.1f}%")
+            progress_callback(msg, 0.1)
+        
+        # Get suggestions
+        if progress_callback:
+            progress_callback("💡 Generando sugerencias de técnicas...", 0.12)
+        
+        suggestions = get_suggestions(df_combined, target_column=target_column)
+        results['suggestions'] = [
+            {
+                'title': s.title,
+                'description': s.description,
+                'reason': s.reason,
+                'module_link': s.module_link,
+                'priority': s.priority.value if hasattr(s.priority, 'value') else str(s.priority),
+            }
+            for s in suggestions
+        ]
+        
+        if progress_callback:
+            n_high = sum(1 for s in suggestions if s.priority.value == 'high')
+            progress_callback(f"   • {len(suggestions)} sugerencias generadas ({n_high} alta prioridad)", 0.15)
+    
+    # =========================================================================
+    # PHASE 2: AUTOML TRAINING
+    # =========================================================================
+    if progress_callback:
+        progress_callback("🤖 FASE 2: Ejecutando búsqueda AutoML...", 0.2)
+    
+    # Determine time budget
+    preset_times = {
+        AutoMLPreset.QUICK: 300,
+        AutoMLPreset.BALANCED: 3600,
+        AutoMLPreset.HIGH_PERFORMANCE: 14400,
+        AutoMLPreset.OVERNIGHT: 28800,
+    }
+    actual_time_budget = time_budget or preset_times.get(preset_enum, 3600)
+    
+    # Create AutoML model
+    if is_flaml_available():
+        # Use FLAML (cross-platform)
+        clf = FLAMLClassifier(
+            time_budget=actual_time_budget,
+            metric=metric,
+            estimator_list=estimator_list,
+            ensemble=True,
+            name=f"AutoML_{preset}"
+        )
+        backend_used = "FLAML"
+    else:
+        # Use auto-sklearn (Linux only)
+        config = AutoMLConfig.from_preset(preset_enum)
+        config.metric = metric
+        if time_budget:
+            config.time_left_for_this_task = time_budget
+        
+        clf = AutoMLClassifier(
+            config=config,
+            name=f"AutoML_{preset}"
+        )
+        backend_used = "auto-sklearn"
+    
+    results['backend'] = backend_used
+    results['time_budget'] = actual_time_budget
+    
+    # Training progress callback wrapper
+    def automl_progress(msg: str, prog: float):
+        if progress_callback:
+            # Scale progress to 0.2-0.7 range (AutoML phase)
+            scaled_prog = 0.2 + prog * 0.5
+            progress_callback(msg, scaled_prog)
+    
+    # Fit AutoML
+    import time
+    start_time = time.time()
+    
+    if hasattr(clf, 'progress_callback'):
+        clf.progress_callback = automl_progress
+    
+    clf.fit(X, y)
+    
+    training_duration = time.time() - start_time
+    results['training_duration'] = training_duration
+    results['automl_model'] = clf
+    
+    # Extract results
+    if hasattr(clf, 'best_estimator_'):
+        results['best_estimator'] = str(clf.best_estimator_)
+    elif hasattr(clf, 'automl') and hasattr(clf.automl, 'best_estimator_'):
+        results['best_estimator'] = str(clf.automl.best_estimator_)
+    else:
+        results['best_estimator'] = "Unknown"
+    
+    if hasattr(clf, 'best_loss_'):
+        results['best_score'] = -clf.best_loss_  # FLAML returns negative loss
+    elif hasattr(clf, 'automl') and hasattr(clf.automl, 'leaderboard'):
+        try:
+            lb = clf.automl.leaderboard()
+            results['best_score'] = lb.iloc[0]['score'] if len(lb) > 0 else 0.0
+        except Exception:
+            results['best_score'] = 0.0
+    else:
+        results['best_score'] = 0.0
+    
+    if progress_callback:
+        progress_callback(
+            f"✅ AutoML completado en {training_duration/60:.1f} min\n"
+            f"   • Mejor modelo: {results['best_estimator']}\n"
+            f"   • Mejor {metric}: {results['best_score']:.4f}",
+            0.7
+        )
+    
+    # Get leaderboard
+    try:
+        if hasattr(clf, 'get_leaderboard'):
+            leaderboard = clf.get_leaderboard()
+        elif hasattr(clf, 'automl') and hasattr(clf.automl, 'leaderboard'):
+            leaderboard = clf.automl.leaderboard()
+        else:
+            leaderboard = pd.DataFrame({
+                'model': [results['best_estimator']],
+                'score': [results['best_score']]
+            })
+        results['leaderboard'] = leaderboard
+    except Exception as e:
+        results['leaderboard'] = pd.DataFrame()
+        if progress_callback:
+            progress_callback(f"⚠️ No se pudo obtener leaderboard: {e}", 0.71)
+    
+    # =========================================================================
+    # PHASE 3: COMPARISON WITH MANUAL MODELS (Optional)
+    # =========================================================================
+    if compare_with_manual and manual_models:
+        if progress_callback:
+            progress_callback("📊 FASE 3: Comparando con modelos manuales...", 0.75)
+        
+        # Run CV on manual models
+        cv_results = rigorous_repeated_cv(
+            X, y, manual_models,
+            n_splits=5,
+            n_repeats=2,  # Reduced for comparison
+            scoring=metric,
+        )
+        
+        # Add AutoML to comparison
+        automl_scores = []
+        from sklearn.model_selection import cross_val_score
+        try:
+            # Use cross-validation to get comparable scores
+            automl_cv_scores = cross_val_score(
+                clf, X, y, cv=5, scoring=metric, n_jobs=-1
+            )
+            automl_scores = automl_cv_scores.tolist()
+        except Exception:
+            # Use single best score repeated
+            automl_scores = [results['best_score']] * 10
+        
+        cv_results['AutoML'] = {
+            'mean_score': np.mean(automl_scores),
+            'std_score': np.std(automl_scores),
+            'all_scores': automl_scores,
+            'n_runs': len(automl_scores),
+        }
+        
+        # Statistical comparison
+        model_scores = {name: res['all_scores'] for name, res in cv_results.items()}
+        stat_results = compare_all_models(model_scores)
+        
+        results['comparison'] = {
+            'cv_results': cv_results,
+            'statistical_tests': {
+                f"{m1}_vs_{m2}": {
+                    'test_used': sr.test_used,
+                    'p_value': sr.p_value,
+                    'significant': sr.significant,
+                    'effect_size': sr.effect_size,
+                }
+                for (m1, m2), sr in stat_results.items()
+            }
+        }
+        
+        if progress_callback:
+            automl_rank = sorted(
+                cv_results.items(),
+                key=lambda x: x[1]['mean_score'],
+                reverse=True
+            )
+            rank_pos = [name for name, _ in automl_rank].index('AutoML') + 1
+            progress_callback(
+                f"   • AutoML ranking: #{rank_pos} de {len(cv_results)} modelos\n"
+                f"   • AutoML μ={cv_results['AutoML']['mean_score']:.4f}",
+                0.85
+            )
+    
+    # =========================================================================
+    # PHASE 4: EXPORT AND SAVE
+    # =========================================================================
+    if progress_callback:
+        progress_callback("💾 FASE 4: Exportando modelo y metadatos...", 0.9)
+    
+    # Create timestamp
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    results['training_timestamp'] = timestamp
+    
+    # Export the model
+    model_path = export_best_model(
+        automl_model=clf,
+        output_dir=output_dir,
+        model_name=f"automl_{preset}_{timestamp}",
+        include_metadata=True,
+        training_data=pd.concat([X, y], axis=1),
+        target_column=y.name if hasattr(y, 'name') else 'target',
+    )
+    
+    results['final_model_path'] = str(model_path)
+    results['metadata_path'] = str(model_path).replace('.joblib', '_metadata.json')
+    
+    # Save test set if provided
+    if test_set is not None:
+        X_test, y_test = test_set
+        testsets_dir = Path(output_dir) / "testsets"
+        testsets_dir.mkdir(exist_ok=True)
+        
+        test_df = pd.concat([X_test, y_test], axis=1)
+        test_path = testsets_dir / f"testset_automl_{timestamp}.parquet"
+        test_df.to_parquet(test_path)
+        results['test_set_path'] = str(test_path)
+        
+        if progress_callback:
+            progress_callback(f"   • Test set guardado: {test_path}", 0.95)
+    
+    if progress_callback:
+        progress_callback(
+            f"✅ Pipeline AutoML completado exitosamente!\n"
+            f"   • Modelo guardado: {model_path}\n"
+            f"   • Duración total: {training_duration/60:.1f} min",
+            1.0
+        )
+    
+    return results
+
+
+def is_automl_available() -> bool:
+    """Check if AutoML functionality is available."""
+    return AUTOML_AVAILABLE
