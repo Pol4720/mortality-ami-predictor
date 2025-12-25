@@ -31,6 +31,7 @@
 \usepackage{tabularx}
 \usepackage{soul}
 \usepackage{microtype}
+\usepackage{subcaption}
 
 % ============================================================================
 % COLORES MODERNOS
@@ -295,6 +296,68 @@
             \end{minipage}
         };
     \end{tikzpicture}
+\end{titlepage}
+
+% ============================================================================
+% PÁGINA DE INFORMACIÓN DEL PROYECTO
+% ============================================================================
+\begin{titlepage}
+    \centering
+    
+    % Logos institucionales
+    \vspace*{1cm}
+    \begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.25\textwidth}
+        \centering
+        \includegraphics[width=0.8\textwidth]{logos/logo_uh.png}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.25\textwidth}
+        \centering
+        \includegraphics[width=0.8\textwidth]{logos/logo_matcom.jpeg}
+    \end{subfigure}
+    \end{figure}
+    
+    \vspace{1cm}
+        
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.25\textwidth]{logos/logo_ami_predictor.png}
+    \end{figure}
+    
+    {\large\textbf{Versión 1.0}\\[0.5cm]}
+
+    \vfill
+    
+    {\large
+    \textbf{Integrantes del Equipo:}\\[0.3cm]
+    }
+    {\normalsize
+    \begin{itemize}[leftmargin=*]
+        \item Richard Alejandro Matos Arderí
+        \item Abel Ponce González
+        \item Abraham Romero Imbert
+        \item Michell Viu Ramirez
+        \item Eveliz Espinaco Milián
+        \item Eduardo Brito Labrada
+        \item Ernesto Abreu Peraza
+    \end{itemize}
+    }
+
+    
+    \vfill
+
+    {\large
+    \textbf{Institución:}\\[0.3cm]
+    Facultad de Matemática y Computación\\
+    Universidad de La Habana\\[0.5cm]
+    Registro Cubano de Infarto Agudo del Miocardio
+    }
+    
+    \vfill
+    
+    {\large \today}
 \end{titlepage}
 
 % ============================================================================
@@ -1195,7 +1258,8 @@ Memoria insuficiente & Reducir tamaño del dataset o usar submuestreo \\
 \begin{tabular}{cl}
 \textcolor{primaryblue}{\faGithub} & \url{https://github.com/Pol4720/mortality-ami-predictor} \\[0.5em]
 \textcolor{primaryblue}{\faBook} & Documentación técnica en \texttt{Tools/docs/} \\[0.5em]
-\textcolor{primaryblue}{\faBug} & Reportar issues en GitHub \\
+\textcolor{primaryblue}{\faBug} & Reportar issues en GitHub \\[0.5em]
+\textcolor{primaryblue}{\faPhone} & +53 58258556 \\
 \end{tabular}
 
 \vspace{1em}

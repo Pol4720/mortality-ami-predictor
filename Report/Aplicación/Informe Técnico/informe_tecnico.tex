@@ -93,16 +93,63 @@
 % ============================================================================
 \begin{titlepage}
     \centering
-    \vspace*{2cm}
+    
+    % Logos institucionales
+    \vspace*{1cm}
+    \begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.25\textwidth}
+        \centering
+        \includegraphics[width=0.8\textwidth]{logos/logo_uh.png}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.25\textwidth}
+        \centering
+        \includegraphics[width=0.8\textwidth]{logos/logo_matcom.jpeg}
+    \end{subfigure}
+    \end{figure}
+    
+    \vspace{1cm}
     
     {\Huge\bfseries\color{primaryblue} Informe Técnico\\[0.5cm]}
     {\LARGE\bfseries Mortality AMI Predictor\\[0.3cm]}
     {\Large Sistema de Predicción de Mortalidad Intrahospitalaria\\
     en Pacientes con Infarto Agudo de Miocardio\\[2cm]}
+
     
-    {\large\textbf{Versión 2.0}\\[0.5cm]}
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.25\textwidth]{logos/logo_ami_predictor.png}
+    \end{figure}
+    
+    {\large\textbf{Versión 1.0}\\[0.5cm]}
+
+    \vfill
+    
+    {\large
+    \textbf{Integrantes del Equipo:}\\[0.3cm]
+    }
+    {\normalsize
+    \begin{itemize}[leftmargin=*]
+        \item Richard Alejandro Matos Arderí
+        \item Abel Ponce González
+        \item Abraham Romero Imbert
+        \item Michell Viu Ramirez
+        \item Eveliz Espinaco Milián
+        \item Eduardo Brito Labrada
+        \item Ernesto Abreu Peraza
+    \end{itemize}
+    }
+
     
     \vfill
+
+    {\large
+    \textbf{Institución:}\\[0.3cm]
+    Facultad de Matemática y Computación\\
+    Universidad de La Habana\\[0.5cm]
+    Registro Cubano de Infarto Agudo del Miocardio
+    }
     
     {\large
     \textbf{Tecnologías:} Python $\cdot$ Streamlit $\cdot$ Scikit-learn $\cdot$ XGBoost $\cdot$ SHAP\\[0.3cm]
@@ -142,7 +189,7 @@
     \item \textbf{Despliegue containerizado} con Docker y Docker Compose.
 \end{itemize}
 
-\subsection{Métricas de Calidad del Software}
+\subsection{Métricas de Calidad del Código Fuente}
 
 \begin{table}[H]
 \centering
@@ -150,7 +197,6 @@
 \toprule
 \textbf{Métrica} & \textbf{Valor} \\
 \midrule
-Líneas de código Python & $\approx$ 15,000 \\
 Número de módulos & 10 \\
 Archivos Python especializados & 38+ \\
 Tests automatizados & 120+ \\
