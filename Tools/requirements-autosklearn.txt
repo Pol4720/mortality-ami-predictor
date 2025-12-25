@@ -1,0 +1,52 @@
+# Requirements for auto-sklearn environment
+# ------------------------------------------
+# Este archivo está pensado para crear un entorno separado compatible con auto-sklearn.
+#
+# IMPORTANTE: auto-sklearn requiere:
+#   - Linux (no funciona en Windows nativo, usar WSL o Docker)
+#   - Python 3.8 o 3.9 (no compatible con Python >= 3.10)
+#   - scikit-learn < 0.25
+#
+# Instalación recomendada con Conda (más fiable):
+#   conda create -n autosklearn-env python=3.9 -c conda-forge auto-sklearn flaml autogoal
+#   conda activate autosklearn-env
+#   pip install -r requirements-autosklearn.txt
+#
+# Instalación con pip (requiere dependencias del sistema):
+#   sudo apt install -y build-essential swig libopenblas-dev python3.9-dev
+#   python3.9 -m pip install -r requirements-autosklearn.txt
+
+# Core ML (versiones compatibles con auto-sklearn)
+numpy<1.24
+pandas<2.0
+scikit-learn==0.24.2
+scipy<1.10
+
+# AutoML
+auto-sklearn
+flaml[automl]
+autogoal
+
+# Visualización y utilidades
+matplotlib
+seaborn
+plotly
+shap<0.43
+joblib
+
+# Reporting
+reportlab
+kaleido
+
+# Configuración
+python-decouple
+pyyaml
+jinja2
+
+# Testing
+pytest
+pytest-cov
+
+# I/O
+openpyxl
+xlrd
