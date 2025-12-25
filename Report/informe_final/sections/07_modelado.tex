@@ -1,0 +1,390 @@
+% ============================================================================
+% SECCIÓN 07: MODELADO PREDICTIVO
+% ============================================================================
+
+\section{Modelado Predictivo}
+\label{sec:modelado}
+
+Esta sección describe el proceso de desarrollo, entrenamiento y optimización de los modelos de aprendizaje automático para la predicción de mortalidad intrahospitalaria.
+
+\subsection{Estrategia General de Modelado}
+
+\begin{enumerate}
+    \item Entrenamiento de modelos baseline (regresión logística).
+    \item Evaluación de múltiples algoritmos de ML.
+    \item Optimización de hiperparámetros mediante búsqueda sistemática.
+    \item Selección del mejor modelo según métricas predefinidas.
+    \item Calibración de probabilidades.
+    \item Validación final en conjunto de test.
+\end{enumerate}
+
+\subsection{Modelos Baseline}
+
+\subsubsection{Regresión Logística}
+
+Como modelo baseline, se entrenó una regresión logística con regularización:
+
+\begin{table}[H]
+\centering
+\caption{Configuración del modelo de regresión logística}
+\label{tab:config_lr}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Parámetro} & \textbf{Valor} \\
+\midrule
+Regularización & \placeholder{L2 (Ridge) / L1 (Lasso) / ElasticNet} \\
+Parámetro C & \placeholder{Valor optimizado} \\
+Solver & \placeholder{lbfgs / saga / liblinear} \\
+Class weight & \placeholder{balanced / None} \\
+Max iter & \placeholder{1000} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Escala GRACE como Comparador}
+
+\begin{placeholderblock}
+\textbf{[SI SE CALCULÓ SCORE GRACE]}
+
+Describir:
+\begin{itemize}
+    \item Variables utilizadas para calcular score GRACE
+    \item Rendimiento predictivo del score GRACE en la cohorte
+    \item Comparación como benchmark para modelos ML
+\end{itemize}
+\end{placeholderblock}
+
+\subsection{Algoritmos de Aprendizaje Automático Evaluados}
+
+\subsubsection{Random Forest}
+
+\begin{table}[H]
+\centering
+\caption{Espacio de búsqueda de hiperparámetros -- Random Forest}
+\label{tab:hp_rf}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Hiperparámetro} & \textbf{Rango explorado} & \textbf{Valor óptimo} \\
+\midrule
+n\_estimators & \placeholder{[100, 200, 500, 1000]} & \placeholder{XXX} \\
+max\_depth & \placeholder{[None, 5, 10, 15, 20]} & \placeholder{XX} \\
+min\_samples\_split & \placeholder{[2, 5, 10, 20]} & \placeholder{XX} \\
+min\_samples\_leaf & \placeholder{[1, 2, 4, 8]} & \placeholder{XX} \\
+max\_features & \placeholder{[sqrt, log2, 0.3, 0.5]} & \placeholder{XXXX} \\
+class\_weight & \placeholder{[balanced, balanced\_subsample]} & \placeholder{XXXX} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{XGBoost}
+
+\begin{table}[H]
+\centering
+\caption{Espacio de búsqueda de hiperparámetros -- XGBoost}
+\label{tab:hp_xgb}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Hiperparámetro} & \textbf{Rango explorado} & \textbf{Valor óptimo} \\
+\midrule
+n\_estimators & \placeholder{[100, 200, 500, 1000]} & \placeholder{XXX} \\
+max\_depth & \placeholder{[3, 4, 5, 6, 7, 8]} & \placeholder{XX} \\
+learning\_rate & \placeholder{[0.01, 0.05, 0.1, 0.2]} & \placeholder{X.XX} \\
+subsample & \placeholder{[0.6, 0.7, 0.8, 0.9, 1.0]} & \placeholder{X.X} \\
+colsample\_bytree & \placeholder{[0.6, 0.7, 0.8, 0.9, 1.0]} & \placeholder{X.X} \\
+min\_child\_weight & \placeholder{[1, 3, 5, 7]} & \placeholder{XX} \\
+gamma & \placeholder{[0, 0.1, 0.2, 0.3]} & \placeholder{X.X} \\
+reg\_alpha (L1) & \placeholder{[0, 0.01, 0.1, 1]} & \placeholder{X.XX} \\
+reg\_lambda (L2) & \placeholder{[0, 0.01, 0.1, 1]} & \placeholder{X.XX} \\
+scale\_pos\_weight & \placeholder{[1, ratio\_clases]} & \placeholder{X.X} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{LightGBM}
+
+\begin{table}[H]
+\centering
+\caption{Espacio de búsqueda de hiperparámetros -- LightGBM}
+\label{tab:hp_lgbm}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Hiperparámetro} & \textbf{Rango explorado} & \textbf{Valor óptimo} \\
+\midrule
+n\_estimators & \placeholder{[100, 200, 500, 1000]} & \placeholder{XXX} \\
+max\_depth & \placeholder{[-1, 5, 10, 15, 20]} & \placeholder{XX} \\
+learning\_rate & \placeholder{[0.01, 0.05, 0.1, 0.2]} & \placeholder{X.XX} \\
+num\_leaves & \placeholder{[31, 50, 100, 150]} & \placeholder{XXX} \\
+min\_child\_samples & \placeholder{[20, 50, 100]} & \placeholder{XX} \\
+subsample & \placeholder{[0.6, 0.8, 1.0]} & \placeholder{X.X} \\
+colsample\_bytree & \placeholder{[0.6, 0.8, 1.0]} & \placeholder{X.X} \\
+reg\_alpha & \placeholder{[0, 0.01, 0.1]} & \placeholder{X.XX} \\
+reg\_lambda & \placeholder{[0, 0.01, 0.1]} & \placeholder{X.XX} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Redes Neuronales}
+
+\begin{table}[H]
+\centering
+\caption{Arquitectura y configuración -- Red Neuronal}
+\label{tab:config_nn}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Componente} & \textbf{Configuración} \\
+\midrule
+Arquitectura & \placeholder{MLP / TabNet} \\
+Capas ocultas & \placeholder{[128, 64, 32] / [256, 128, 64]} \\
+Función de activación & \placeholder{ReLU / GELU / SiLU} \\
+Dropout & \placeholder{0.2 / 0.3 / 0.5} \\
+Batch normalization & \placeholder{Sí / No} \\
+Optimizador & \placeholder{Adam / AdamW} \\
+Learning rate & \placeholder{0.001 / schedule} \\
+Batch size & \placeholder{32 / 64 / 128} \\
+Épocas máximas & \placeholder{100 / 200} \\
+Early stopping & \placeholder{patience = 10/20} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{AutoML (si aplica)}
+
+\begin{placeholderblock}
+\textbf{[COMPLETAR SI SE USÓ AUTOML]}
+
+Describir:
+\begin{itemize}
+    \item Framework utilizado (AutoKeras, Auto-sklearn, H2O AutoML)
+    \item Tiempo de búsqueda permitido
+    \item Mejor arquitectura/pipeline encontrado
+    \item Comparación con modelos manuales
+\end{itemize}
+\end{placeholderblock}
+
+\subsection{Proceso de Optimización}
+
+\subsubsection{Método de Búsqueda}
+
+\begin{table}[H]
+\centering
+\caption{Configuración de la búsqueda de hiperparámetros}
+\label{tab:config_busqueda}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Aspecto} & \textbf{Configuración} \\
+\midrule
+Método & \placeholder{RandomizedSearchCV / GridSearchCV / Optuna / Hyperopt} \\
+N iteraciones (si random) & \placeholder{100 / 200} \\
+Validación cruzada & \placeholder{5-fold / 10-fold} estratificada \\
+Métrica de optimización & \placeholder{roc\_auc / average\_precision / f1} \\
+Scoring adicional & \placeholder{[recall, precision, brier\_score]} \\
+n\_jobs & \placeholder{-1 (todos los cores)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Curvas de Aprendizaje}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR CURVAS DE APRENDIZAJE]}
+
+Panel mostrando para los principales modelos:
+\begin{itemize}
+    \item Eje X: Tamaño del conjunto de entrenamiento
+    \item Eje Y: Score de validación cruzada
+    \item Línea de training score
+    \item Línea de validation score
+    \item Bandas de intervalo de confianza
+\end{itemize}
+
+Útil para diagnosticar overfitting/underfitting.
+\end{placeholderblock}
+\caption{Curvas de aprendizaje de los modelos principales}
+\label{fig:curvas_aprendizaje}
+\end{figure}
+
+\subsubsection{Curvas de Validación}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR CURVAS DE VALIDACIÓN]}
+
+Mostrar cómo varía el rendimiento al modificar hiperparámetros clave:
+\begin{itemize}
+    \item XGBoost: learning\_rate, max\_depth
+    \item RF: n\_estimators, max\_depth
+    \item NN: número de neuronas, dropout
+\end{itemize}
+\end{placeholderblock}
+\caption{Curvas de validación para hiperparámetros clave}
+\label{fig:curvas_validacion}
+\end{figure}
+
+\subsection{Manejo del Desbalance de Clases}
+
+\subsubsection{Técnicas Evaluadas}
+
+\begin{table}[H]
+\centering
+\caption{Comparación de técnicas de manejo de desbalance}
+\label{tab:comparacion_desbalance}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Técnica} & \textbf{AUROC (CV)} & \textbf{AUPRC (CV)} & \textbf{F1 (CV)} \\
+\midrule
+Sin balanceo & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
+Class weights & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
+SMOTE & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
+ADASYN & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
+Random undersampling & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
+SMOTE + Tomek links & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Técnica Seleccionada}
+
+\begin{keypoint}
+Se seleccionó \placeholder{técnica} basándose en:
+\begin{itemize}
+    \item Mayor \placeholder{AUPRC / F1 / sensibilidad}
+    \item Mejor calibración de probabilidades
+    \item Estabilidad en validación cruzada
+\end{itemize}
+\end{keypoint}
+
+\subsection{Comparación de Modelos en Validación}
+
+\begin{table}[H]
+\centering
+\caption{Rendimiento de modelos en validación cruzada}
+\label{tab:comparacion_modelos_cv}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Modelo} & \textbf{AUROC} & \textbf{AUPRC} & \textbf{F1} & \textbf{Brier Score} \\
+ & (media ± DE) & (media ± DE) & (media ± DE) & (media ± DE) \\
+\midrule
+Reg. Logística & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} \\
+Random Forest & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} \\
+XGBoost & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} \\
+LightGBM & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} \\
+Red Neuronal & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} \\
+\placeholder{AutoML} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} \\
+\midrule
+\textit{GRACE score} & \placeholder{0.XX} & \placeholder{0.XX} & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR BOXPLOT COMPARATIVO]}
+
+Boxplot mostrando distribución de AUROC en las K folds para cada modelo, permitiendo visualizar variabilidad.
+\end{placeholderblock}
+\caption{Distribución de AUROC en validación cruzada por modelo}
+\label{fig:boxplot_auroc_cv}
+\end{figure}
+
+\subsection{Selección del Modelo Final}
+
+\subsubsection{Criterios de Selección}
+
+El modelo final se seleccionó basándose en:
+
+\begin{enumerate}
+    \item \textbf{Discriminación}: Mayor AUROC y AUPRC.
+    \item \textbf{Calibración}: Menor Brier Score, buena calibración visual.
+    \item \textbf{Estabilidad}: Menor varianza entre folds de CV.
+    \item \textbf{Interpretabilidad}: Posibilidad de explicación con SHAP.
+    \item \textbf{Parsimonia}: Preferencia por modelos más simples a igual rendimiento.
+\end{enumerate}
+
+\subsubsection{Modelo Seleccionado}
+
+\begin{keypoint}
+\textbf{Modelo final seleccionado:} \placeholder{XGBoost / Random Forest / LightGBM / Ensemble}
+
+\textbf{Justificación:}
+\begin{itemize}
+    \item AUROC en CV: \placeholder{0.XX ± 0.XX}
+    \item AUPRC en CV: \placeholder{0.XX ± 0.XX}
+    \item Mejor \placeholder{calibración / estabilidad / interpretabilidad}
+    \item Supera a GRACE score en \placeholder{XX puntos porcentuales}
+\end{itemize}
+\end{keypoint}
+
+\subsection{Calibración del Modelo}
+
+\subsubsection{Método de Calibración}
+
+\begin{table}[H]
+\centering
+\caption{Métodos de calibración evaluados}
+\label{tab:calibracion_metodos}
+\begin{tabular}{@{}llc@{}}
+\toprule
+\textbf{Método} & \textbf{Descripción} & \textbf{Brier Score} \\
+\midrule
+Sin calibración & Probabilidades raw del modelo & \placeholder{0.XXX} \\
+Platt Scaling & Regresión logística sobre outputs & \placeholder{0.XXX} \\
+Isotonic Regression & Regresión isotónica & \placeholder{0.XXX} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Curva de Calibración}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR CURVA DE CALIBRACIÓN]}
+
+Gráfico mostrando:
+\begin{itemize}
+    \item Eje X: Probabilidad predicha (por deciles)
+    \item Eje Y: Frecuencia observada de eventos
+    \item Línea diagonal (calibración perfecta)
+    \item Curva del modelo antes y después de calibración
+    \item Histograma de probabilidades predichas en parte inferior
+\end{itemize}
+\end{placeholderblock}
+\caption{Curva de calibración del modelo final}
+\label{fig:curva_calibracion}
+\end{figure}
+
+\subsection{Modelo de Ensamble (si aplica)}
+
+\begin{placeholderblock}
+\textbf{[COMPLETAR SI SE CREÓ UN ENSEMBLE]}
+
+Describir:
+\begin{itemize}
+    \item Tipo de ensemble: Voting / Stacking / Blending
+    \item Modelos base incluidos
+    \item Pesos de cada modelo (si voting ponderado)
+    \item Meta-learner (si stacking)
+    \item Mejora respecto a modelos individuales
+\end{itemize}
+\end{placeholderblock}
+
+\subsection{Almacenamiento y Versionado de Modelos}
+
+\begin{table}[H]
+\centering
+\caption{Modelos almacenados}
+\label{tab:modelos_almacenados}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Modelo} & \textbf{Archivo} & \textbf{Formato} & \textbf{MLflow Run ID} \\
+\midrule
+\placeholder{Mejor modelo} & \placeholder{best\_model.joblib} & joblib & \placeholder{XXXXXXXX} \\
+\placeholder{Modelo calibrado} & \placeholder{calibrated\_model.joblib} & joblib & \placeholder{XXXXXXXX} \\
+\placeholder{Preprocesador} & \placeholder{preprocessor.joblib} & joblib & \placeholder{XXXXXXXX} \\
+\bottomrule
+\end{tabular}
+\end{table}

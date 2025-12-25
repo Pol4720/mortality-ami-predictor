@@ -1,0 +1,335 @@
+% ============================================================================
+% SECCIÓN 09: EXPLICABILIDAD E INTERPRETABILIDAD
+% ============================================================================
+
+\section{Explicabilidad del Modelo}
+\label{sec:explicabilidad}
+
+La interpretabilidad del modelo es fundamental para su adopción clínica. Esta sección presenta los análisis de explicabilidad realizados mediante técnicas de \textit{Explainable AI} (XAI), principalmente valores \gls{shap}.
+
+\subsection{Importancia Global de Variables}
+
+\subsubsection{Feature Importance Nativa}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR GRÁFICO DE FEATURE IMPORTANCE]}
+
+Gráfico de barras horizontales mostrando las top 20 variables más importantes según:
+\begin{itemize}
+    \item Gain (para XGBoost/LightGBM)
+    \item Impurity importance (para Random Forest)
+\end{itemize}
+
+Ordenado de mayor a menor importancia.
+\end{placeholderblock}
+\caption{Importancia de características según el modelo (gain/impurity)}
+\label{fig:feature_importance_nativa}
+\end{figure}
+
+\subsubsection{SHAP Summary Plot}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR SHAP SUMMARY PLOT]}
+
+SHAP summary plot (beeswarm) mostrando:
+\begin{itemize}
+    \item Top 20 variables en eje Y (ordenadas por importancia SHAP)
+    \item Valores SHAP en eje X
+    \item Color: valor de la variable (azul = bajo, rojo = alto)
+    \item Cada punto = un paciente
+\end{itemize}
+
+\textit{Este gráfico muestra tanto la importancia como la dirección del efecto.}
+\end{placeholderblock}
+\caption{SHAP Summary Plot -- Impacto global de variables}
+\label{fig:shap_summary}
+\end{figure}
+
+\begin{keypoint}
+\textbf{Variables más influyentes según SHAP (top 10):}
+\begin{enumerate}
+    \item \placeholder{Variable\_1}: \placeholder{Interpretación clínica}
+    \item \placeholder{Variable\_2}: \placeholder{Interpretación clínica}
+    \item \placeholder{Variable\_3}: \placeholder{Interpretación clínica}
+    \item \placeholder{Variable\_4}: \placeholder{Interpretación clínica}
+    \item \placeholder{Variable\_5}: \placeholder{Interpretación clínica}
+    \item \placeholder{Variable\_6}: \placeholder{Interpretación clínica}
+    \item \placeholder{Variable\_7}: \placeholder{Interpretación clínica}
+    \item \placeholder{Variable\_8}: \placeholder{Interpretación clínica}
+    \item \placeholder{Variable\_9}: \placeholder{Interpretación clínica}
+    \item \placeholder{Variable\_10}: \placeholder{Interpretación clínica}
+\end{enumerate}
+\end{keypoint}
+
+\subsubsection{SHAP Bar Plot}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR SHAP BAR PLOT]}
+
+Gráfico de barras mostrando el valor SHAP medio absoluto para las top 15-20 variables.
+\end{placeholderblock}
+\caption{Importancia media de variables según valores SHAP}
+\label{fig:shap_bar}
+\end{figure}
+
+\subsection{Efectos Parciales de Variables Individuales}
+
+\subsubsection{SHAP Dependence Plots}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR GRID DE SHAP DEPENDENCE PLOTS]}
+
+Panel de 6-9 gráficos (2x3 o 3x3) para las variables más importantes:
+\begin{itemize}
+    \item Eje X: Valor de la variable
+    \item Eje Y: Valor SHAP
+    \item Color: Variable de interacción más relevante
+\end{itemize}
+
+Variables sugeridas:
+\begin{enumerate}
+    \item Edad
+    \item Presión arterial sistólica
+    \item Frecuencia cardíaca
+    \item Creatinina / TFG
+    \item Troponina
+    \item Killip class
+    \item FEVI
+    \item Glucemia
+\end{enumerate}
+\end{placeholderblock}
+\caption{SHAP Dependence Plots para variables clave}
+\label{fig:shap_dependence}
+\end{figure}
+
+\subsubsection{Interpretación de Efectos}
+
+\paragraph{Edad}
+\begin{placeholderblock}
+Describir:
+\begin{itemize}
+    \item Forma de la relación (lineal, no lineal, umbral)
+    \item Punto de inflexión si existe
+    \item Consistencia con literatura clínica
+\end{itemize}
+
+\textit{Ejemplo: ``La edad muestra un efecto no lineal con aumento del riesgo más pronunciado a partir de los 75 años, consistente con la literatura sobre fragilidad en pacientes con IAM.''}
+\end{placeholderblock}
+
+\paragraph{Presión Arterial Sistólica}
+\begin{placeholderblock}
+Describir la relación PAS-riesgo, incluyendo el efecto de hipotensión y posible efecto en J.
+\end{placeholderblock}
+
+\paragraph{Función Renal (Creatinina/TFG)}
+\begin{placeholderblock}
+Describir el impacto de la función renal en el riesgo predicho.
+\end{placeholderblock}
+
+\paragraph{Clasificación Killip}
+\begin{placeholderblock}
+Describir el gradiente de riesgo según clasificación Killip.
+\end{placeholderblock}
+
+\subsection{Interacciones entre Variables}
+
+\subsubsection{SHAP Interaction Values}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR HEATMAP DE INTERACCIONES SHAP]}
+
+Mapa de calor mostrando la magnitud de las interacciones entre las top 10-15 variables.
+\end{placeholderblock}
+\caption{Matriz de interacciones SHAP}
+\label{fig:shap_interactions}
+\end{figure}
+
+\subsubsection{Interacciones Clínicamente Relevantes}
+
+\begin{placeholderblock}
+Describir las interacciones más importantes:
+\begin{itemize}
+    \item \textbf{Edad $\times$ Killip}: \placeholder{Descripción del efecto sinérgico}
+    \item \textbf{Diabetes $\times$ TFG}: \placeholder{Descripción}
+    \item \textbf{PAS $\times$ FC}: \placeholder{Descripción (ej. shock index)}
+\end{itemize}
+\end{placeholderblock}
+
+\subsection{Explicaciones Locales (Individuales)}
+
+\subsubsection{SHAP Force Plots}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR SHAP FORCE PLOT -- CASO ALTO RIESGO]}
+
+Force plot para un paciente con alta probabilidad de mortalidad mostrando:
+\begin{itemize}
+    \item Valor base (probabilidad media)
+    \item Factores que aumentan el riesgo (rojo)
+    \item Factores que disminuyen el riesgo (azul)
+    \item Probabilidad final predicha
+\end{itemize}
+\end{placeholderblock}
+\caption{SHAP Force Plot -- Paciente de alto riesgo}
+\label{fig:shap_force_alto}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR SHAP FORCE PLOT -- CASO BAJO RIESGO]}
+
+Force plot para un paciente con baja probabilidad de mortalidad.
+\end{placeholderblock}
+\caption{SHAP Force Plot -- Paciente de bajo riesgo}
+\label{fig:shap_force_bajo}
+\end{figure}
+
+\subsubsection{SHAP Waterfall Plots}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR SHAP WATERFALL PLOTS]}
+
+Panel con 2-3 waterfall plots para casos representativos:
+\begin{itemize}
+    \item Caso de alto riesgo correctamente clasificado (VP)
+    \item Caso de bajo riesgo correctamente clasificado (VN)
+    \item Caso de error (FN o FP) -- análisis de por qué falló
+\end{itemize}
+\end{placeholderblock}
+\caption{SHAP Waterfall Plots -- Casos representativos}
+\label{fig:shap_waterfall}
+\end{figure}
+
+\subsubsection{Ejemplos de Explicaciones Individuales}
+
+\begin{table}[H]
+\centering
+\caption{Explicación de predicciones para casos representativos}
+\label{tab:explicaciones_individuales}
+\begin{tabular}{@{}p{2cm}p{3cm}p{3cm}p{5cm}@{}}
+\toprule
+\textbf{Caso} & \textbf{Prob. predicha} & \textbf{Outcome real} & \textbf{Principales factores} \\
+\midrule
+Paciente A & \placeholder{0.XX (Alto)} & Fallecido & \placeholder{Edad 82, Killip IV, Creatinina 3.2} \\
+Paciente B & \placeholder{0.XX (Bajo)} & Superviviente & \placeholder{Edad 55, Killip I, FEVI 50\%} \\
+Paciente C & \placeholder{0.XX (Intermedio)} & Superviviente & \placeholder{Edad 70, Diabetes, FEVI 35\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis de Grupos de Riesgo}
+
+\subsubsection{Estratificación por Probabilidad Predicha}
+
+\begin{table}[H]
+\centering
+\caption{Características por tercil de riesgo predicho}
+\label{tab:terciles_riesgo}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Variable} & \textbf{Bajo riesgo} & \textbf{Riesgo medio} & \textbf{Alto riesgo} \\
+ & ($<$\placeholder{XX}\%) & (\placeholder{XX}--\placeholder{XX}\%) & ($>$\placeholder{XX}\%) \\
+\midrule
+N pacientes & \placeholder{n} & \placeholder{n} & \placeholder{n} \\
+Mortalidad observada & \placeholder{X.X\%} & \placeholder{X.X\%} & \placeholder{XX.X\%} \\
+Edad media & \placeholder{XX.X} & \placeholder{XX.X} & \placeholder{XX.X} \\
+Killip III-IV & \placeholder{X.X\%} & \placeholder{XX.X\%} & \placeholder{XX.X\%} \\
+SHAP medio (top 5 vars) & \placeholder{-X.XX} & \placeholder{X.XX} & \placeholder{+X.XX} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Perfiles SHAP por Grupo}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR SHAP PROFILES POR GRUPO]}
+
+Panel mostrando distribución de valores SHAP para las top 10 variables, separado por grupo de riesgo (bajo/medio/alto).
+\end{placeholderblock}
+\caption{Distribución de valores SHAP por grupo de riesgo}
+\label{fig:shap_por_grupo}
+\end{figure}
+
+\subsection{Validación Clínica de la Explicabilidad}
+
+\begin{placeholderblock}
+\textbf{[COMPLETAR SI SE REALIZÓ VALIDACIÓN CON EXPERTOS]}
+
+Describir:
+\begin{itemize}
+    \item Número de expertos clínicos consultados
+    \item Casos revisados
+    \item Concordancia con juicio clínico
+    \item Feedback sobre utilidad de las explicaciones
+    \item Sugerencias de mejora
+\end{itemize}
+\end{placeholderblock}
+
+\subsection{Consistencia con Conocimiento Clínico}
+
+\begin{table}[H]
+\centering
+\caption{Consistencia de hallazgos SHAP con literatura clínica}
+\label{tab:consistencia_clinica}
+\begin{tabular}{@{}llp{5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Efecto SHAP} & \textbf{Evidencia clínica} \\
+\midrule
+Edad avanzada & $\uparrow$ riesgo & Consistente: mayor fragilidad, comorbilidades \\
+Killip alto & $\uparrow$ riesgo & Consistente: insuficiencia cardíaca \\
+TFG baja & $\uparrow$ riesgo & Consistente: síndrome cardiorrenal \\
+PAS baja & $\uparrow$ riesgo & Consistente: hipoperfusión, shock \\
+FEVI baja & $\uparrow$ riesgo & Consistente: disfunción ventricular \\
+\placeholder{Variable} & \placeholder{Efecto} & \placeholder{Interpretación} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Implicaciones para la Práctica Clínica}
+
+\begin{keypoint}
+\textbf{Puntos clave para la interpretación clínica:}
+
+\begin{enumerate}
+    \item \textbf{Factores modificables}: Las variables \placeholder{X, Y, Z} son potencialmente modificables y podrían ser objetivos terapéuticos.
+    
+    \item \textbf{Identificación de pacientes vulnerables}: El modelo identifica pacientes con combinaciones de factores de alto riesgo que podrían beneficiarse de monitorización intensiva.
+    
+    \item \textbf{Explicaciones individualizadas}: Las explicaciones SHAP permiten comunicar al equipo clínico los principales factores de riesgo de cada paciente.
+    
+    \item \textbf{Limitaciones}: El modelo captura asociaciones, no causalidad. Los factores identificados no necesariamente son objetivos de intervención.
+\end{enumerate}
+\end{keypoint}
+
+\subsection{Integración en la Herramienta Dashboard}
+
+\begin{placeholderblock}
+\textbf{[DESCRIBIR IMPLEMENTACIÓN EN DASHBOARD]}
+
+Describir cómo se integran las explicaciones en la interfaz de usuario:
+\begin{itemize}
+    \item Visualización de SHAP force plot para cada predicción
+    \item Identificación de factores de riesgo principales
+    \item Comparación con población de referencia
+    \item Generación de reportes explicativos
+\end{itemize}
+
+\textit{Referencias al Manual de Usuario y Documentación Técnica.}
+\end{placeholderblock}

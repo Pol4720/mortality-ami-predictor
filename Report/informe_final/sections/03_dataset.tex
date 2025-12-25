@@ -1,0 +1,332 @@
+% ============================================================================
+% SECCIÓN 03: DESCRIPCIÓN DEL DATASET
+% ============================================================================
+
+\section{Descripción del Conjunto de Datos}
+\label{sec:dataset}
+
+% NOTA: Esta sección integra la caracterización del archivo dudas_variables/reporte.tex
+
+\subsection{Fuente de Datos}
+
+\begin{table}[H]
+\centering
+\caption{Información general del conjunto de datos}
+\label{tab:info_dataset}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Característica} & \textbf{Descripción} \\
+\midrule
+Nombre del registro & \placeholder{Nombre del registro/base de datos} \\
+Institución & \placeholder{Hospital/Centro de origen} \\
+País/Región & \placeholder{País y región geográfica} \\
+Período de recolección & \placeholder{Fecha inicio} -- \placeholder{Fecha fin} \\
+Población objetivo & Pacientes con diagnóstico de IAM \\
+Criterios de inclusión & \placeholder{Enumerar criterios de inclusión} \\
+Criterios de exclusión & \placeholder{Enumerar criterios de exclusión} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Tamaño Muestral y Estructura}
+
+\begin{table}[H]
+\centering
+\caption{Resumen del tamaño muestral}
+\label{tab:tamano_muestral}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Métrica} & \textbf{Valor} \\
+\midrule
+Número total de pacientes & \placeholder{N total} \\
+Variables totales (originales) & 185 \\
+Eventos de interés (mortalidad) & \placeholder{n eventos (\%)} \\
+Supervivientes & \placeholder{n no eventos (\%)} \\
+Tasa de eventos & \placeholder{X.XX\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Categorización de Variables}
+
+El conjunto de datos contiene 185 variables organizadas en las siguientes categorías funcionales:
+
+\subsubsection{Variables Demográficas y Administrativas}
+
+\begin{table}[H]
+\centering
+\caption{Variables demográficas y administrativas}
+\label{tab:vars_demograficas}
+\begin{tabular}{@{}llp{6cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} \\
+\midrule
+EDAD & Numérica & Edad del paciente en años \\
+SEXO & Categórica & Sexo biológico (Masculino/Femenino) \\
+FECHA\_INGRESO & Fecha & Fecha de admisión hospitalaria \\
+FECHA\_ALTA & Fecha & Fecha de alta o fallecimiento \\
+ESTANCIA & Numérica & Días de estancia hospitalaria \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Antecedentes Patológicos}
+
+\begin{longtable}{@{}llp{5cm}p{3cm}@{}}
+\caption{Variables de antecedentes patológicos personales}
+\label{tab:vars_antecedentes} \\
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} & \textbf{Valores posibles} \\
+\midrule
+\endfirsthead
+\multicolumn{4}{c}{\tablename\ \thetable{} -- Continuación} \\
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} & \textbf{Valores posibles} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+APP\_HTA & Binaria & Hipertensión arterial & Sí/No \\
+APP\_DM & Binaria & Diabetes mellitus & Sí/No \\
+APP\_DISLIPIDEMIA & Binaria & Dislipidemia & Sí/No \\
+APP\_TABAQUISMO & Categórica & Estado de tabaquismo & Activo/Exfumador/Nunca \\
+APP\_OBESIDAD & Binaria & Obesidad (IMC $\geq$ 30) & Sí/No \\
+APP\_IAM\_PREVIO & Binaria & IAM previo & Sí/No \\
+APP\_ICP\_PREVIO & Binaria & Angioplastia previa & Sí/No \\
+APP\_CABG\_PREVIO & Binaria & Cirugía coronaria previa & Sí/No \\
+APP\_ERC & Binaria & Enfermedad renal crónica & Sí/No \\
+APP\_FA & Binaria & Fibrilación auricular & Sí/No \\
+APP\_ICTUS & Binaria & Ictus/ACV previo & Sí/No \\
+APP\_EAP & Binaria & Enfermedad arterial periférica & Sí/No \\
+\placeholder{Otras variables de antecedentes...} & & & \\
+\end{longtable}
+
+\subsubsection{Presentación Clínica}
+
+\begin{table}[H]
+\centering
+\caption{Variables de presentación clínica al ingreso}
+\label{tab:vars_clinicas}
+\begin{tabular}{@{}llp{5cm}l@{}}
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} & \textbf{Unidad} \\
+\midrule
+PAS & Numérica & Presión arterial sistólica & mmHg \\
+PAD & Numérica & Presión arterial diastólica & mmHg \\
+FC & Numérica & Frecuencia cardíaca & lpm \\
+FR & Numérica & Frecuencia respiratoria & rpm \\
+SAT\_O2 & Numérica & Saturación de oxígeno & \% \\
+KILLIP & Categórica & Clasificación Killip-Kimball & I--IV \\
+DOLOR\_TIPICO & Binaria & Dolor torácico típico & Sí/No \\
+TIEMPO\_SINTOMAS & Numérica & Tiempo desde inicio de síntomas & horas \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Variables Electrocardiográficas}
+
+\begin{table}[H]
+\centering
+\caption{Variables electrocardiográficas}
+\label{tab:vars_ecg}
+\begin{tabular}{@{}llp{6cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} \\
+\midrule
+ECG\_RITMO & Categórica & Ritmo cardíaco (sinusal, FA, etc.) \\
+ECG\_ELEVACION\_ST & Binaria & Presencia de elevación del ST \\
+ECG\_N\_DERIVACIONES\_ST & Numérica & Número de derivaciones con elevación ST \\
+ECG\_LOCALIZACION & Categórica & Localización del IAM (anterior, inferior, etc.) \\
+ECG\_BRIHH & Binaria & Bloqueo de rama izquierda \\
+ECG\_QTc & Numérica & Intervalo QT corregido (ms) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Biomarcadores de Laboratorio}
+
+\begin{longtable}{@{}llp{4cm}ll@{}}
+\caption{Biomarcadores y pruebas de laboratorio}
+\label{tab:vars_laboratorio} \\
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} & \textbf{Unidad} & \textbf{Referencia} \\
+\midrule
+\endfirsthead
+\multicolumn{5}{c}{\tablename\ \thetable{} -- Continuación} \\
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} & \textbf{Unidad} & \textbf{Referencia} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+TROPONINA\_I & Numérica & Troponina I cardíaca & ng/mL & $<$0.04 \\
+TROPONINA\_T & Numérica & Troponina T cardíaca & ng/mL & $<$0.01 \\
+CK\_MB & Numérica & Creatina quinasa MB & U/L & $<$25 \\
+BNP & Numérica & Péptido natriurético B & pg/mL & $<$100 \\
+NT\_PROBNP & Numérica & NT-proBNP & pg/mL & $<$300 \\
+CREATININA & Numérica & Creatinina sérica & mg/dL & 0.7--1.3 \\
+TFG\_E & Numérica & Tasa filtrado glomerular estimada & mL/min/1.73m² & $>$60 \\
+GLUCOSA & Numérica & Glucemia & mg/dL & 70--100 \\
+HBA1C & Numérica & Hemoglobina glicosilada & \% & $<$5.7 \\
+HEMOGLOBINA & Numérica & Hemoglobina & g/dL & 12--16 \\
+LEUCOCITOS & Numérica & Recuento de leucocitos & $\times 10^9$/L & 4--11 \\
+PLAQUETAS & Numérica & Recuento de plaquetas & $\times 10^9$/L & 150--400 \\
+COLESTEROL\_TOTAL & Numérica & Colesterol total & mg/dL & $<$200 \\
+LDL & Numérica & Colesterol LDL & mg/dL & $<$100 \\
+HDL & Numérica & Colesterol HDL & mg/dL & $>$40 \\
+TRIGLICERIDOS & Numérica & Triglicéridos & mg/dL & $<$150 \\
+PCR & Numérica & Proteína C reactiva & mg/L & $<$3 \\
+\placeholder{Otras variables de laboratorio...} & & & & \\
+\end{longtable}
+
+\subsubsection{Tratamientos y Procedimientos}
+
+\begin{table}[H]
+\centering
+\caption{Variables de tratamiento y procedimientos}
+\label{tab:vars_tratamiento}
+\begin{tabular}{@{}llp{6cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} \\
+\midrule
+TTO\_FIBRINOLISIS & Binaria & Fibrinólisis administrada \\
+TTO\_ICP\_PRIMARIA & Binaria & Intervención coronaria percutánea primaria \\
+TIEMPO\_PUERTA\_BALON & Numérica & Tiempo puerta-balón (minutos) \\
+TTO\_ASPIRINA & Binaria & Ácido acetilsalicílico \\
+TTO\_CLOPIDOGREL & Binaria & Clopidogrel \\
+TTO\_TICAGRELOR & Binaria & Ticagrelor \\
+TTO\_HEPARINA & Binaria & Heparina \\
+TTO\_BETABLOQUEANTE & Binaria & Betabloqueantes \\
+TTO\_IECA\_ARA2 & Binaria & IECA o ARA2 \\
+TTO\_ESTATINA & Binaria & Estatinas \\
+TTO\_VENTILACION & Binaria & Ventilación mecánica \\
+TTO\_VASOACTIVOS & Binaria & Fármacos vasoactivos \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Variables de Imagen}
+
+\begin{table}[H]
+\centering
+\caption{Variables de estudios de imagen}
+\label{tab:vars_imagen}
+\begin{tabular}{@{}llp{5cm}l@{}}
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} & \textbf{Unidad} \\
+\midrule
+ECO\_FEVI & Numérica & Fracción de eyección VI & \% \\
+ECO\_ALTERACION\_SEGMENTARIA & Binaria & Alteraciones de contractilidad & Sí/No \\
+ECO\_VALVULOPATIA & Binaria & Valvulopatía asociada & Sí/No \\
+CORO\_N\_VASOS & Numérica & Número de vasos enfermos & 0--3 \\
+CORO\_TCI & Binaria & Enfermedad del tronco coronario izquierdo & Sí/No \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Complicaciones Intrahospitalarias}
+
+\begin{table}[H]
+\centering
+\caption{Variables de complicaciones durante la hospitalización}
+\label{tab:vars_complicaciones}
+\begin{tabular}{@{}llp{6cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} \\
+\midrule
+COMP\_ARRITMIA\_VENT & Binaria & Arritmia ventricular maligna (TV/FV) \\
+COMP\_BAV & Binaria & Bloqueo auriculoventricular \\
+COMP\_ICC & Binaria & Insuficiencia cardíaca congestiva \\
+COMP\_SHOCK & Binaria & Shock cardiogénico \\
+COMP\_REINFARTO & Binaria & Reinfarto intrahospitalario \\
+COMP\_SANGRADO & Binaria & Sangrado mayor (criterios BARC) \\
+COMP\_IRA & Binaria & Injuria renal aguda \\
+COMP\_ICTUS & Binaria & Ictus intrahospitalario \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Variables Outcome}
+
+\begin{table}[H]
+\centering
+\caption{Variables de desenlace (outcome)}
+\label{tab:vars_outcome}
+\begin{tabular}{@{}llp{6cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} \\
+\midrule
+\rowcolor{accentgold!20}
+MORTALIDAD\_HOSP & Binaria & \textbf{Variable objetivo principal}: Mortalidad intrahospitalaria \\
+CAUSA\_MUERTE & Categórica & Causa de muerte (cardiogénica, arrítmica, etc.) \\
+DESTINO\_ALTA & Categórica & Destino al alta (domicilio, otro hospital, etc.) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Consideraciones sobre Calidad de Datos}
+
+\subsubsection{Datos Faltantes}
+
+\begin{placeholderblock}
+\textbf{[COMPLETAR CON ANÁLISIS REAL]}
+
+Incluir aquí:
+\begin{itemize}
+    \item Tabla o figura con porcentaje de datos faltantes por variable
+    \item Identificación de patrones de missingness (MCAR, MAR, MNAR)
+    \item Variables con $>$20\% de valores faltantes que requieren tratamiento especial
+\end{itemize}
+
+Ejemplo de presentación:
+\begin{verbatim}
+Variable           | % Faltantes | Patrón estimado
+-------------------|-------------|----------------
+NT_PROBNP          |    35.2%    | MAR
+TIEMPO_PUERTA_BALON|    28.7%    | MNAR (no ICP)
+ECO_FEVI           |    15.3%    | MAR
+\end{verbatim}
+\end{placeholderblock}
+
+\subsubsection{Valores Atípicos Identificados}
+
+\begin{placeholderblock}
+\textbf{[COMPLETAR CON ANÁLISIS REAL]}
+
+Documentar:
+\begin{itemize}
+    \item Variables con valores fuera de rangos fisiológicos
+    \item Estrategia de manejo de outliers
+    \item Número de observaciones afectadas
+\end{itemize}
+\end{placeholderblock}
+
+\subsection{Resumen Descriptivo Preliminar}
+
+\begin{placeholderblock}
+\textbf{[INSERTAR TABLA RESUMEN]}
+
+Tabla con estadísticos descriptivos básicos:
+\begin{itemize}
+    \item Variables numéricas: media ± DE, mediana [IQR], rango
+    \item Variables categóricas: frecuencia (porcentaje)
+    \item Comparación entre fallecidos vs. supervivientes (test t, U de Mann-Whitney, $\chi^2$)
+\end{itemize}
+
+\textbf{Formato sugerido:}
+\begin{verbatim}
+| Variable      | Total (N=xxx) | Fallecidos (n=xx) | Supervivientes (n=xxx) | p-valor |
+|---------------|---------------|-------------------|------------------------|---------|
+| Edad, años    | xx.x ± xx.x   | xx.x ± xx.x       | xx.x ± xx.x            | <0.001  |
+| Sexo masculino| xxx (xx.x%)   | xx (xx.x%)        | xxx (xx.x%)            | 0.xxx   |
+\end{verbatim}
+\end{placeholderblock}
+
+\subsection{Consideraciones Éticas y de Privacidad}
+
+\begin{itemize}
+    \item \textbf{Aprobación ética}: \placeholder{Número/referencia del comité de ética}.
+    \item \textbf{Consentimiento informado}: \placeholder{Tipo de consentimiento obtenido}.
+    \item \textbf{Anonimización}: Todos los datos fueron desidentificados según normativa \placeholder{LOPD/RGPD/equivalente local}.
+    \item \textbf{Almacenamiento}: Datos almacenados en servidores seguros con acceso restringido.
+\end{itemize}

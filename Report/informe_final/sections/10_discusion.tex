@@ -1,0 +1,300 @@
+% ============================================================================
+% SECCIÓN 10: DISCUSIÓN
+% ============================================================================
+
+\section{Discusión}
+\label{sec:discusion}
+
+\subsection{Resumen de Hallazgos Principales}
+
+\begin{placeholderblock}
+Este estudio desarrolló y validó un modelo de aprendizaje automático para la predicción de mortalidad intrahospitalaria en pacientes con \gls{iam}. Los principales hallazgos fueron:
+
+\begin{enumerate}
+    \item El modelo \placeholder{XGBoost/RF/Ensemble} alcanzó un AUROC de \placeholder{0.XXX} (IC 95\%: \placeholder{0.XXX--0.XXX}), superior al score GRACE (\placeholder{0.XXX}, p \placeholder{$<$0.001}).
+    
+    \item Las variables más predictivas fueron \placeholder{edad, clasificación Killip, función renal, troponinas, FEVI}, consistentes con el conocimiento fisiopatológico.
+    
+    \item El modelo mostró buena calibración (Brier Score = \placeholder{0.XXX}) y utilidad clínica demostrada mediante Decision Curve Analysis.
+    
+    \item El análisis SHAP reveló relaciones no lineales e interacciones entre variables que los modelos tradicionales no capturan.
+\end{enumerate}
+\end{placeholderblock}
+
+\subsection{Comparación con la Literatura}
+
+\subsubsection{Rendimiento Comparativo}
+
+\begin{table}[H]
+\centering
+\caption{Comparación con estudios previos de ML en predicción de mortalidad por IAM}
+\label{tab:comparacion_literatura}
+\begin{tabular}{@{}llllc@{}}
+\toprule
+\textbf{Estudio} & \textbf{N} & \textbf{Modelo} & \textbf{AUROC} & \textbf{Validación} \\
+\midrule
+Zhu et al. 2024 & 20,000 & XGBoost & 0.93 & Externa \\
+Oliveira et al. 2023 & 5,000 & Ensemble & 0.89 & Interna \\
+Wang et al. 2022 & 8,500 & Random Forest & 0.87 & Temporal \\
+\midrule
+\rowcolor{accentgold!20}
+\textbf{Presente estudio} & \placeholder{N} & \placeholder{Modelo} & \placeholder{0.XX} & \placeholder{Tipo} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{placeholderblock}
+\textbf{[DISCUTIR COMPARACIÓN]}
+
+Analizar:
+\begin{itemize}
+    \item Similitudes y diferencias con estudios previos
+    \item Posibles explicaciones de diferencias en rendimiento
+    \item Características específicas de la población estudiada
+    \item Ventajas/limitaciones del enfoque utilizado
+\end{itemize}
+\end{placeholderblock}
+
+\subsubsection{Variables Predictoras}
+
+\begin{placeholderblock}
+\textbf{[DISCUTIR VARIABLES IDENTIFICADAS]}
+
+Comparar las variables más importantes con literatura previa:
+\begin{itemize}
+    \item Variables consistentes con escalas clásicas (GRACE, TIMI)
+    \item Variables adicionales identificadas por ML
+    \item Variables esperadas que no resultaron importantes
+    \item Posibles explicaciones fisiopatológicas
+\end{itemize}
+\end{placeholderblock}
+
+\subsection{Fortalezas del Estudio}
+
+\begin{enumerate}
+    \item \textbf{Metodología rigurosa}: 
+    \begin{placeholderblock}
+    Describir aspectos metodológicos sólidos:
+    \begin{itemize}
+        \item Seguimiento de guías TRIPOD+AI
+        \item Separación estricta de conjuntos train/validation/test
+        \item Validación cruzada estratificada
+        \item Múltiples métricas de evaluación
+    \end{itemize}
+    \end{placeholderblock}
+    
+    \item \textbf{Análisis de explicabilidad}: 
+    \begin{placeholderblock}
+    El uso de técnicas SHAP permite interpretar las predicciones del modelo, facilitando la confianza clínica y la identificación de factores de riesgo modificables.
+    \end{placeholderblock}
+    
+    \item \textbf{Comparación con benchmarks establecidos}: 
+    \begin{placeholderblock}
+    La comparación directa con el score GRACE proporciona contexto clínico relevante para la adopción del modelo.
+    \end{placeholderblock}
+    
+    \item \textbf{Evaluación de utilidad clínica}: 
+    \begin{placeholderblock}
+    El análisis de curva de decisión va más allá de métricas estadísticas para evaluar el beneficio práctico del modelo.
+    \end{placeholderblock}
+    
+    \item \textbf{Reproducibilidad}: 
+    \begin{placeholderblock}
+    El código fuente, pipelines y modelos están documentados y disponibles para replicación.
+    \end{placeholderblock}
+\end{enumerate}
+
+\subsection{Limitaciones del Estudio}
+
+\subsubsection{Limitaciones Metodológicas}
+
+\begin{enumerate}
+    \item \textbf{Diseño retrospectivo}: 
+    \begin{placeholderblock}
+    Los datos fueron recolectados retrospectivamente, lo que puede introducir sesgos de selección y de información.
+    \end{placeholderblock}
+    
+    \item \textbf{Centro único}: 
+    \begin{placeholderblock}
+    [Si aplica] El modelo fue desarrollado con datos de un solo centro/región, lo que puede limitar la generalización a otras poblaciones.
+    \end{placeholderblock}
+    
+    \item \textbf{Validación interna}: 
+    \begin{placeholderblock}
+    [Si aplica] La validación se realizó mediante división interna de datos. Se requiere validación externa en cohortes independientes.
+    \end{placeholderblock}
+    
+    \item \textbf{Datos faltantes}: 
+    \begin{placeholderblock}
+    Algunas variables presentaron alto porcentaje de datos faltantes, requiriendo imputación que puede introducir sesgos.
+    \end{placeholderblock}
+\end{enumerate}
+
+\subsubsection{Limitaciones de los Datos}
+
+\begin{enumerate}
+    \item \textbf{Periodo temporal}: 
+    \begin{placeholderblock}
+    Los datos corresponden al período [fechas], y los patrones de práctica clínica pueden haber cambiado desde entonces.
+    \end{placeholderblock}
+    
+    \item \textbf{Variables no disponibles}: 
+    \begin{placeholderblock}
+    Algunas variables potencialmente relevantes (ej. \placeholder{biomarcadores específicos, datos genéticos, ECG continuo}) no estaban disponibles en el dataset.
+    \end{placeholderblock}
+    
+    \item \textbf{Definición del outcome}: 
+    \begin{placeholderblock}
+    La mortalidad intrahospitalaria no captura eventos post-alta que pueden ser clínicamente relevantes.
+    \end{placeholderblock}
+\end{enumerate}
+
+\subsubsection{Limitaciones del Modelo}
+
+\begin{enumerate}
+    \item \textbf{Interpretabilidad vs. rendimiento}: 
+    \begin{placeholderblock}
+    Aunque las técnicas SHAP mejoran la interpretabilidad, los modelos de ensemble siguen siendo más complejos que la regresión logística tradicional.
+    \end{placeholderblock}
+    
+    \item \textbf{Causalidad}: 
+    \begin{placeholderblock}
+    El modelo identifica asociaciones predictivas, no relaciones causales. La intervención sobre variables identificadas no garantiza mejora en outcomes.
+    \end{placeholderblock}
+    
+    \item \textbf{Drift temporal}: 
+    \begin{placeholderblock}
+    El rendimiento del modelo puede degradarse con el tiempo si cambian las características de la población o las prácticas clínicas.
+    \end{placeholderblock}
+\end{enumerate}
+
+\subsection{Implicaciones Clínicas}
+
+\subsubsection{Potencial de Implementación}
+
+\begin{placeholderblock}
+\textbf{[DISCUTIR APLICABILIDAD CLÍNICA]}
+
+\begin{itemize}
+    \item Escenarios de uso: triaje, monitorización, decisiones de tratamiento
+    \item Integración con flujos de trabajo existentes
+    \item Recursos necesarios para implementación
+    \item Aceptabilidad por parte del personal clínico
+\end{itemize}
+\end{placeholderblock}
+
+\subsubsection{Beneficios Potenciales}
+
+\begin{enumerate}
+    \item \textbf{Identificación temprana de alto riesgo}: 
+    \begin{placeholderblock}
+    Permite identificar pacientes que requieren monitorización intensiva o intervenciones agresivas.
+    \end{placeholderblock}
+    
+    \item \textbf{Optimización de recursos}: 
+    \begin{placeholderblock}
+    La estratificación de riesgo puede guiar la asignación de camas en UCI/UCO.
+    \end{placeholderblock}
+    
+    \item \textbf{Comunicación con pacientes/familias}: 
+    \begin{placeholderblock}
+    Proporciona información pronóstica objetiva para la toma de decisiones compartida.
+    \end{placeholderblock}
+    
+    \item \textbf{Apoyo a la decisión}: 
+    \begin{placeholderblock}
+    Complementa (no reemplaza) el juicio clínico con información cuantitativa.
+    \end{placeholderblock}
+\end{enumerate}
+
+\subsubsection{Consideraciones de Implementación}
+
+\begin{placeholderblock}
+\textbf{[DISCUTIR BARRERAS Y FACILITADORES]}
+
+\begin{itemize}
+    \item Integración con sistemas de historia clínica electrónica
+    \item Entrenamiento del personal
+    \item Validación local antes de implementación
+    \item Monitorización continua del rendimiento
+    \item Aspectos regulatorios (certificación de software médico)
+\end{itemize}
+\end{placeholderblock}
+
+\subsection{Direcciones Futuras}
+
+\subsubsection{Validación y Extensión}
+
+\begin{enumerate}
+    \item \textbf{Validación externa}: 
+    \begin{placeholderblock}
+    Evaluar el modelo en cohortes independientes de otras instituciones/países.
+    \end{placeholderblock}
+    
+    \item \textbf{Validación temporal prospectiva}: 
+    \begin{placeholderblock}
+    Implementar el modelo en tiempo real y evaluar rendimiento prospectivo.
+    \end{placeholderblock}
+    
+    \item \textbf{Estudio de impacto}: 
+    \begin{placeholderblock}
+    Ensayo clínico evaluando si el uso del modelo mejora los outcomes de los pacientes.
+    \end{placeholderblock}
+\end{enumerate}
+
+\subsubsection{Mejoras del Modelo}
+
+\begin{enumerate}
+    \item \textbf{Incorporación de nuevas variables}: 
+    \begin{placeholderblock}
+    Explorar la adición de biomarcadores emergentes, datos de imagen, o señales de ECG continuo.
+    \end{placeholderblock}
+    
+    \item \textbf{Predicción dinámica}: 
+    \begin{placeholderblock}
+    Desarrollar modelos que actualicen el riesgo a medida que evoluciona el paciente durante la hospitalización.
+    \end{placeholderblock}
+    
+    \item \textbf{Outcomes adicionales}: 
+    \begin{placeholderblock}
+    Extender a predicción de arritmias ventriculares, shock cardiogénico, reinfartos.
+    \end{placeholderblock}
+    
+    \item \textbf{Aprendizaje federado}: 
+    \begin{placeholderblock}
+    Desarrollar modelos multicéntricos preservando la privacidad de datos.
+    \end{placeholderblock}
+\end{enumerate}
+
+\subsubsection{Aspectos de Implementación}
+
+\begin{enumerate}
+    \item \textbf{Integración tecnológica}: 
+    \begin{placeholderblock}
+    Desarrollar APIs para integración con sistemas hospitalarios.
+    \end{placeholderblock}
+    
+    \item \textbf{Interfaz de usuario}: 
+    \begin{placeholderblock}
+    Refinar el dashboard basándose en feedback de usuarios clínicos.
+    \end{placeholderblock}
+    
+    \item \textbf{Mantenimiento del modelo}: 
+    \begin{placeholderblock}
+    Establecer procesos para re-entrenamiento y monitorización de drift.
+    \end{placeholderblock}
+\end{enumerate}
+
+\subsection{Consideraciones Éticas}
+
+\begin{placeholderblock}
+\textbf{[DISCUTIR ASPECTOS ÉTICOS]}
+
+\begin{itemize}
+    \item \textbf{Equidad}: El modelo debe ser evaluado por subgrupos para evitar sesgos discriminatorios.
+    \item \textbf{Transparencia}: Las explicaciones deben ser comunicables a pacientes y familias.
+    \item \textbf{Autonomía}: El modelo es una herramienta de apoyo, no un sustituto del juicio clínico.
+    \item \textbf{Privacidad}: Los datos deben ser manejados según normativas de protección de datos.
+    \item \textbf{Responsabilidad}: Definir responsabilidades cuando las predicciones del modelo influyan en decisiones clínicas.
+\end{itemize}
+\end{placeholderblock}

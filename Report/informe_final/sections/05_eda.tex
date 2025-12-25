@@ -1,0 +1,365 @@
+% ============================================================================
+% SECCIÓN 05: ANÁLISIS EXPLORATORIO DE DATOS (EDA)
+% ============================================================================
+
+\section{Análisis Exploratorio de Datos}
+\label{sec:eda}
+
+El \gls{eda} constituye una fase fundamental para comprender la estructura, calidad y distribución de los datos antes del modelado predictivo.
+
+\subsection{Distribución de la Variable Objetivo}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR GRÁFICO DE BARRAS]}
+
+Gráfico de barras mostrando:
+\begin{itemize}
+    \item Número de supervivientes vs. fallecidos
+    \item Porcentajes correspondientes
+    \item Destacar el desbalance de clases
+\end{itemize}
+
+\textit{Código sugerido: plt.bar(['Supervivientes', 'Fallecidos'], [n\_surv, n\_fall])}
+\end{placeholderblock}
+\caption{Distribución de la variable objetivo (mortalidad intrahospitalaria)}
+\label{fig:distribucion_outcome}
+\end{figure}
+
+\begin{keypoint}
+\textbf{Hallazgo clave:} La tasa de mortalidad intrahospitalaria fue del \placeholder{X.XX\%} (n=\placeholder{XX} de \placeholder{N} pacientes), confirmando el desbalance de clases característico de este tipo de estudios.
+\end{keypoint}
+
+\subsection{Análisis de Variables Demográficas}
+
+\subsubsection{Distribución de Edad}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR HISTOGRAMA/BOXPLOT DE EDAD]}
+
+Panel con:
+\begin{itemize}
+    \item Histograma de edad con curva de densidad
+    \item Boxplot comparando edad entre fallecidos y supervivientes
+    \item Estadísticos: media, mediana, DE, rango
+\end{itemize}
+\end{placeholderblock}
+\caption{Distribución de edad en la población de estudio}
+\label{fig:distribucion_edad}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Estadísticos descriptivos de edad}
+\label{tab:estadisticos_edad}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Grupo} & \textbf{N} & \textbf{Media ± DE} & \textbf{Mediana [IQR]} & \textbf{Rango} \\
+\midrule
+Total & \placeholder{N} & \placeholder{XX.X ± XX.X} & \placeholder{XX [XX--XX]} & \placeholder{XX--XX} \\
+Supervivientes & \placeholder{n} & \placeholder{XX.X ± XX.X} & \placeholder{XX [XX--XX]} & \placeholder{XX--XX} \\
+Fallecidos & \placeholder{n} & \placeholder{XX.X ± XX.X} & \placeholder{XX [XX--XX]} & \placeholder{XX--XX} \\
+\midrule
+\multicolumn{5}{l}{\textit{p-valor (test t/Mann-Whitney): \placeholder{p = X.XXX}}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Distribución por Sexo}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR GRÁFICO DE BARRAS AGRUPADAS]}
+
+Gráfico mostrando:
+\begin{itemize}
+    \item Distribución de sexo en toda la cohorte
+    \item Distribución de sexo según outcome
+    \item Porcentajes y frecuencias
+\end{itemize}
+\end{placeholderblock}
+\caption{Distribución por sexo y asociación con mortalidad}
+\label{fig:distribucion_sexo}
+\end{figure}
+
+\subsection{Análisis de Antecedentes Patológicos}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR GRÁFICO DE BARRAS HORIZONTALES]}
+
+Gráfico de barras horizontales mostrando prevalencia de antecedentes:
+\begin{itemize}
+    \item Hipertensión
+    \item Diabetes
+    \item Dislipidemia
+    \item Tabaquismo
+    \item IAM previo
+    \item Enfermedad renal crónica
+    \item etc.
+\end{itemize}
+
+Preferiblemente separado por outcome para visualizar diferencias.
+\end{placeholderblock}
+\caption{Prevalencia de antecedentes patológicos personales}
+\label{fig:prevalencia_app}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Comparación de antecedentes patológicos entre grupos}
+\label{tab:comparacion_app}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Antecedente} & \textbf{Supervivientes n(\%)} & \textbf{Fallecidos n(\%)} & \textbf{p-valor} \\
+\midrule
+Hipertensión & \placeholder{n (XX.X\%)} & \placeholder{n (XX.X\%)} & \placeholder{X.XXX} \\
+Diabetes mellitus & \placeholder{n (XX.X\%)} & \placeholder{n (XX.X\%)} & \placeholder{X.XXX} \\
+Dislipidemia & \placeholder{n (XX.X\%)} & \placeholder{n (XX.X\%)} & \placeholder{X.XXX} \\
+Tabaquismo activo & \placeholder{n (XX.X\%)} & \placeholder{n (XX.X\%)} & \placeholder{X.XXX} \\
+IAM previo & \placeholder{n (XX.X\%)} & \placeholder{n (XX.X\%)} & \placeholder{X.XXX} \\
+ICP previa & \placeholder{n (XX.X\%)} & \placeholder{n (XX.X\%)} & \placeholder{X.XXX} \\
+ERC & \placeholder{n (XX.X\%)} & \placeholder{n (XX.X\%)} & \placeholder{X.XXX} \\
+Fibrilación auricular & \placeholder{n (XX.X\%)} & \placeholder{n (XX.X\%)} & \placeholder{X.XXX} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis de Variables Clínicas de Presentación}
+
+\subsubsection{Signos Vitales al Ingreso}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR GRID DE BOXPLOTS]}
+
+Panel 2x3 o similar con boxplots comparativos (supervivientes vs. fallecidos):
+\begin{itemize}
+    \item Presión arterial sistólica
+    \item Presión arterial diastólica
+    \item Frecuencia cardíaca
+    \item Frecuencia respiratoria
+    \item Saturación de oxígeno
+    \item Temperatura (si disponible)
+\end{itemize}
+\end{placeholderblock}
+\caption{Distribución de signos vitales al ingreso según outcome}
+\label{fig:signos_vitales}
+\end{figure}
+
+\subsubsection{Clasificación Killip al Ingreso}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR GRÁFICO DE BARRAS APILADAS]}
+
+Distribución de clases Killip I--IV:
+\begin{itemize}
+    \item En toda la cohorte
+    \item Estratificada por outcome
+    \item Mostrar gradiente de mortalidad por clase Killip
+\end{itemize}
+\end{placeholderblock}
+\caption{Distribución de clasificación Killip-Kimball y asociación con mortalidad}
+\label{fig:killip}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Mortalidad según clasificación Killip}
+\label{tab:mortalidad_killip}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Clase Killip} & \textbf{N pacientes} & \textbf{Fallecidos} & \textbf{Mortalidad (\%)} & \textbf{IC 95\%} \\
+\midrule
+I (sin IC) & \placeholder{N} & \placeholder{n} & \placeholder{X.X\%} & \placeholder{[X.X--X.X]} \\
+II (IC leve) & \placeholder{N} & \placeholder{n} & \placeholder{X.X\%} & \placeholder{[X.X--X.X]} \\
+III (EAP) & \placeholder{N} & \placeholder{n} & \placeholder{X.X\%} & \placeholder{[X.X--X.X]} \\
+IV (Shock) & \placeholder{N} & \placeholder{n} & \placeholder{X.X\%} & \placeholder{[X.X--X.X]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis de Biomarcadores}
+
+\subsubsection{Troponinas y Marcadores de Necrosis}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR BOXPLOTS DE TROPONINAS]}
+
+Comparación de niveles de:
+\begin{itemize}
+    \item Troponina I o T
+    \item CK-MB
+\end{itemize}
+Entre supervivientes y fallecidos (usar escala logarítmica si hay valores extremos).
+\end{placeholderblock}
+\caption{Distribución de troponinas según outcome}
+\label{fig:troponinas}
+\end{figure}
+
+\subsubsection{Biomarcadores Renales y Metabólicos}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR PANEL DE DISTRIBUCIONES]}
+
+Variables a mostrar:
+\begin{itemize}
+    \item Creatinina
+    \item TFG estimada
+    \item Glucemia
+    \item HbA1c (si disponible)
+\end{itemize}
+\end{placeholderblock}
+\caption{Distribución de marcadores renales y metabólicos}
+\label{fig:renales_metabolicos}
+\end{figure}
+
+\subsubsection{Péptidos Natriuréticos}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR BOXPLOT/VIOLINPLOT]}
+
+BNP o NT-proBNP comparando grupos.
+Mostrar transformación logarítmica si es necesario.
+\end{placeholderblock}
+\caption{Distribución de péptidos natriuréticos según outcome}
+\label{fig:peptidos_natriureticos}
+\end{figure}
+
+\subsection{Análisis de Correlaciones}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR HEATMAP DE CORRELACIONES]}
+
+Mapa de calor mostrando correlaciones de Pearson/Spearman entre variables numéricas principales (seleccionar ~20--30 variables más relevantes).
+
+Incluir:
+\begin{itemize}
+    \item Escala de colores divergente (azul-blanco-rojo)
+    \item Valores de correlación en celdas
+    \item Clustering jerárquico opcional
+\end{itemize}
+\end{placeholderblock}
+\caption{Matriz de correlaciones entre variables numéricas}
+\label{fig:correlaciones}
+\end{figure}
+
+\begin{keypoint}
+\textbf{Correlaciones relevantes identificadas:}
+\begin{itemize}
+    \item \placeholder{Variable\_1 vs. Variable\_2: r = X.XX}
+    \item \placeholder{Variable\_3 vs. Variable\_4: r = X.XX}
+    \item Nota sobre multicolinealidad si aplica
+\end{itemize}
+\end{keypoint}
+
+\subsection{Análisis de Datos Faltantes}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR GRÁFICO DE MISSINGNESS]}
+
+Opciones de visualización:
+\begin{itemize}
+    \item Barras horizontales con \% de valores faltantes por variable
+    \item Heatmap de patrón de missingness (missingno library)
+    \item Matriz de correlación de missingness
+\end{itemize}
+\end{placeholderblock}
+\caption{Patrón de datos faltantes}
+\label{fig:datos_faltantes}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Variables con mayor porcentaje de datos faltantes}
+\label{tab:datos_faltantes_top}
+\begin{tabular}{@{}lcl@{}}
+\toprule
+\textbf{Variable} & \textbf{\% Faltantes} & \textbf{Posible causa} \\
+\midrule
+\placeholder{Variable\_1} & \placeholder{XX.X\%} & \placeholder{Motivo} \\
+\placeholder{Variable\_2} & \placeholder{XX.X\%} & \placeholder{Motivo} \\
+\placeholder{Variable\_3} & \placeholder{XX.X\%} & \placeholder{Motivo} \\
+\placeholder{Variable\_4} & \placeholder{XX.X\%} & \placeholder{Motivo} \\
+\placeholder{Variable\_5} & \placeholder{XX.X\%} & \placeholder{Motivo} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis de Tratamientos y Procedimientos}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR GRÁFICO DE BARRAS]}
+
+Mostrar frecuencia de:
+\begin{itemize}
+    \item Fibrinólisis vs. ICP primaria vs. conservador
+    \item Tratamientos farmacológicos (antiagregantes, anticoagulantes, etc.)
+\end{itemize}
+Estratificado por outcome si es informativo.
+\end{placeholderblock}
+\caption{Distribución de estrategias de reperfusión y tratamientos}
+\label{fig:tratamientos}
+\end{figure}
+
+\subsection{Análisis Temporal}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR GRÁFICO DE LÍNEA/BARRAS TEMPORALES]}
+
+Si aplica:
+\begin{itemize}
+    \item Número de casos por mes/año
+    \item Evolución de la mortalidad en el tiempo
+    \item Cambios en prácticas de tratamiento
+\end{itemize}
+\end{placeholderblock}
+\caption{Distribución temporal de casos y mortalidad}
+\label{fig:analisis_temporal}
+\end{figure}
+
+\subsection{Resumen de Hallazgos del EDA}
+
+\begin{keypoint}
+\textbf{Principales hallazgos del análisis exploratorio:}
+
+\begin{enumerate}
+    \item \textbf{Desbalance de clases}: Mortalidad del \placeholder{X\%}, confirmando necesidad de técnicas de balanceo.
+    
+    \item \textbf{Variables con asociación univariada significativa}: 
+    \begin{itemize}
+        \item \placeholder{Edad}
+        \item \placeholder{Clasificación Killip}
+        \item \placeholder{Creatinina/TFG}
+        \item \placeholder{Otras...}
+    \end{itemize}
+    
+    \item \textbf{Datos faltantes}: \placeholder{N} variables con $>$20\% de datos faltantes, principalmente \placeholder{categoría de variables}.
+    
+    \item \textbf{Multicolinealidad}: Identificada entre \placeholder{pares de variables}.
+    
+    \item \textbf{Valores atípicos}: Detectados en \placeholder{variables}, tratados mediante \placeholder{estrategia}.
+\end{enumerate}
+\end{keypoint}

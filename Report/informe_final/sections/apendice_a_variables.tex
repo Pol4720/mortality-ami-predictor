@@ -1,0 +1,135 @@
+% ============================================================================
+% APÉNDICE A: DICCIONARIO DE VARIABLES
+% ============================================================================
+
+\section{Diccionario de Variables}
+\label{app:variables}
+
+Este apéndice contiene el diccionario completo de variables utilizadas en el estudio.
+
+\subsection{Variables Incluidas en el Modelo Final}
+
+\begin{longtable}{@{}p{3.5cm}lp{5cm}p{2.5cm}@{}}
+\caption{Diccionario de variables del modelo final}
+\label{tab:diccionario_variables} \\
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} & \textbf{Rango/Valores} \\
+\midrule
+\endfirsthead
+\multicolumn{4}{c}{\tablename\ \thetable{} -- Continuación} \\
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripción} & \textbf{Rango/Valores} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{4}{r}{\textit{Continúa en la siguiente página...}} \\
+\endfoot
+\bottomrule
+\endfoot
+\multicolumn{4}{l}{\textbf{Variables Demográficas}} \\
+\midrule
+EDAD & Numérica & Edad del paciente en años & \placeholder{18--100} \\
+SEXO & Binaria & Sexo biológico & 0=F, 1=M \\
+\midrule
+\multicolumn{4}{l}{\textbf{Antecedentes Patológicos}} \\
+\midrule
+APP\_HTA & Binaria & Hipertensión arterial & 0=No, 1=Sí \\
+APP\_DM & Binaria & Diabetes mellitus & 0=No, 1=Sí \\
+APP\_DISLIPIDEMIA & Binaria & Dislipidemia & 0=No, 1=Sí \\
+APP\_TABAQUISMO & Categórica & Estado de tabaquismo & 0=Nunca, 1=Ex, 2=Activo \\
+APP\_IAM\_PREVIO & Binaria & IAM previo & 0=No, 1=Sí \\
+APP\_ICP\_PREVIO & Binaria & ICP previa & 0=No, 1=Sí \\
+APP\_ERC & Binaria & Enfermedad renal crónica & 0=No, 1=Sí \\
+APP\_FA & Binaria & Fibrilación auricular & 0=No, 1=Sí \\
+\placeholder{...} & & & \\
+\midrule
+\multicolumn{4}{l}{\textbf{Presentación Clínica}} \\
+\midrule
+PAS & Numérica & Presión arterial sistólica (mmHg) & \placeholder{60--250} \\
+PAD & Numérica & Presión arterial diastólica (mmHg) & \placeholder{30--150} \\
+FC & Numérica & Frecuencia cardíaca (lpm) & \placeholder{30--200} \\
+FR & Numérica & Frecuencia respiratoria (rpm) & \placeholder{8--40} \\
+SAT\_O2 & Numérica & Saturación de oxígeno (\%) & \placeholder{50--100} \\
+KILLIP & Ordinal & Clasificación Killip-Kimball & 1, 2, 3, 4 \\
+TIEMPO\_SINTOMAS & Numérica & Tiempo desde inicio síntomas (h) & \placeholder{0--72} \\
+\placeholder{...} & & & \\
+\midrule
+\multicolumn{4}{l}{\textbf{Variables Electrocardiográficas}} \\
+\midrule
+ECG\_ELEVACION\_ST & Binaria & Elevación del segmento ST & 0=No, 1=Sí \\
+ECG\_N\_DERIVACIONES & Numérica & Número derivaciones con ST & \placeholder{0--12} \\
+ECG\_BRIHH & Binaria & Bloqueo de rama izquierda & 0=No, 1=Sí \\
+\placeholder{...} & & & \\
+\midrule
+\multicolumn{4}{l}{\textbf{Biomarcadores}} \\
+\midrule
+TROPONINA & Numérica & Troponina I/T (ng/mL) & \placeholder{0--XXX} \\
+CK\_MB & Numérica & Creatina quinasa MB (U/L) & \placeholder{0--XXX} \\
+NT\_PROBNP & Numérica & NT-proBNP (pg/mL) & \placeholder{0--XXXXX} \\
+CREATININA & Numérica & Creatinina sérica (mg/dL) & \placeholder{0.3--15} \\
+TFG\_E & Numérica & Tasa filtrado glomerular (mL/min/1.73m²) & \placeholder{5--150} \\
+GLUCOSA & Numérica & Glucemia (mg/dL) & \placeholder{40--500} \\
+HEMOGLOBINA & Numérica & Hemoglobina (g/dL) & \placeholder{5--20} \\
+LEUCOCITOS & Numérica & Leucocitos ($\times 10^9$/L) & \placeholder{1--50} \\
+PCR & Numérica & Proteína C reactiva (mg/L) & \placeholder{0--300} \\
+\placeholder{...} & & & \\
+\midrule
+\multicolumn{4}{l}{\textbf{Variables de Imagen}} \\
+\midrule
+ECO\_FEVI & Numérica & Fracción de eyección VI (\%) & \placeholder{10--80} \\
+CORO\_N\_VASOS & Numérica & Número de vasos enfermos & 0, 1, 2, 3 \\
+\placeholder{...} & & & \\
+\midrule
+\multicolumn{4}{l}{\textbf{Variables Derivadas}} \\
+\midrule
+IMC & Numérica & Índice de masa corporal (kg/m²) & \placeholder{15--50} \\
+PAM & Numérica & Presión arterial media (mmHg) & Calculada \\
+SHOCK\_INDEX & Numérica & FC/PAS & Calculada \\
+\placeholder{...} & & & \\
+\midrule
+\multicolumn{4}{l}{\textbf{Variable Objetivo}} \\
+\midrule
+\rowcolor{accentgold!20}
+MORTALIDAD\_HOSP & Binaria & Mortalidad intrahospitalaria & 0=Vivo, 1=Fallecido \\
+\end{longtable}
+
+\subsection{Variables Excluidas del Análisis}
+
+\begin{table}[H]
+\centering
+\caption{Variables excluidas y motivo de exclusión}
+\label{tab:variables_excluidas_apendice}
+\begin{tabular}{@{}llp{6cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Motivo} & \textbf{Detalle} \\
+\midrule
+ID\_PACIENTE & Identificador & No tiene valor predictivo \\
+FECHA\_INGRESO & Fecha & Variable de registro \\
+FECHA\_ALTA & Fecha & Variable de registro \\
+\placeholder{VARIABLE\_X} & Datos faltantes & \placeholder{$>$50\% missing} \\
+\placeholder{VARIABLE\_Y} & Data leakage & \placeholder{Información post-outcome} \\
+\placeholder{VARIABLE\_Z} & Colinealidad & \placeholder{Correlación $>$0.9 con otra variable} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Transformaciones Aplicadas}
+
+\begin{table}[H]
+\centering
+\caption{Transformaciones aplicadas a cada variable}
+\label{tab:transformaciones_apendice}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Variable} & \textbf{Transformación} & \textbf{Imputación} & \textbf{Escalado} \\
+\midrule
+EDAD & Ninguna & \placeholder{Mediana} & StandardScaler \\
+PAS & Ninguna & \placeholder{KNN} & StandardScaler \\
+TROPONINA & Log(x+1) & \placeholder{Mediana} & StandardScaler \\
+NT\_PROBNP & Log(x+1) & \placeholder{Mediana} & StandardScaler \\
+CREATININA & Log(x) & \placeholder{KNN} & StandardScaler \\
+KILLIP & Ninguna & \placeholder{Moda} & Ninguno (ordinal) \\
+\placeholder{...} & & & \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,354 @@
+% ============================================================================
+% SECCIÓN 08: RESULTADOS
+% ============================================================================
+
+\section{Resultados}
+\label{sec:resultados}
+
+Esta sección presenta los resultados de la evaluación del modelo final en el conjunto de test, que permaneció completamente reservado durante el desarrollo.
+
+\subsection{Características de la Cohorte de Test}
+
+\begin{table}[H]
+\centering
+\caption{Características basales del conjunto de test}
+\label{tab:caracteristicas_test}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Variable} & \textbf{Supervivientes} & \textbf{Fallecidos} & \textbf{p-valor} \\
+ & (n = \placeholder{XX}) & (n = \placeholder{XX}) & \\
+\midrule
+Edad, años (media ± DE) & \placeholder{XX.X ± XX.X} & \placeholder{XX.X ± XX.X} & \placeholder{X.XXX} \\
+Sexo masculino, n (\%) & \placeholder{n (XX.X\%)} & \placeholder{n (XX.X\%)} & \placeholder{X.XXX} \\
+Hipertensión, n (\%) & \placeholder{n (XX.X\%)} & \placeholder{n (XX.X\%)} & \placeholder{X.XXX} \\
+Diabetes, n (\%) & \placeholder{n (XX.X\%)} & \placeholder{n (XX.X\%)} & \placeholder{X.XXX} \\
+Killip III-IV, n (\%) & \placeholder{n (XX.X\%)} & \placeholder{n (XX.X\%)} & \placeholder{X.XXX} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Métricas de Discriminación}
+
+\subsubsection{Rendimiento Global}
+
+\begin{table}[H]
+\centering
+\caption{Métricas de discriminación del modelo final en conjunto de test}
+\label{tab:metricas_discriminacion_test}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Métrica} & \textbf{Valor} & \textbf{IC 95\%} \\
+\midrule
+\rowcolor{accentgold!20}
+\textbf{AUROC} & \placeholder{\textbf{0.XXX}} & \placeholder{[0.XXX -- 0.XXX]} \\
+AUPRC & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+\midrule
+\multicolumn{3}{l}{\textit{Al umbral óptimo (Youden): \placeholder{0.XXX}}} \\
+Sensibilidad & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+Especificidad & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+VPP (Precisión) & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+VPN & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+F1-Score & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+Accuracy & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{keypoint}
+\textbf{Resultado principal:} El modelo \placeholder{nombre del modelo} alcanzó un AUROC de \placeholder{0.XXX} (IC 95\%: \placeholder{0.XXX--0.XXX}) en el conjunto de test independiente, superando al score GRACE (\placeholder{0.XXX}) en \placeholder{XX} puntos porcentuales.
+\end{keypoint}
+
+\subsubsection{Curva ROC}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR CURVA ROC]}
+
+Gráfico con:
+\begin{itemize}
+    \item Curva ROC del modelo final
+    \item Curva ROC del modelo baseline (regresión logística)
+    \item Curva ROC del score GRACE (si calculado)
+    \item Línea diagonal de referencia (AUC = 0.5)
+    \item Leyenda con AUC de cada modelo
+    \item Intervalo de confianza sombreado (bootstrap)
+    \item Punto óptimo marcado (umbral de Youden)
+\end{itemize}
+\end{placeholderblock}
+\caption{Curvas ROC comparativas en conjunto de test}
+\label{fig:curva_roc}
+\end{figure}
+
+\subsubsection{Curva Precision-Recall}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR CURVA PRECISION-RECALL]}
+
+Gráfico mostrando:
+\begin{itemize}
+    \item Curva PR del modelo final
+    \item Curva PR del baseline
+    \item Línea de referencia (prevalencia de eventos)
+    \item AUPRC en leyenda
+\end{itemize}
+
+\textit{Esta curva es especialmente relevante dado el desbalance de clases.}
+\end{placeholderblock}
+\caption{Curvas Precision-Recall comparativas}
+\label{fig:curva_pr}
+\end{figure}
+
+\subsubsection{Matriz de Confusión}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR MATRIZ DE CONFUSIÓN]}
+
+Matriz 2x2 con:
+\begin{itemize}
+    \item Verdaderos Positivos (VP)
+    \item Verdaderos Negativos (VN)
+    \item Falsos Positivos (FP)
+    \item Falsos Negativos (FN)
+\end{itemize}
+
+Mostrar valores absolutos y porcentajes.
+Al umbral óptimo seleccionado.
+\end{placeholderblock}
+\caption{Matriz de confusión del modelo final (umbral = \placeholder{0.XXX})}
+\label{fig:matriz_confusion}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Matriz de confusión -- Valores numéricos}
+\label{tab:matriz_confusion}
+\begin{tabular}{@{}l|cc|c@{}}
+\toprule
+& \multicolumn{2}{c|}{\textbf{Predicho}} & \\
+\textbf{Real} & Superviviente & Fallecido & \textbf{Total} \\
+\midrule
+Superviviente & \placeholder{VN = XXX} & \placeholder{FP = XX} & \placeholder{XXX} \\
+Fallecido & \placeholder{FN = XX} & \placeholder{VP = XX} & \placeholder{XX} \\
+\midrule
+\textbf{Total} & \placeholder{XXX} & \placeholder{XX} & \placeholder{N} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Métricas de Calibración}
+
+\subsubsection{Curva de Calibración}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR CURVA DE CALIBRACIÓN]}
+
+Gráfico mostrando:
+\begin{itemize}
+    \item Probabilidades predichas vs. frecuencias observadas por deciles
+    \item Línea de calibración perfecta (diagonal)
+    \item Barras de error (IC 95\%)
+    \item Histograma de probabilidades en panel inferior
+\end{itemize}
+\end{placeholderblock}
+\caption{Curva de calibración del modelo final en conjunto de test}
+\label{fig:calibracion_test}
+\end{figure}
+
+\subsubsection{Métricas de Calibración}
+
+\begin{table}[H]
+\centering
+\caption{Métricas de calibración}
+\label{tab:metricas_calibracion}
+\begin{tabular}{@{}lc@{}}
+\toprule
+\textbf{Métrica} & \textbf{Valor} \\
+\midrule
+Brier Score & \placeholder{0.XXX} \\
+Brier Skill Score & \placeholder{0.XXX} \\
+Calibration slope & \placeholder{X.XX} \\
+Calibration intercept & \placeholder{X.XX} \\
+Hosmer-Lemeshow $\chi^2$ (p-valor) & \placeholder{X.XX (p = X.XXX)} \\
+Expected Calibration Error (ECE) & \placeholder{0.XXX} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Comparación con Modelos de Referencia}
+
+\begin{table}[H]
+\centering
+\caption{Comparación del modelo final con benchmarks}
+\label{tab:comparacion_benchmarks}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Modelo} & \textbf{AUROC} & \textbf{AUPRC} & \textbf{Sensibilidad} & \textbf{Especificidad} \\
+\midrule
+Score GRACE & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
+Reg. Logística & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
+Random Forest & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
+\rowcolor{accentgold!20}
+\textbf{Modelo final} & \placeholder{\textbf{0.XXX}} & \placeholder{\textbf{0.XXX}} & \placeholder{\textbf{0.XXX}} & \placeholder{\textbf{0.XXX}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Tests de Significancia Estadística}
+
+\begin{table}[H]
+\centering
+\caption{Comparación estadística de AUROCs (DeLong test)}
+\label{tab:delong_test}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Comparación} & \textbf{$\Delta$AUROC} & \textbf{IC 95\%} & \textbf{p-valor} \\
+\midrule
+Modelo final vs. GRACE & \placeholder{+0.XXX} & \placeholder{[0.XXX -- 0.XXX]} & \placeholder{$<$0.001} \\
+Modelo final vs. Reg. Log. & \placeholder{+0.XXX} & \placeholder{[0.XXX -- 0.XXX]} & \placeholder{X.XXX} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis de Utilidad Clínica}
+
+\subsubsection{Decision Curve Analysis}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR DECISION CURVE ANALYSIS]}
+
+Gráfico mostrando:
+\begin{itemize}
+    \item Eje X: Probabilidad umbral
+    \item Eje Y: Beneficio neto estandarizado
+    \item Curva del modelo final
+    \item Curva de GRACE score
+    \item Línea ``Tratar a todos''
+    \item Línea ``Tratar a ninguno''
+\end{itemize}
+
+Rango de umbrales clínicamente relevantes: \placeholder{5\%--30\%}
+\end{placeholderblock}
+\caption{Análisis de curva de decisión}
+\label{fig:decision_curve}
+\end{figure}
+
+\begin{keypoint}
+El modelo muestra beneficio neto positivo sobre las estrategias de ``tratar a todos'' o ``tratar a ninguno'' en el rango de umbrales de probabilidad de \placeholder{X\% a XX\%}, correspondiente al rango de utilidad clínica relevante.
+\end{keypoint}
+
+\subsubsection{Net Reclassification Index (NRI)}
+
+\begin{table}[H]
+\centering
+\caption{Índices de reclasificación respecto a modelo baseline}
+\label{tab:nri}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Índice} & \textbf{Valor} & \textbf{IC 95\%} \\
+\midrule
+NRI (eventos) & \placeholder{+0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+NRI (no eventos) & \placeholder{+0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+NRI total & \placeholder{+0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+IDI & \placeholder{+0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis de Subgrupos}
+
+\begin{table}[H]
+\centering
+\caption{Rendimiento del modelo por subgrupos}
+\label{tab:subgrupos}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Subgrupo} & \textbf{N} & \textbf{AUROC} & \textbf{IC 95\%} \\
+\midrule
+\multicolumn{4}{l}{\textit{Por sexo}} \\
+\quad Masculino & \placeholder{n} & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+\quad Femenino & \placeholder{n} & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+\midrule
+\multicolumn{4}{l}{\textit{Por edad}} \\
+\quad $<$65 años & \placeholder{n} & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+\quad 65--79 años & \placeholder{n} & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+\quad $\geq$80 años & \placeholder{n} & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+\midrule
+\multicolumn{4}{l}{\textit{Por tipo de IAM}} \\
+\quad IAMCEST & \placeholder{n} & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+\quad IAMSEST & \placeholder{n} & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+\midrule
+\multicolumn{4}{l}{\textit{Por Killip}} \\
+\quad Killip I-II & \placeholder{n} & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+\quad Killip III-IV & \placeholder{n} & \placeholder{0.XXX} & \placeholder{[0.XXX -- 0.XXX]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR FOREST PLOT DE SUBGRUPOS]}
+
+Forest plot mostrando AUROC con IC 95\% para cada subgrupo, facilitando la comparación visual.
+\end{placeholderblock}
+\caption{Rendimiento del modelo por subgrupos (Forest plot)}
+\label{fig:forest_subgrupos}
+\end{figure}
+
+\subsection{Análisis de Errores}
+
+\subsubsection{Características de Falsos Negativos}
+
+\begin{table}[H]
+\centering
+\caption{Características de pacientes con falsos negativos}
+\label{tab:falsos_negativos}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Variable} & \textbf{FN (n=\placeholder{XX})} & \textbf{VP (n=\placeholder{XX})} \\
+\midrule
+Edad, años & \placeholder{XX.X ± XX.X} & \placeholder{XX.X ± XX.X} \\
+Killip III-IV, \% & \placeholder{XX.X\%} & \placeholder{XX.X\%} \\
+Creatinina, mg/dL & \placeholder{X.XX ± X.XX} & \placeholder{X.XX ± X.XX} \\
+FEVI, \% & \placeholder{XX.X ± XX.X} & \placeholder{XX.X ± XX.X} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{placeholderblock}
+\textbf{[ANÁLISIS CUALITATIVO DE ERRORES]}
+
+Describir:
+\begin{itemize}
+    \item Patrones identificados en falsos negativos
+    \item Posibles explicaciones clínicas
+    \item Casos extremos o atípicos
+\end{itemize}
+\end{placeholderblock}
+
+\subsection{Resumen de Resultados}
+
+\begin{keypoint}
+\textbf{Resumen de resultados principales:}
+
+\begin{enumerate}
+    \item \textbf{Discriminación}: El modelo \placeholder{nombre} alcanzó un AUROC de \placeholder{0.XXX}, superando significativamente al score GRACE (p \placeholder{$<$0.001}).
+    
+    \item \textbf{Calibración}: El modelo mostró buena calibración con Brier Score de \placeholder{0.XXX} y calibration slope de \placeholder{X.XX}.
+    
+    \item \textbf{Utilidad clínica}: El Decision Curve Analysis demostró beneficio neto en el rango de umbrales \placeholder{X\%--XX\%}.
+    
+    \item \textbf{Generalización}: El rendimiento fue consistente entre subgrupos de \placeholder{sexo/edad/tipo IAM}.
+    
+    \item \textbf{Puntos de mejora}: Se identificaron \placeholder{XX} falsos negativos, principalmente en pacientes con \placeholder{característica}.
+\end{enumerate}
+\end{keypoint}

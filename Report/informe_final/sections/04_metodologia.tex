@@ -1,0 +1,357 @@
+% ============================================================================
+% SECCIÓN 04: METODOLOGÍA
+% ============================================================================
+
+\section{Metodología}
+\label{sec:metodologia}
+
+Este estudio sigue las recomendaciones de las guías TRIPOD+AI (Transparent Reporting of a multivariable prediction model for Individual Prognosis Or Diagnosis with Artificial Intelligence) para el desarrollo y reporte de modelos de predicción clínica basados en aprendizaje automático \citep{steyerberg2019clinical}.
+
+\subsection{Diseño del Estudio}
+
+\begin{table}[H]
+\centering
+\caption{Características del diseño del estudio}
+\label{tab:diseno_estudio}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Aspecto} & \textbf{Descripción} \\
+\midrule
+Tipo de estudio & Estudio de desarrollo y validación de modelo predictivo \\
+Enfoque analítico & Supervisado (clasificación binaria) \\
+Variable objetivo & Mortalidad intrahospitalaria \\
+Horizonte de predicción & Durante la hospitalización índice \\
+Marco temporal & Retrospectivo \\
+Validación & \placeholder{Interna/Externa/Temporal} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Pipeline de Análisis}
+
+El flujo de trabajo completo se presenta en la Figura \ref{fig:pipeline_metodologia}:
+
+\begin{figure}[H]
+\centering
+\begin{placeholderblock}
+\textbf{[INSERTAR DIAGRAMA DE FLUJO]}
+
+Diagrama que muestre las etapas:
+\begin{enumerate}
+    \item Obtención de datos crudos
+    \item Preprocesamiento y limpieza
+    \item Análisis exploratorio (EDA)
+    \item Ingeniería de características
+    \item División train/validation/test
+    \item Entrenamiento de modelos
+    \item Optimización de hiperparámetros
+    \item Evaluación de rendimiento
+    \item Análisis de explicabilidad
+    \item Validación final
+\end{enumerate}
+
+\textit{Sugerencia: Usar diagrama con flechas, cajas de proceso y decisiones}
+\end{placeholderblock}
+\caption{Pipeline metodológico del estudio}
+\label{fig:pipeline_metodologia}
+\end{figure}
+
+\subsection{Preprocesamiento de Datos}
+
+\subsubsection{Tratamiento de Datos Faltantes}
+
+\begin{table}[H]
+\centering
+\caption{Estrategias de imputación según tipo de variable y patrón de missingness}
+\label{tab:estrategias_imputacion}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Tipo de variable} & \textbf{Estrategia} & \textbf{Justificación} \\
+\midrule
+Numéricas (MAR) & \placeholder{KNN/MICE/Mediana} & \placeholder{Justificar} \\
+Numéricas (MNAR) & \placeholder{Indicador + imputación} & Preservar información de missingness \\
+Categóricas & \placeholder{Moda/Categoría ``Desconocido''} & \placeholder{Justificar} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Variables excluidas por exceso de datos faltantes ($>$\placeholder{XX}\%):
+\begin{placeholderblock}
+\textbf{[LISTAR VARIABLES EXCLUIDAS]}
+\begin{itemize}
+    \item Variable\_1 (XX\% faltantes)
+    \item Variable\_2 (XX\% faltantes)
+    \item ...
+\end{itemize}
+\end{placeholderblock}
+
+\subsubsection{Tratamiento de Valores Atípicos}
+
+\begin{itemize}
+    \item \textbf{Detección}: Método \placeholder{IQR/Z-score/Isolation Forest}.
+    \item \textbf{Manejo}: \placeholder{Winsorización al percentil 1-99 / Exclusión / Transformación}.
+    \item \textbf{Variables afectadas}: \placeholder{Listar variables con outliers tratados}.
+\end{itemize}
+
+\subsubsection{Codificación de Variables Categóricas}
+
+\begin{table}[H]
+\centering
+\caption{Estrategias de codificación de variables categóricas}
+\label{tab:codificacion_categoricas}
+\begin{tabular}{@{}llp{5cm}@{}}
+\toprule
+\textbf{Tipo} & \textbf{Codificación} & \textbf{Variables} \\
+\midrule
+Binarias & 0/1 & \placeholder{Listar} \\
+Nominales (baja cardinalidad) & One-Hot Encoding & \placeholder{Listar} \\
+Nominales (alta cardinalidad) & Target Encoding & \placeholder{Listar} \\
+Ordinales & Ordinal Encoding & \placeholder{Listar (ej. Killip I$\rightarrow$IV)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Transformación y Normalización}
+
+\begin{itemize}
+    \item \textbf{Variables sesgadas}: Transformación \placeholder{log/Box-Cox/Yeo-Johnson}.
+    \item \textbf{Normalización}: \placeholder{StandardScaler/MinMaxScaler/RobustScaler}.
+    \item \textbf{Variables aplicadas}: \placeholder{Listar variables transformadas}.
+\end{itemize}
+
+\subsection{Ingeniería de Características}
+
+\subsubsection{Creación de Variables Derivadas}
+
+\begin{table}[H]
+\centering
+\caption{Variables derivadas creadas}
+\label{tab:variables_derivadas}
+\begin{tabular}{@{}llp{5cm}@{}}
+\toprule
+\textbf{Variable nueva} & \textbf{Fórmula/Definición} & \textbf{Justificación clínica} \\
+\midrule
+\placeholder{VARIABLE\_1} & \placeholder{Fórmula} & \placeholder{Justificación} \\
+\placeholder{VARIABLE\_2} & \placeholder{Fórmula} & \placeholder{Justificación} \\
+\placeholder{SCORE\_GRACE\_CALC} & Cálculo según fórmula original & Comparación con baseline \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Selección de Características}
+
+Métodos aplicados:
+
+\begin{enumerate}
+    \item \textbf{Filtrado}: Correlación con variable objetivo, test $\chi^2$/ANOVA.
+    
+    \item \textbf{Embedded}: Importancia de características en \gls{rf} y XGBoost.
+    
+    \item \textbf{Wrapper}: \placeholder{RFE/Boruta/Forward-Backward selection}.
+\end{enumerate}
+
+\begin{placeholderblock}
+\textbf{[INSERTAR RESULTADO DE SELECCIÓN]}
+
+Número de variables seleccionadas: XX de 185 originales.
+
+Variables finales incluidas en el modelo:
+\begin{enumerate}
+    \item Variable\_1
+    \item Variable\_2
+    \item ...
+\end{enumerate}
+\end{placeholderblock}
+
+\subsection{División de Datos}
+
+\begin{table}[H]
+\centering
+\caption{Esquema de partición de datos}
+\label{tab:particion_datos}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Conjunto} & \textbf{Porcentaje} & \textbf{N pacientes} & \textbf{Uso} \\
+\midrule
+Entrenamiento & \placeholder{70\%} & \placeholder{N} & Ajuste de modelos \\
+Validación & \placeholder{15\%} & \placeholder{N} & Optimización de hiperparámetros \\
+Test & \placeholder{15\%} & \placeholder{N} & Evaluación final \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item \textbf{Estratificación}: Por variable objetivo (mortalidad) para mantener proporción de eventos.
+    \item \textbf{Semilla aleatoria}: \placeholder{42/123/...} para reproducibilidad.
+\end{itemize}
+
+\subsection{Manejo del Desbalance de Clases}
+
+Dado que la mortalidad intrahospitalaria por IAM típicamente oscila entre 5--10\%, se implementaron las siguientes estrategias:
+
+\begin{table}[H]
+\centering
+\caption{Técnicas para manejo de desbalance de clases evaluadas}
+\label{tab:manejo_desbalance}
+\begin{tabular}{@{}lp{6cm}l@{}}
+\toprule
+\textbf{Técnica} & \textbf{Descripción} & \textbf{Aplicada} \\
+\midrule
+Class weights & Ponderación inversa a frecuencia de clase & \placeholder{Sí/No} \\
+SMOTE & Synthetic Minority Over-sampling & \placeholder{Sí/No} \\
+ADASYN & Adaptive Synthetic Sampling & \placeholder{Sí/No} \\
+Random Undersampling & Submuestreo de clase mayoritaria & \placeholder{Sí/No} \\
+Threshold adjustment & Ajuste del umbral de decisión & \placeholder{Sí/No} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Algoritmos de Aprendizaje Automático}
+
+\subsubsection{Modelos Evaluados}
+
+\begin{enumerate}
+    \item \textbf{Regresión Logística Penalizada} (\gls{lr}): Modelo baseline lineal con regularización \placeholder{L1/L2/ElasticNet}.
+    
+    \item \textbf{Random Forest} (\gls{rf}): Ensamble de árboles de decisión con bagging y selección aleatoria de características.
+    
+    \item \textbf{XGBoost}: Gradient boosting optimizado con regularización y manejo de missings.
+    
+    \item \textbf{LightGBM}: Gradient boosting basado en histogramas para eficiencia computacional.
+    
+    \item \textbf{Redes Neuronales} (\gls{nn}): \placeholder{Arquitectura MLP/TabNet especificada en apéndice}.
+    
+    \item \textbf{\placeholder{AutoML (AutoKeras/Auto-sklearn)}}: Búsqueda automatizada de arquitecturas y hiperparámetros.
+\end{enumerate}
+
+\subsubsection{Optimización de Hiperparámetros}
+
+\begin{table}[H]
+\centering
+\caption{Estrategia de optimización de hiperparámetros}
+\label{tab:optimizacion_hp}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Aspecto} & \textbf{Configuración} \\
+\midrule
+Método de búsqueda & \placeholder{Grid Search/Random Search/Bayesian Optimization} \\
+Validación cruzada & \placeholder{5-fold/10-fold} estratificada \\
+Métrica de optimización & \placeholder{AUROC/F1-Score/Brier Score} \\
+Early stopping & \placeholder{Sí, N iteraciones sin mejora} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El espacio de búsqueda de hiperparámetros se detalla en el Apéndice \ref{app:hiperparametros}.
+
+\subsection{Métricas de Evaluación}
+
+\subsubsection{Discriminación}
+
+\begin{table}[H]
+\centering
+\caption{Métricas de discriminación}
+\label{tab:metricas_discriminacion}
+\begin{tabular}{@{}lp{8cm}@{}}
+\toprule
+\textbf{Métrica} & \textbf{Descripción} \\
+\midrule
+\gls{auroc} & Área bajo la curva ROC. Probabilidad de que el modelo asigne mayor riesgo a un caso positivo que a uno negativo. \\
+AUPRC & Área bajo la curva Precision-Recall. Más informativa con clases desbalanceadas. \\
+Sensibilidad & Tasa de verdaderos positivos (recall). \\
+Especificidad & Tasa de verdaderos negativos. \\
+Precisión & Valor predictivo positivo. \\
+F1-Score & Media armónica de precisión y recall. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Calibración}
+
+\begin{itemize}
+    \item \textbf{Curva de calibración}: Probabilidades predichas vs. frecuencias observadas por deciles.
+    \item \textbf{Brier Score}: $\text{BS} = \frac{1}{N}\sum_{i=1}^{N}(p_i - y_i)^2$, donde menor es mejor.
+    \item \textbf{Test de Hosmer-Lemeshow}: Bondad de ajuste de probabilidades calibradas.
+    \item \textbf{Calibration slope e intercept}: Regresión logística de outcomes sobre probabilidades predichas.
+\end{itemize}
+
+\subsubsection{Utilidad Clínica}
+
+\begin{itemize}
+    \item \textbf{Decision Curve Analysis}: Beneficio neto a diferentes umbrales de probabilidad.
+    \item \textbf{Net Reclassification Index (NRI)}: Mejora en reclasificación respecto a modelo baseline.
+    \item \textbf{Integrated Discrimination Index (IDI)}: Mejora en separación de probabilidades.
+\end{itemize}
+
+\subsection{Análisis de Explicabilidad}
+
+Para garantizar la interpretabilidad clínica del modelo, se aplicaron las siguientes técnicas:
+
+\subsubsection{Explicabilidad Global}
+
+\begin{itemize}
+    \item \textbf{Feature Importance}: Importancia permutacional y basada en ganancia (para modelos de árboles).
+    \item \textbf{\gls{shap} Summary Plot}: Distribución del impacto de cada variable en las predicciones.
+    \item \textbf{Partial Dependence Plots}: Efecto marginal de variables individuales.
+\end{itemize}
+
+\subsubsection{Explicabilidad Local}
+
+\begin{itemize}
+    \item \textbf{SHAP Force Plots}: Explicación de predicciones individuales.
+    \item \textbf{SHAP Waterfall Plots}: Contribución acumulativa de variables por caso.
+\end{itemize}
+
+\subsection{Validación del Modelo}
+
+\begin{table}[H]
+\centering
+\caption{Estrategia de validación}
+\label{tab:estrategia_validacion}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Tipo de validación} & \textbf{Descripción} \\
+\midrule
+Validación interna & Validación cruzada \placeholder{K}-fold en conjunto de entrenamiento \\
+Validación temporal & \placeholder{Si aplica: datos de período posterior} \\
+Validación externa & \placeholder{Si aplica: datos de otra institución} \\
+Análisis de sensibilidad & Estabilidad ante diferentes imputaciones/particiones \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Herramientas Tecnológicas}
+
+\begin{table}[H]
+\centering
+\caption{Stack tecnológico utilizado}
+\label{tab:stack_tecnologico}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Componente} & \textbf{Herramienta/Versión} \\
+\midrule
+Lenguaje de programación & Python 3.x \\
+Manipulación de datos & pandas, numpy \\
+Visualización & matplotlib, seaborn, plotly \\
+Aprendizaje automático & scikit-learn, XGBoost, LightGBM \\
+Redes neuronales & \placeholder{TensorFlow/PyTorch/AutoKeras} \\
+Explicabilidad & SHAP, eli5 \\
+Tracking de experimentos & MLflow \\
+Interfaz de usuario & Streamlit \\
+Control de versiones & Git, GitHub \\
+Documentación & MkDocs \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Reproducibilidad}
+
+Para garantizar la reproducibilidad del estudio:
+
+\begin{itemize}
+    \item Todo el código fuente está disponible en \placeholder{enlace a repositorio}.
+    \item Se fijaron semillas aleatorias en todos los procesos estocásticos.
+    \item Las dependencias están especificadas en archivos \texttt{requirements.txt} y \texttt{environment.yml}.
+    \item Los modelos entrenados se guardaron en formato serializado (\texttt{.joblib}).
+    \item Se utilizó MLflow para el tracking de experimentos y versiones de modelos.
+\end{itemize}

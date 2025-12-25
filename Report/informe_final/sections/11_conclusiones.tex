@@ -1,0 +1,135 @@
+% ============================================================================
+% SECCIÓN 11: CONCLUSIONES
+% ============================================================================
+
+\section{Conclusiones}
+\label{sec:conclusiones}
+
+\subsection{Conclusiones Principales}
+
+\begin{placeholderblock}
+\textbf{[REDACTAR CONCLUSIONES BASADAS EN RESULTADOS]}
+
+Este estudio demuestra que:
+
+\begin{enumerate}
+    \item \textbf{Viabilidad}: Es factible desarrollar un modelo de aprendizaje automático para predecir la mortalidad intrahospitalaria en pacientes con \gls{iam} utilizando variables clínicas y de laboratorio disponibles rutinariamente.
+    
+    \item \textbf{Rendimiento superior}: El modelo \placeholder{nombre} alcanzó un rendimiento predictivo (AUROC = \placeholder{0.XXX}) significativamente superior al score GRACE tradicional (AUROC = \placeholder{0.XXX}), con una mejora de \placeholder{XX} puntos porcentuales.
+    
+    \item \textbf{Calibración adecuada}: El modelo muestra buena calibración, lo que permite utilizar las probabilidades predichas directamente para la toma de decisiones clínicas.
+    
+    \item \textbf{Interpretabilidad}: Las técnicas de explicabilidad (SHAP) permiten comprender las predicciones del modelo, identificando que las variables más influyentes son \placeholder{lista de variables}, consistentes con el conocimiento fisiopatológico.
+    
+    \item \textbf{Utilidad clínica}: El análisis de curva de decisión demuestra beneficio neto del modelo en el rango de umbrales de probabilidad clínicamente relevantes.
+\end{enumerate}
+\end{placeholderblock}
+
+\subsection{Respuesta a los Objetivos}
+
+\subsubsection{Objetivo General}
+
+\begin{placeholderblock}
+\textbf{Objetivo}: Desarrollar y validar un modelo de aprendizaje automático para la predicción de mortalidad intrahospitalaria en pacientes con infarto agudo de miocardio.
+
+\textbf{Conclusión}: Se cumplió el objetivo general. Se desarrolló un modelo de \placeholder{tipo} con rendimiento \placeholder{AUROC}, validado mediante \placeholder{tipo de validación}, que supera a los modelos tradicionales de estratificación de riesgo.
+\end{placeholderblock}
+
+\subsubsection{Objetivos Específicos}
+
+\begin{enumerate}
+    \item \textbf{Caracterizar el dataset}:
+    \begin{placeholderblock}
+    \textbf{Conclusión}: Se analizó un dataset de \placeholder{N} pacientes con \placeholder{X} variables, identificando una tasa de mortalidad del \placeholder{X\%} y patrones de datos faltantes que fueron tratados mediante \placeholder{método}.
+    \end{placeholderblock}
+    
+    \item \textbf{Realizar análisis exploratorio}:
+    \begin{placeholderblock}
+    \textbf{Conclusión}: El EDA reveló diferencias significativas entre fallecidos y supervivientes en variables como \placeholder{edad, Killip, creatinina}, orientando la selección de predictores.
+    \end{placeholderblock}
+    
+    \item \textbf{Desarrollar y optimizar modelos}:
+    \begin{placeholderblock}
+    \textbf{Conclusión}: Se evaluaron \placeholder{X} algoritmos, siendo \placeholder{modelo} el de mejor rendimiento tras optimización de hiperparámetros mediante \placeholder{método}.
+    \end{placeholderblock}
+    
+    \item \textbf{Comparar con escalas tradicionales}:
+    \begin{placeholderblock}
+    \textbf{Conclusión}: El modelo de ML superó significativamente al score GRACE (p \placeholder{$<$0.001}), demostrando el valor añadido de los algoritmos de aprendizaje automático.
+    \end{placeholderblock}
+    
+    \item \textbf{Analizar explicabilidad}:
+    \begin{placeholderblock}
+    \textbf{Conclusión}: Las técnicas SHAP revelaron que las variables más predictivas son \placeholder{lista}, con relaciones no lineales e interacciones que los modelos lineales no capturan.
+    \end{placeholderblock}
+    
+    \item \textbf{Desarrollar herramienta de aplicación}:
+    \begin{placeholderblock}
+    \textbf{Conclusión}: Se implementó un dashboard interactivo en Streamlit que permite realizar predicciones individuales con explicaciones SHAP para uso clínico.
+    \end{placeholderblock}
+\end{enumerate}
+
+\subsection{Contribuciones del Estudio}
+
+\begin{placeholderblock}
+\textbf{[DESTACAR CONTRIBUCIONES ORIGINALES]}
+
+Las principales contribuciones de este trabajo son:
+
+\begin{enumerate}
+    \item \textbf{Científica}: Demostración de la superioridad de modelos de ML sobre escalas tradicionales en una población \placeholder{específica/latina/del país}.
+    
+    \item \textbf{Metodológica}: Aplicación rigurosa de guías TRIPOD+AI para el desarrollo y reporte de modelos predictivos clínicos.
+    
+    \item \textbf{Práctica}: Desarrollo de una herramienta de predicción interpretable lista para validación clínica.
+    
+    \item \textbf{Educativa}: Documentación completa del proceso de desarrollo de modelos de ML en salud, útil para futuros proyectos similares.
+\end{enumerate}
+\end{placeholderblock}
+
+\subsection{Mensaje Clave}
+
+\begin{keypoint}
+\textbf{Conclusión principal:}
+
+Los modelos de aprendizaje automático, específicamente \placeholder{tipo de modelo}, representan una mejora significativa sobre las escalas de riesgo tradicionales para la predicción de mortalidad intrahospitalaria en pacientes con infarto agudo de miocardio. La combinación de alto rendimiento predictivo con técnicas de explicabilidad facilita su potencial adopción en la práctica clínica, contribuyendo a una medicina más personalizada y basada en datos.
+\end{keypoint}
+
+\subsection{Recomendaciones}
+
+\subsubsection{Para Investigadores}
+
+\begin{enumerate}
+    \item Realizar validación externa del modelo en cohortes independientes.
+    \item Explorar la extensión del modelo a otros outcomes (arritmias, reingresos).
+    \item Investigar la incorporación de datos multimodales (imágenes, señales).
+    \item Desarrollar modelos de predicción dinámica durante la hospitalización.
+\end{enumerate}
+
+\subsubsection{Para Clínicos}
+
+\begin{enumerate}
+    \item Considerar el modelo como complemento, no sustituto, del juicio clínico.
+    \item Utilizar las explicaciones SHAP para identificar factores de riesgo modificables.
+    \item Validar localmente el modelo antes de su implementación rutinaria.
+    \item Participar en estudios de evaluación de impacto clínico.
+\end{enumerate}
+
+\subsubsection{Para Gestores de Salud}
+
+\begin{enumerate}
+    \item Evaluar la integración de herramientas de ML en sistemas de información hospitalarios.
+    \item Considerar la inversión en infraestructura de datos para habilitar el uso de IA clínica.
+    \item Establecer procesos de gobernanza para la implementación de algoritmos predictivos.
+    \item Facilitar la colaboración multicéntrica para validación y mejora de modelos.
+\end{enumerate}
+
+\subsection{Reflexión Final}
+
+\begin{placeholderblock}
+\textbf{[REFLEXIÓN DE CIERRE]}
+
+Este estudio representa un paso hacia la integración de la inteligencia artificial en la cardiología de urgencias. Aunque los resultados son prometedores, el camino hacia la implementación clínica requiere validación rigurosa, colaboración multidisciplinaria y un compromiso continuo con la transparencia y la ética en el desarrollo de algoritmos de salud.
+
+La predicción de riesgo no es un fin en sí mismo, sino una herramienta para mejorar la atención al paciente. El verdadero valor de estos modelos se materializará cuando contribuyan a salvar vidas mediante una mejor identificación de pacientes vulnerables y una optimización de los recursos sanitarios.
+\end{placeholderblock}

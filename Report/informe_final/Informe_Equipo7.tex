@@ -1,0 +1,313 @@
+% ============================================================================
+% INFORME DE INVESTIGACIÓN: Predicción de Mortalidad Intrahospitalaria 
+% por Infarto Agudo de Miocardio mediante Aprendizaje Automático
+% ============================================================================
+% Estructura basada en guías TRIPOD+AI (2024) para modelos de predicción clínica
+% Formato APA 7ma edición para referencias bibliográficas
+% ============================================================================
+
+\documentclass[12pt,a4paper]{article}
+
+% ============================================================================
+% PAQUETES ESENCIALES
+% ============================================================================
+
+% Idioma y codificación
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% Geometría y formato
+\usepackage[
+    top=2.5cm,
+    bottom=2.5cm,
+    left=3cm,
+    right=2.5cm,
+    headheight=14pt
+]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+% Matemáticas y símbolos
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{siunitx}
+\sisetup{
+    output-decimal-marker = {,},
+    group-separator = {.},
+    group-minimum-digits = 4
+}
+
+% Tablas y figuras
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage[table,xcdraw]{xcolor}
+
+% Colores institucionales
+\definecolor{primaryblue}{RGB}{0,51,102}
+\definecolor{secondaryblue}{RGB}{51,102,153}
+\definecolor{accentgold}{RGB}{204,153,0}
+\definecolor{lightgray}{RGB}{245,245,245}
+\definecolor{darkgray}{RGB}{64,64,64}
+
+% Encabezados y pies de página
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{darkgray}{Predicción de Mortalidad en IAM}}
+\fancyhead[R]{\small\textcolor{darkgray}{Equipo 7}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Referencias y citas - APA 7ma edición
+\usepackage[
+    backend=biber,
+    style=apa,
+    sorting=nyt,
+    natbib=true
+]{biblatex}
+\addbibresource{referencias.bib}
+% Mapeo de idioma para APA (comentado si causa errores)
+% \DeclareLanguageMapping{spanish}{spanish-apa}
+
+% Hipervínculos
+\usepackage[
+    colorlinks=true,
+    linkcolor=primaryblue,
+    citecolor=secondaryblue,
+    urlcolor=accentgold,
+    bookmarks=true,
+    bookmarksopen=true
+]{hyperref}
+\usepackage{bookmark}
+
+% Listados de código
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{lightgray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{primaryblue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{accentgold}
+}
+
+% Algoritmos
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\floatname{algorithm}{Algoritmo}
+
+% Cajas de texto destacado
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+
+\newtcolorbox{keypoint}{
+    colback=lightgray,
+    colframe=primaryblue,
+    fonttitle=\bfseries,
+    title=Punto Clave,
+    breakable
+}
+
+% Comando placeholder para texto inline a completar
+\newcommand{\placeholder}[1]{\colorbox{yellow!30}{\textbf{[#1]}}}
+
+% Entorno placeholderblock para bloques de texto más largos (usando tcolorbox)
+\newtcolorbox{placeholderblock}[1][COMPLETAR]{
+    colback=yellow!10,
+    colframe=yellow!60,
+    fonttitle=\bfseries\small,
+    title=#1,
+    breakable,
+    enhanced
+}
+
+% Títulos de secciones
+\usepackage{titlesec}
+\titleformat{\section}
+    {\normalfont\Large\bfseries\color{primaryblue}}
+    {\thesection}{1em}{}
+\titleformat{\subsection}
+    {\normalfont\large\bfseries\color{secondaryblue}}
+    {\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+    {\normalfont\normalsize\bfseries\color{darkgray}}
+    {\thesubsubsection}{1em}{}
+
+% Epígrafes de figuras y tablas
+\usepackage[
+    font=small,
+    labelfont=bf,
+    labelsep=period,
+    justification=centering
+]{caption}
+
+% Glosario y acrónimos
+\usepackage[acronym,toc]{glossaries}
+\makeglossaries
+
+% Definición de acrónimos
+\newacronym{iam}{IAM}{Infarto Agudo de Miocardio}
+\newacronym{ml}{ML}{Machine Learning}
+\newacronym{auroc}{AUROC}{Área Bajo la Curva ROC}
+\newacronym{shap}{SHAP}{SHapley Additive exPlanations}
+\newacronym{xgb}{XGBoost}{Extreme Gradient Boosting}
+\newacronym{rf}{RF}{Random Forest}
+\newacronym{lr}{LR}{Regresión Logística}
+\newacronym{nn}{NN}{Red Neuronal}
+\newacronym{eda}{EDA}{Análisis Exploratorio de Datos}
+\newacronym{cv}{CV}{Validación Cruzada}
+\newacronym{grace}{GRACE}{Global Registry of Acute Coronary Events}
+\newacronym{timi}{TIMI}{Thrombolysis In Myocardial Infarction}
+
+% ============================================================================
+% METADATOS DEL DOCUMENTO
+% ============================================================================
+\title{
+    \vspace{-1cm}
+    % \includegraphics[width=0.3\textwidth]{logo_universidad.png}\\[1cm] % Descomentar si existe el logo
+    {\Huge\bfseries\color{primaryblue}Predicción de Mortalidad Intrahospitalaria\\por Infarto Agudo de Miocardio\\mediante Aprendizaje Automático}\\[0.5cm]
+    {\Large\color{secondaryblue}Informe de Investigación}\\[0.3cm]
+    {\large\color{darkgray}Basado en el Registro Cubano de Infarto Agudo de Miocardio (RECUIMA)}
+}
+
+\author{
+    \textbf{Equipo 7}\\[0.3cm]
+    \begin{tabular}{ll}
+    % PLACEHOLDER: Agregar nombres de los integrantes del equipo
+    Integrante 1 & \texttt{email1@universidad.edu}\\
+    Integrante 2 & \texttt{email2@universidad.edu}\\
+    Integrante 3 & \texttt{email3@universidad.edu}\\
+    \end{tabular}\\[0.5cm]
+    \textit{Curso de Machine Learning}\\
+    \textit{Universidad [NOMBRE]}
+}
+
+\date{\today}
+
+% ============================================================================
+% INICIO DEL DOCUMENTO
+% ============================================================================
+\begin{document}
+
+% Página de título
+\maketitle
+\thispagestyle{empty}
+\newpage
+
+% ============================================================================
+% RESUMEN Y ABSTRACT
+% ============================================================================
+\input{sections/00_resumen}
+
+% Tabla de contenidos
+\tableofcontents
+\newpage
+
+% Lista de figuras y tablas
+\listoffigures
+\listoftables
+\newpage
+
+% ============================================================================
+% CUERPO DEL INFORME
+% ============================================================================
+
+% Introducción
+\input{sections/01_introduccion}
+
+% Estado del Arte
+\input{sections/02_estado_del_arte}
+
+% Descripción del Dataset
+\input{sections/03_dataset}
+
+% Metodología
+\input{sections/04_metodologia}
+
+% Análisis Exploratorio de Datos
+\input{sections/05_eda}
+
+% Preprocesamiento
+\input{sections/06_preprocesamiento}
+
+% Modelado
+\input{sections/07_modelado}
+
+% Resultados
+\input{sections/08_resultados}
+
+% Explicabilidad
+\input{sections/09_explicabilidad}
+
+% Discusión
+\input{sections/10_discusion}
+
+% Conclusiones
+\input{sections/11_conclusiones}
+
+% Limitaciones y Trabajo Futuro
+\input{sections/12_limitaciones}
+
+% ============================================================================
+% SECCIONES FINALES
+% ============================================================================
+
+% Declaración de contribuciones
+\section*{Contribuciones de los Autores}
+\addcontentsline{toc}{section}{Contribuciones de los Autores}
+
+\placeholder{COMPLETAR: Contribuciones de cada integrante}
+
+Especificar las contribuciones de cada integrante del equipo según la taxonomía CRediT:
+\begin{itemize}
+    \item \textbf{Integrante 1}: Conceptualización, Metodología, Software
+    \item \textbf{Integrante 2}: Curación de datos, Análisis formal, Visualización
+    \item \textbf{Integrante 3}: Redacción, Revisión, Administración del proyecto
+\end{itemize}
+
+% Conflictos de interés
+\section*{Declaración de Conflictos de Interés}
+\addcontentsline{toc}{section}{Declaración de Conflictos de Interés}
+Los autores declaran no tener conflictos de interés relacionados con este estudio.
+
+% Agradecimientos
+\section*{Agradecimientos}
+\addcontentsline{toc}{section}{Agradecimientos}
+
+\placeholder{COMPLETAR: Agradecimientos}
+
+Agradecer a:
+\begin{itemize}
+    \item Profesores y tutores del curso
+    \item Instituciones que proporcionaron los datos (RECUIMA)
+    \item Colaboradores externos
+\end{itemize}
+
+% Referencias bibliográficas
+\newpage
+\printbibliography[heading=bibintoc,title={Referencias Bibliográficas}]
+
+% Apéndices
+\newpage
+\appendix
+\input{sections/apendice_a_variables}
+\input{sections/apendice_b_hiperparametros}
+\input{sections/apendice_c_codigo}
+
+% Glosario
+\newpage
+\printglossary[type=\acronymtype,title={Lista de Acrónimos}]
+
+\end{document}
