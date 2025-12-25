@@ -32,12 +32,24 @@ cloudpickle
 
 # --- AutoML ---
 # FLAML: Cross-platform AutoML from Microsoft (Windows, Linux, macOS)
+# Soporta: lgbm, xgboost, catboost, rf, extra_tree, histgb, kneighbor, lrl1, lrl2, svc, sgd
 flaml[automl]
+
+# --- Opcional: Estimadores adicionales para FLAML ---
+# CatBoost: Gradient Boosting con soporte nativo para variables categóricas
+# Descomenta la siguiente línea para instalar:
+# catboost
 
 # --- Opcional: auto-sklearn (solo Linux/WSL) ---
 # Más completo que FLAML pero requiere Linux. Instalar manualmente:
 #   pip install auto-sklearn
 # Nota: No compatible con Windows nativo. Usar WSL o Docker.
+
+# --- Opcional: AutoKeras para Neural Architecture Search (NAS) ---
+# AutoKeras busca automáticamente la mejor arquitectura de red neuronal
+# Requiere TensorFlow. Descomenta las siguientes líneas para instalar:
+# tensorflow>=2.10.0
+# autokeras>=1.1.0
 
 # --- Opcional: pila PyTorch (solo si activas el modelo NN) ---
 # Nota: Instálala por separado para evitar errores de compatibilidad en Windows.

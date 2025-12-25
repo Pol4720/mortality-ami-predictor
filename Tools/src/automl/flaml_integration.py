@@ -9,6 +9,24 @@ FLAML advantages:
 - Faster than auto-sklearn for many tasks
 - Lower memory requirements
 - Supports more estimators out of the box
+
+Available Estimators:
+    - lgbm: LightGBM (gradient boosting)
+    - xgboost: XGBoost 
+    - xgb_limitdepth: XGBoost with limited depth
+    - catboost: CatBoost (gradient boosting)
+    - rf: Random Forest
+    - extra_tree: Extra Trees
+    - histgb: Histogram-based Gradient Boosting (sklearn)
+    - kneighbor: K-Nearest Neighbors
+    - lrl1: L1 Regularized Logistic Regression (Lasso)
+    - lrl2: L2 Regularized Logistic Regression (Ridge)
+    - svc: Support Vector Classifier
+    - sgd: Stochastic Gradient Descent Classifier
+    - nb: Naive Bayes (Gaussian)
+    - mlp: Multi-Layer Perceptron (Neural Network)
+    - elasticnet: Elastic Net (for regression)
+    - lassolars: Lasso with LARS (for regression)
 """
 from __future__ import annotations
 
@@ -29,6 +47,192 @@ from ..config import RANDOM_SEED
 from .config import AutoMLConfig, AutoMLPreset
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# FLAML Estimator Definitions - Complete list of all available estimators
+# ============================================================================
+
+# All available estimators for classification
+FLAML_CLASSIFICATION_ESTIMATORS = [
+    "lgbm",           # LightGBM - fast gradient boosting
+    "xgboost",        # XGBoost - gradient boosting
+    "xgb_limitdepth", # XGBoost with limited depth
+    "catboost",       # CatBoost - gradient boosting with categorical support
+    "rf",             # Random Forest
+    "extra_tree",     # Extra Trees (Extremely Randomized Trees)
+    "histgb",         # Histogram-based Gradient Boosting (sklearn)
+    "kneighbor",      # K-Nearest Neighbors
+    "lrl1",           # L1 Logistic Regression (Lasso)
+    "lrl2",           # L2 Logistic Regression (Ridge)
+    "svc",            # Support Vector Classifier
+    "sgd",            # Stochastic Gradient Descent
+]
+
+# All available estimators for regression
+FLAML_REGRESSION_ESTIMATORS = [
+    "lgbm",           # LightGBM
+    "xgboost",        # XGBoost
+    "xgb_limitdepth", # XGBoost with limited depth
+    "catboost",       # CatBoost
+    "rf",             # Random Forest
+    "extra_tree",     # Extra Trees
+    "histgb",         # Histogram-based Gradient Boosting
+    "kneighbor",      # K-Nearest Neighbors
+    "elasticnet",     # Elastic Net
+    "lassolars",      # Lasso with LARS
+]
+
+# Union of all estimators
+FLAML_ESTIMATORS = list(set(FLAML_CLASSIFICATION_ESTIMATORS + FLAML_REGRESSION_ESTIMATORS))
+
+# Detailed descriptions for UI
+FLAML_ESTIMATOR_DESCRIPTIONS = {
+    "lgbm": {
+        "name": "LightGBM",
+        "type": "Gradient Boosting",
+        "description": "Fast, distributed, high-performance gradient boosting framework",
+        "pros": ["Very fast training", "Low memory usage", "Handles large datasets well"],
+        "cons": ["May overfit on small datasets"],
+        "tasks": ["classification", "regression"],
+    },
+    "xgboost": {
+        "name": "XGBoost",
+        "type": "Gradient Boosting",
+        "description": "Optimized distributed gradient boosting library",
+        "pros": ["State-of-the-art performance", "Regularization built-in", "Handles missing values"],
+        "cons": ["Slower than LightGBM", "More memory usage"],
+        "tasks": ["classification", "regression"],
+    },
+    "xgb_limitdepth": {
+        "name": "XGBoost (Limited Depth)",
+        "type": "Gradient Boosting",
+        "description": "XGBoost with tree depth constraints for faster training",
+        "pros": ["Faster than regular XGBoost", "Less prone to overfitting"],
+        "cons": ["May underfit complex patterns"],
+        "tasks": ["classification", "regression"],
+    },
+    "catboost": {
+        "name": "CatBoost",
+        "type": "Gradient Boosting",
+        "description": "Gradient boosting with excellent categorical feature handling",
+        "pros": ["Best categorical support", "Symmetric trees", "Robust to overfitting"],
+        "cons": ["Slower training", "Larger model size"],
+        "tasks": ["classification", "regression"],
+    },
+    "rf": {
+        "name": "Random Forest",
+        "type": "Ensemble (Bagging)",
+        "description": "Ensemble of decision trees using bagging",
+        "pros": ["Robust", "Handles non-linear relationships", "Feature importance"],
+        "cons": ["Large model size", "Slower inference"],
+        "tasks": ["classification", "regression"],
+    },
+    "extra_tree": {
+        "name": "Extra Trees",
+        "type": "Ensemble (Bagging)",
+        "description": "Extremely randomized trees - more random than Random Forest",
+        "pros": ["Faster training than RF", "Reduced variance", "Good for high-dim data"],
+        "cons": ["Can be less accurate than RF"],
+        "tasks": ["classification", "regression"],
+    },
+    "histgb": {
+        "name": "Histogram Gradient Boosting",
+        "type": "Gradient Boosting",
+        "description": "Scikit-learn's histogram-based gradient boosting",
+        "pros": ["Fast training", "Native sklearn", "Handles missing values"],
+        "cons": ["Less tuned than LightGBM/XGBoost"],
+        "tasks": ["classification", "regression"],
+    },
+    "kneighbor": {
+        "name": "K-Nearest Neighbors",
+        "type": "Instance-Based",
+        "description": "Simple, non-parametric method based on nearest neighbors",
+        "pros": ["Simple to understand", "No training phase", "Non-linear boundaries"],
+        "cons": ["Slow prediction", "Sensitive to scale", "Curse of dimensionality"],
+        "tasks": ["classification", "regression"],
+    },
+    "lrl1": {
+        "name": "Logistic Regression (L1)",
+        "type": "Linear Model",
+        "description": "Logistic regression with L1 (Lasso) regularization",
+        "pros": ["Feature selection", "Interpretable", "Fast"],
+        "cons": ["Only linear boundaries", "May underfit complex data"],
+        "tasks": ["classification"],
+    },
+    "lrl2": {
+        "name": "Logistic Regression (L2)",
+        "type": "Linear Model",
+        "description": "Logistic regression with L2 (Ridge) regularization",
+        "pros": ["Stable coefficients", "Interpretable", "Fast"],
+        "cons": ["Only linear boundaries", "May underfit complex data"],
+        "tasks": ["classification"],
+    },
+    "svc": {
+        "name": "Support Vector Classifier",
+        "type": "Support Vector Machine",
+        "description": "Support Vector Machine with RBF kernel",
+        "pros": ["Effective in high dimensions", "Memory efficient"],
+        "cons": ["Slow for large datasets", "Sensitive to scaling"],
+        "tasks": ["classification"],
+    },
+    "sgd": {
+        "name": "SGD Classifier",
+        "type": "Linear Model",
+        "description": "Stochastic Gradient Descent classifier",
+        "pros": ["Very fast", "Scales to large datasets", "Online learning"],
+        "cons": ["Requires tuning", "Sensitive to scaling"],
+        "tasks": ["classification"],
+    },
+    "elasticnet": {
+        "name": "Elastic Net",
+        "type": "Linear Model",
+        "description": "Linear regression with combined L1 and L2 regularization",
+        "pros": ["Feature selection", "Stable", "Handles correlated features"],
+        "cons": ["Only linear relationships"],
+        "tasks": ["regression"],
+    },
+    "lassolars": {
+        "name": "Lasso LARS",
+        "type": "Linear Model",
+        "description": "Lasso using Least Angle Regression",
+        "pros": ["Feature selection", "Fast for sparse solutions"],
+        "cons": ["Only linear relationships"],
+        "tasks": ["regression"],
+    },
+}
+
+# Preset configurations for different use cases
+FLAML_PRESETS = {
+    "quick": {
+        "estimator_list": ["lgbm", "rf", "xgboost"],
+        "description": "Quick exploration with best performers",
+    },
+    "balanced": {
+        "estimator_list": ["lgbm", "xgboost", "catboost", "rf", "extra_tree", "histgb"],
+        "description": "Balanced mix of gradient boosting and ensemble methods",
+    },
+    "comprehensive": {
+        "estimator_list": FLAML_CLASSIFICATION_ESTIMATORS,
+        "description": "All available estimators for thorough search",
+    },
+    "gradient_boosting": {
+        "estimator_list": ["lgbm", "xgboost", "xgb_limitdepth", "catboost", "histgb"],
+        "description": "Focus on gradient boosting methods",
+    },
+    "ensemble": {
+        "estimator_list": ["rf", "extra_tree", "lgbm", "xgboost", "catboost"],
+        "description": "Ensemble methods (trees + boosting)",
+    },
+    "linear": {
+        "estimator_list": ["lrl1", "lrl2", "sgd"],
+        "description": "Linear models for interpretability",
+    },
+    "all": {
+        "estimator_list": FLAML_CLASSIFICATION_ESTIMATORS,
+        "description": "All estimators - maximum coverage",
+    },
+}
 
 
 class FLAMLProgressTracker:
@@ -239,6 +443,20 @@ class FLAMLClassifier(BaseCustomClassifier):
     FLAML is faster and more lightweight than auto-sklearn while
     achieving competitive accuracy.
     
+    Available Estimators:
+        - lgbm: LightGBM (gradient boosting)
+        - xgboost: XGBoost 
+        - xgb_limitdepth: XGBoost with limited depth
+        - catboost: CatBoost (gradient boosting)
+        - rf: Random Forest
+        - extra_tree: Extra Trees
+        - histgb: Histogram-based Gradient Boosting
+        - kneighbor: K-Nearest Neighbors
+        - lrl1: L1 Logistic Regression
+        - lrl2: L2 Logistic Regression
+        - svc: Support Vector Classifier
+        - sgd: SGD Classifier
+    
     Attributes:
         config: AutoML configuration
         automl_: Fitted FLAML AutoML object
@@ -250,6 +468,12 @@ class FLAMLClassifier(BaseCustomClassifier):
         >>> clf = FLAMLClassifier(time_budget=300)  # 5 minutes
         >>> clf.fit(X_train, y_train)
         >>> proba = clf.predict_proba(X_test)
+        
+        >>> # Use all available estimators
+        >>> clf = FLAMLClassifier(
+        ...     time_budget=3600,
+        ...     estimator_list=FLAML_CLASSIFICATION_ESTIMATORS
+        ... )
     """
     
     def __init__(
@@ -266,6 +490,7 @@ class FLAMLClassifier(BaseCustomClassifier):
         log_file_name: Optional[str] = None,
         name: str = "FLAMLClassifier",
         progress_callback: Optional[Callable[[str, float], None]] = None,
+        use_all_estimators: bool = False,
         **kwargs
     ):
         """
@@ -274,16 +499,9 @@ class FLAMLClassifier(BaseCustomClassifier):
         Args:
             time_budget: Time budget in seconds
             metric: Optimization metric (roc_auc, accuracy, f1, log_loss)
-            estimator_list: List of estimators to try. Options:
-                - lgbm: LightGBM
-                - xgboost: XGBoost
-                - xgb_limitdepth: XGBoost with limited depth
-                - catboost: CatBoost
-                - rf: Random Forest
-                - extra_tree: Extra Trees
-                - kneighbor: K-Neighbors
-                - lrl1: L1 Logistic Regression
-                - lrl2: L2 Logistic Regression
+            estimator_list: List of estimators to try. If None, uses balanced set.
+                Options: lgbm, xgboost, xgb_limitdepth, catboost, rf, extra_tree,
+                         histgb, kneighbor, lrl1, lrl2, svc, sgd
             n_jobs: Number of parallel jobs
             ensemble: Whether to use ensemble
             max_iter: Maximum iterations (None = unlimited)
@@ -293,13 +511,13 @@ class FLAMLClassifier(BaseCustomClassifier):
             log_file_name: Optional log file path
             name: Model name
             progress_callback: Optional progress callback(message, progress)
+            use_all_estimators: If True, uses all available estimators
             **kwargs: Additional FLAML arguments
         """
         super().__init__(name=name)
         
         self.time_budget = time_budget
         self.metric = metric
-        self.estimator_list = estimator_list
         self.n_jobs = n_jobs
         self.ensemble = ensemble
         self.max_iter = max_iter
@@ -309,6 +527,15 @@ class FLAMLClassifier(BaseCustomClassifier):
         self.log_file_name = log_file_name
         self.extra_kwargs = kwargs
         self.progress_callback = progress_callback
+        
+        # Set estimator list
+        if use_all_estimators:
+            self.estimator_list = FLAML_CLASSIFICATION_ESTIMATORS.copy()
+        elif estimator_list is not None:
+            self.estimator_list = estimator_list
+        else:
+            # Default balanced list for good performance
+            self.estimator_list = ["lgbm", "xgboost", "rf", "extra_tree", "catboost", "histgb"]
         
         # Runtime attributes
         self.automl_: Optional[Any] = None
@@ -590,6 +817,18 @@ class FLAMLRegressor(BaseCustomRegressor):
     """FLAML-based AutoML Regressor.
     
     Cross-platform AutoML regressor using FLAML.
+    
+    Available Estimators:
+        - lgbm: LightGBM
+        - xgboost: XGBoost
+        - xgb_limitdepth: XGBoost with limited depth
+        - catboost: CatBoost
+        - rf: Random Forest
+        - extra_tree: Extra Trees
+        - histgb: Histogram-based Gradient Boosting
+        - kneighbor: K-Nearest Neighbors
+        - elasticnet: Elastic Net
+        - lassolars: Lasso LARS
     """
     
     def __init__(
@@ -604,6 +843,7 @@ class FLAMLRegressor(BaseCustomRegressor):
         log_file_name: Optional[str] = None,
         name: str = "FLAMLRegressor",
         progress_callback: Optional[Callable[[str, float], None]] = None,
+        use_all_estimators: bool = False,
         **kwargs
     ):
         """Initialize FLAML Regressor."""
@@ -611,7 +851,6 @@ class FLAMLRegressor(BaseCustomRegressor):
         
         self.time_budget = time_budget
         self.metric = metric
-        self.estimator_list = estimator_list
         self.n_jobs = n_jobs
         self.ensemble = ensemble
         self.random_state = random_state
@@ -619,6 +858,15 @@ class FLAMLRegressor(BaseCustomRegressor):
         self.log_file_name = log_file_name
         self.extra_kwargs = kwargs
         self.progress_callback = progress_callback
+        
+        # Set estimator list
+        if use_all_estimators:
+            self.estimator_list = FLAML_REGRESSION_ESTIMATORS.copy()
+        elif estimator_list is not None:
+            self.estimator_list = estimator_list
+        else:
+            # Default balanced list
+            self.estimator_list = ["lgbm", "xgboost", "rf", "extra_tree", "catboost", "histgb"]
         
         self.automl_: Optional[Any] = None
         self.best_estimator_: Optional[str] = None

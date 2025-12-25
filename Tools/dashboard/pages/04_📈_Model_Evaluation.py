@@ -920,6 +920,51 @@ if grace_column is not None:
                     else:
                         st.info("🤝 **CONCLUSIÓN: Rendimiento EQUIVALENTE entre modelo ML y GRACE**")
                     
+                    # Mostrar métricas clave de GRACE prominentemente
+                    st.markdown("#### 📊 Métricas Principales: Modelo ML vs GRACE")
+                    col_auroc, col_acc, col_sens, col_spec = st.columns(4)
+                    
+                    with col_auroc:
+                        st.markdown("**AUROC**")
+                        st.metric(
+                            "Modelo ML", 
+                            f"{result.model_auc:.4f}",
+                            delta=f"{result.auc_difference:+.4f} vs GRACE"
+                        )
+                        st.metric("GRACE Score", f"{result.grace_auc:.4f}")
+                    
+                    with col_acc:
+                        st.markdown("**Accuracy**")
+                        acc_diff = result.model_accuracy - result.grace_accuracy
+                        st.metric(
+                            "Modelo ML", 
+                            f"{result.model_accuracy:.4f}",
+                            delta=f"{acc_diff:+.4f} vs GRACE"
+                        )
+                        st.metric("GRACE Score", f"{result.grace_accuracy:.4f}")
+                    
+                    with col_sens:
+                        st.markdown("**Sensibilidad**")
+                        sens_diff = result.model_sensitivity - result.grace_sensitivity
+                        st.metric(
+                            "Modelo ML", 
+                            f"{result.model_sensitivity:.4f}",
+                            delta=f"{sens_diff:+.4f} vs GRACE"
+                        )
+                        st.metric("GRACE Score", f"{result.grace_sensitivity:.4f}")
+                    
+                    with col_spec:
+                        st.markdown("**Especificidad**")
+                        spec_diff = result.model_specificity - result.grace_specificity
+                        st.metric(
+                            "Modelo ML", 
+                            f"{result.model_specificity:.4f}",
+                            delta=f"{spec_diff:+.4f} vs GRACE"
+                        )
+                        st.metric("GRACE Score", f"{result.grace_specificity:.4f}")
+                    
+                    st.markdown("---")
+                    
                     # Tabs para diferentes visualizaciones
                     tab1, tab2, tab3, tab4, tab5 = st.tabs([
                         "📈 Curvas ROC",
