@@ -24,6 +24,19 @@ from src.models.metadata import ModelMetadata, create_metadata_from_training
 from src.preprocessing import build_preprocess_pipelines
 from sklearn.pipeline import Pipeline
 
+# Check if torch is available (optional dependency)
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+
+# Skip decorator for tests requiring torch
+requires_torch = pytest.mark.skipif(
+    not TORCH_AVAILABLE,
+    reason="PyTorch (torch) is not installed - skipping neural network tests"
+)
+
 
 # ============================================================================
 # Fixtures
@@ -136,6 +149,7 @@ class TestSklearnModelSerialization:
 # Test neural networks serialization
 # ============================================================================
 
+@requires_torch
 class TestNeuralNetworkSerialization:
     """Test serialization of neural network models."""
     
@@ -604,13 +618,14 @@ class TestSerializationIntegration:
         rf = RandomForestClassifier(n_estimators=10, random_state=42)
         models_to_test.append(('sklearn_rf', rf))
         
-        # Add neural network
-        try:
-            from src.models.neural_networks import TorchTabularClassifier
-            nn = TorchTabularClassifier(in_dim=X_np.shape[1], epochs=5)
-            models_to_test.append(('neural_net', nn))
-        except ImportError:
-            pass
+        # Add neural network (only if torch is available)
+        if TORCH_AVAILABLE:
+            try:
+                from src.models.neural_networks import TorchTabularClassifier
+                nn = TorchTabularClassifier(in_dim=X_np.shape[1], epochs=5)
+                models_to_test.append(('neural_net', nn))
+            except ImportError:
+                pass
         
         # Add custom model
         try:
