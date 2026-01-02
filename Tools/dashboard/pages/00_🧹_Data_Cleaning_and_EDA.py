@@ -676,6 +676,7 @@ def custom_imputation_fragment(df, numeric_cols, categorical_cols, vars_with_mis
     """Fragment para configuración de imputación personalizada.
     
     Solo muestra variables con valores faltantes e indica el porcentaje de missings.
+    Incluye opción de eliminar variables con alto porcentaje de missings.
     """
     st.subheader("Configurar imputación por variable")
     
@@ -684,6 +685,8 @@ def custom_imputation_fragment(df, numeric_cols, categorical_cols, vars_with_mis
         st.session_state.custom_imputation = {}
     if 'custom_constant_values' not in st.session_state:
         st.session_state.custom_constant_values = {}
+    if 'columns_to_drop_missing' not in st.session_state:
+        st.session_state.columns_to_drop_missing = set()
     
     # Verificar si hay variables con missings
     if not vars_with_missing:
@@ -693,9 +696,17 @@ def custom_imputation_fragment(df, numeric_cols, categorical_cols, vars_with_mis
     # Mostrar resumen de missings
     st.info(f"📊 **{len(vars_with_missing)}** variables tienen valores faltantes")
     
+    # Separar variables por nivel de missings
+    high_missing_threshold = 50.0  # % para considerar alto
+    high_missing_vars = [v for v in vars_with_missing if missing_pct[v] >= high_missing_threshold]
+    
+    if high_missing_vars:
+        st.warning(f"⚠️ **{len(high_missing_vars)}** variables tienen ≥{high_missing_threshold}% de valores faltantes. "
+                  "Considera eliminarlas si no son críticas.")
+    
     # Crear lista de opciones con porcentaje de missings
     var_options_with_pct = {
-        f"{var} ({missing_pct[var]:.1f}% missing - {missing_info[var]} valores)": var 
+        f"{'🔴' if missing_pct[var] >= high_missing_threshold else '🟡' if missing_pct[var] >= 20 else '🟢'} {var} ({missing_pct[var]:.1f}% missing - {missing_info[var]} valores)": var 
         for var in vars_with_missing
     }
     
@@ -706,7 +717,7 @@ def custom_imputation_fragment(df, numeric_cols, categorical_cols, vars_with_mis
             "Selecciona variable para configurar",
             [""] + list(var_options_with_pct.keys()),
             key="impute_var_select_frag",
-            help="Solo se muestran variables con valores faltantes"
+            help="🔴 ≥50% missing | 🟡 ≥20% missing | 🟢 <20% missing"
         )
         var_to_config = var_options_with_pct.get(selected_option, "") if selected_option else ""
     
@@ -714,79 +725,121 @@ def custom_imputation_fragment(df, numeric_cols, categorical_cols, vars_with_mis
         if st.button("🗑️ Limpiar todas las configuraciones", key="clear_impute_config_frag"):
             st.session_state.custom_imputation = {}
             st.session_state.custom_constant_values = {}
+            st.session_state.columns_to_drop_missing = set()
             st.rerun()
     
     if var_to_config:
         is_numeric = var_to_config in numeric_cols
+        var_missing_pct = missing_pct[var_to_config]
         
-        # Mostrar info de la variable
+        # Mostrar info de la variable con indicador visual
+        missing_level = "🔴 Alto" if var_missing_pct >= 50 else "🟡 Medio" if var_missing_pct >= 20 else "🟢 Bajo"
         st.markdown(f"""
         **Variable seleccionada:** `{var_to_config}`  
         **Tipo:** {'Numérica' if is_numeric else 'Categórica'}  
-        **Valores faltantes:** {missing_info[var_to_config]:,} ({missing_pct[var_to_config]:.2f}%)
+        **Valores faltantes:** {missing_info[var_to_config]:,} ({var_missing_pct:.2f}%) - Nivel: {missing_level}
         """)
+        
+        # Verificar si está marcada para eliminar
+        is_marked_for_drop = var_to_config in st.session_state.columns_to_drop_missing
         
         col1, col2 = st.columns(2)
         
         with col1:
-            # Estrategias según tipo
-            if is_numeric:
-                strategies = ["mean", "median", "knn", "forward", "backward", "constant_numeric"]
-                strategy_labels = {
-                    "mean": "Media",
-                    "median": "Mediana", 
-                    "knn": "KNN (vecinos cercanos)",
-                    "forward": "Relleno hacia adelante",
-                    "backward": "Relleno hacia atrás",
-                    "constant_numeric": "Valor constante"
-                }
-            else:
-                strategies = ["mode", "forward", "backward", "constant_categorical"]
-                strategy_labels = {
-                    "mode": "Moda (valor más frecuente)",
-                    "forward": "Relleno hacia adelante",
-                    "backward": "Relleno hacia atrás",
-                    "constant_categorical": "Valor constante"
-                }
-            
-            current_strategy = st.session_state.custom_imputation.get(var_to_config, "")
-            selected_strategy = st.selectbox(
-                f"Estrategia de imputación",
-                ["(usar global)"] + strategies,
-                index=strategies.index(current_strategy) + 1 if current_strategy in strategies else 0,
-                format_func=lambda x: strategy_labels.get(x, x) if x != "(usar global)" else "🌐 Usar configuración global",
-                key=f"strategy_{var_to_config}_frag"
+            # Opción de eliminar la variable (especialmente útil para alto % de missings)
+            drop_var = st.checkbox(
+                "🗑️ **Eliminar esta variable** (no imputar)",
+                value=is_marked_for_drop,
+                key=f"drop_var_{var_to_config}_frag",
+                help="Marca esta variable para ser eliminada del dataset durante la limpieza"
             )
+            
+            if var_missing_pct >= 50 and not drop_var:
+                st.caption("💡 *Recomendado: considera eliminar variables con >50% de missings*")
         
         with col2:
-            constant_val = None
-            # Valor constante si aplica
-            if selected_strategy in ["constant_numeric", "constant_categorical"]:
+            if drop_var:
+                st.info("ℹ️ Esta variable será eliminada durante la limpieza")
+        
+        # Si NO está marcada para eliminar, mostrar opciones de imputación
+        if not drop_var:
+            st.markdown("---")
+            st.markdown("**Configuración de imputación:**")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Estrategias según tipo
                 if is_numeric:
-                    constant_val = st.number_input(
-                        "Valor constante",
-                        value=float(st.session_state.custom_constant_values.get(var_to_config, 0.0)),
-                        key=f"const_{var_to_config}_frag"
-                    )
+                    strategies = ["mean", "median", "knn", "forward", "backward", "constant_numeric"]
+                    strategy_labels = {
+                        "mean": "Media",
+                        "median": "Mediana", 
+                        "knn": "KNN (vecinos cercanos)",
+                        "forward": "Relleno hacia adelante",
+                        "backward": "Relleno hacia atrás",
+                        "constant_numeric": "Valor constante"
+                    }
                 else:
-                    constant_val = st.text_input(
-                        "Valor constante",
-                        value=str(st.session_state.custom_constant_values.get(var_to_config, "missing")),
-                        key=f"const_{var_to_config}_frag"
-                    )
+                    strategies = ["mode", "forward", "backward", "constant_categorical"]
+                    strategy_labels = {
+                        "mode": "Moda (valor más frecuente)",
+                        "forward": "Relleno hacia adelante",
+                        "backward": "Relleno hacia atrás",
+                        "constant_categorical": "Valor constante"
+                    }
+                
+                current_strategy = st.session_state.custom_imputation.get(var_to_config, "")
+                selected_strategy = st.selectbox(
+                    f"Estrategia de imputación",
+                    ["(usar global)"] + strategies,
+                    index=strategies.index(current_strategy) + 1 if current_strategy in strategies else 0,
+                    format_func=lambda x: strategy_labels.get(x, x) if x != "(usar global)" else "🌐 Usar configuración global",
+                    key=f"strategy_{var_to_config}_frag"
+                )
+            
+            with col2:
+                constant_val = None
+                # Valor constante si aplica
+                if selected_strategy in ["constant_numeric", "constant_categorical"]:
+                    if is_numeric:
+                        constant_val = st.number_input(
+                            "Valor constante",
+                            value=float(st.session_state.custom_constant_values.get(var_to_config, 0.0)),
+                            key=f"const_{var_to_config}_frag"
+                        )
+                    else:
+                        constant_val = st.text_input(
+                            "Valor constante",
+                            value=str(st.session_state.custom_constant_values.get(var_to_config, "missing")),
+                            key=f"const_{var_to_config}_frag"
+                        )
         
         # Botones de acción
+        st.markdown("---")
         col1, col2 = st.columns(2)
         
         with col1:
             if st.button("✅ Aplicar configuración", key=f"apply_{var_to_config}_frag", type="primary"):
-                if selected_strategy != "(usar global)":
+                if drop_var:
+                    # Marcar para eliminar
+                    st.session_state.columns_to_drop_missing.add(var_to_config)
+                    # Remover de imputación si estaba
+                    if var_to_config in st.session_state.custom_imputation:
+                        del st.session_state.custom_imputation[var_to_config]
+                    if var_to_config in st.session_state.custom_constant_values:
+                        del st.session_state.custom_constant_values[var_to_config]
+                    st.success(f"✅ Variable `{var_to_config}` marcada para eliminación")
+                elif selected_strategy != "(usar global)":
+                    # Desmarcar de eliminación si estaba
+                    st.session_state.columns_to_drop_missing.discard(var_to_config)
                     st.session_state.custom_imputation[var_to_config] = selected_strategy
                     if selected_strategy in ["constant_numeric", "constant_categorical"] and constant_val is not None:
                         st.session_state.custom_constant_values[var_to_config] = constant_val
                     st.success(f"✅ Configuración guardada para {var_to_config}")
                 else:
-                    # Remover configuración personalizada
+                    # Usar global y desmarcar de eliminación
+                    st.session_state.columns_to_drop_missing.discard(var_to_config)
                     if var_to_config in st.session_state.custom_imputation:
                         del st.session_state.custom_imputation[var_to_config]
                     if var_to_config in st.session_state.custom_constant_values:
@@ -795,6 +848,7 @@ def custom_imputation_fragment(df, numeric_cols, categorical_cols, vars_with_mis
         
         with col2:
             if st.button("🗑️ Eliminar configuración", key=f"remove_{var_to_config}_frag"):
+                st.session_state.columns_to_drop_missing.discard(var_to_config)
                 if var_to_config in st.session_state.custom_imputation:
                     del st.session_state.custom_imputation[var_to_config]
                 if var_to_config in st.session_state.custom_constant_values:
@@ -802,9 +856,25 @@ def custom_imputation_fragment(df, numeric_cols, categorical_cols, vars_with_mis
                 st.info(f"ℹ️ Configuración eliminada para {var_to_config}")
     
     # Mostrar configuraciones actuales
+    st.markdown("---")
+    
+    # Mostrar variables marcadas para eliminar
+    if st.session_state.columns_to_drop_missing:
+        st.markdown("**🗑️ Variables marcadas para ELIMINACIÓN:**")
+        drop_data = []
+        for var in st.session_state.columns_to_drop_missing:
+            if var in missing_pct:
+                drop_data.append({
+                    'Variable': var,
+                    '% Missing': f"{missing_pct[var]:.1f}%",
+                    'Acción': '🗑️ Eliminar'
+                })
+        if drop_data:
+            st.dataframe(pd.DataFrame(drop_data), use_container_width=True, hide_index=True)
+    
+    # Mostrar configuraciones de imputación
     if st.session_state.custom_imputation:
-        st.markdown("---")
-        st.markdown("**📋 Configuraciones personalizadas activas:**")
+        st.markdown("**📋 Configuraciones de IMPUTACIÓN activas:**")
         config_data = []
         for var, strategy in st.session_state.custom_imputation.items():
             pct = missing_pct.get(var, 0)
@@ -1242,6 +1312,9 @@ def data_cleaning_page():
             custom_discretization_fragment(df, numeric_cols)
     
     # Crear configuración
+    # Combinar columnas a eliminar por missings con las configuradas manualmente
+    columns_to_drop_list = list(st.session_state.get('columns_to_drop_missing', set()))
+    
     config = CleaningConfig(
         numeric_imputation=numeric_imputation,
         categorical_imputation=categorical_imputation,
@@ -1265,6 +1338,7 @@ def data_cleaning_page():
         drop_fully_missing=drop_fully_missing,
         drop_constant=drop_constant,
         constant_threshold=constant_threshold,
+        columns_to_drop=columns_to_drop_list,
     )
     
     st.session_state.cleaning_config = config
@@ -1272,7 +1346,7 @@ def data_cleaning_page():
     # Botón para aplicar limpieza
     st.markdown("---")
     
-    col1, col2, col3 = st.columns([2, 1, 1])
+    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
     
     with col1:
         target_column = st.selectbox(
@@ -1283,7 +1357,7 @@ def data_cleaning_page():
         target_column = target_column if target_column else None
     
     with col2:
-        if st.button("🚀 Aplicar Limpieza", type="primary", width='stretch'):
+        if st.button("🚀 Aplicar Limpieza", type="primary", use_container_width=True):
             with st.spinner("Limpiando datos..."):
                 try:
                     cleaner = DataCleaner(config)
@@ -1301,7 +1375,7 @@ def data_cleaning_page():
                     st.code(traceback.format_exc())
     
     with col3:
-        if st.button("💾 Guardar Configuración", width='stretch'):
+        if st.button("💾 Guardar Config", use_container_width=True):
             try:
                 config_path = Path(CONFIG.preprocessing_config_path)
                 config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1312,6 +1386,49 @@ def data_cleaning_page():
                 st.success(f"✅ Configuración guardada en {config_path}")
             except Exception as e:
                 st.error(f"❌ Error: {e}")
+    
+    with col4:
+        if st.button("📂 Cargar Config", use_container_width=True):
+            try:
+                config_path = Path(CONFIG.preprocessing_config_path)
+                
+                if not config_path.exists():
+                    st.warning(f"⚠️ No se encontró configuración guardada en {config_path}")
+                else:
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        loaded_config = json.load(f)
+                    
+                    # Cargar configuración en session_state
+                    # Imputación personalizada
+                    if 'custom_imputation_strategies' in loaded_config:
+                        st.session_state.custom_imputation = loaded_config['custom_imputation_strategies']
+                    if 'custom_constant_values' in loaded_config:
+                        st.session_state.custom_constant_values = loaded_config['custom_constant_values']
+                    
+                    # Columnas a eliminar
+                    if 'columns_to_drop' in loaded_config:
+                        st.session_state.columns_to_drop_missing = set(loaded_config['columns_to_drop'])
+                    
+                    # Codificación personalizada
+                    if 'custom_encoding_strategies' in loaded_config:
+                        st.session_state.custom_encoding = loaded_config['custom_encoding_strategies']
+                    if 'ordinal_categories' in loaded_config:
+                        st.session_state.custom_encoding_order = loaded_config['ordinal_categories']
+                    
+                    # Discretización personalizada
+                    if 'custom_discretization_strategies' in loaded_config:
+                        st.session_state.custom_discretization = loaded_config['custom_discretization_strategies']
+                    if 'custom_discretization_bins' in loaded_config:
+                        st.session_state.custom_discretization_bins = loaded_config['custom_discretization_bins']
+                    
+                    st.success(f"✅ Configuración cargada desde {config_path}")
+                    st.info("ℹ️ Recarga la página para ver los valores en los widgets")
+                    st.rerun()
+                    
+            except json.JSONDecodeError as e:
+                st.error(f"❌ Error al leer el archivo JSON: {e}")
+            except Exception as e:
+                st.error(f"❌ Error al cargar configuración: {e}")
     
     # Mostrar resultados
     if st.session_state.cleaned_data is not None:

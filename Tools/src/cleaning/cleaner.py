@@ -47,6 +47,7 @@ class CleaningConfig:
         constant_fill_categorical: Fill value for constant categorical imputation
         custom_imputation_strategies: Dict mapping column names to specific imputation strategies
         custom_constant_values: Dict mapping column names to specific constant values for imputation
+        columns_to_drop: List of column names to drop (e.g., due to high missing rate)
         outlier_method: Method for outlier detection
         iqr_multiplier: Multiplier for IQR method
         zscore_threshold: Threshold for Z-score method
@@ -72,6 +73,7 @@ class CleaningConfig:
     constant_fill_categorical: str = "missing"
     custom_imputation_strategies: Dict[str, str] = field(default_factory=dict)
     custom_constant_values: Dict[str, Any] = field(default_factory=dict)
+    columns_to_drop: List[str] = field(default_factory=list)  # Columns to drop due to high missing rate
     
     # Outliers
     outlier_method: str = "iqr"
@@ -243,11 +245,22 @@ class DataCleaner:
         numeric_cols: List[str],
         categorical_cols: List[str],
     ) -> pd.DataFrame:
-        """Drop fully missing or constant columns."""
+        """Drop fully missing, constant, or user-specified columns."""
         df_clean = df.copy()
         cols_to_drop = []
         
+        # First, add columns explicitly marked for dropping (e.g., due to high missing rate)
+        if self.config.columns_to_drop:
+            for col in self.config.columns_to_drop:
+                if col in df_clean.columns and col not in cols_to_drop:
+                    cols_to_drop.append(col)
+                    if col in self.metadata:
+                        self.metadata[col].quality_flags.append("dropped_by_user")
+        
         for col in df_clean.columns:
+            if col in cols_to_drop:
+                continue
+                
             # Fully missing
             if self.config.drop_fully_missing and df_clean[col].isna().all():
                 cols_to_drop.append(col)
