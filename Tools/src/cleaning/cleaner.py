@@ -82,6 +82,7 @@ class CleaningConfig:
     # Encoding
     categorical_encoding: str = "label"
     ordinal_categories: Dict[str, List[str]] = field(default_factory=dict)
+    custom_encoding_strategies: Dict[str, str] = field(default_factory=dict)  # Per-variable encoding type
     
     # Discretization
     discretization_strategy: str = "none"
@@ -485,16 +486,28 @@ class DataCleaner:
         df: pd.DataFrame,
         categorical_cols: List[str],
     ) -> pd.DataFrame:
-        """Encode categorical variables."""
-        strategy = EncodingStrategy(self.config.categorical_encoding)
+        """Encode categorical variables.
         
-        if strategy == EncodingStrategy.NONE:
-            return df
+        Uses custom_encoding_strategies for per-variable encoding if specified,
+        otherwise falls back to the global categorical_encoding strategy.
+        """
+        global_strategy = EncodingStrategy(self.config.categorical_encoding)
         
         df_clean = df.copy()
         
         for col in categorical_cols:
             if col not in df_clean.columns:
+                continue
+            
+            # Determine strategy for this column (custom or global)
+            if col in self.config.custom_encoding_strategies:
+                col_strategy_str = self.config.custom_encoding_strategies[col]
+                col_strategy = EncodingStrategy(col_strategy_str)
+            else:
+                col_strategy = global_strategy
+            
+            # Skip if no encoding
+            if col_strategy == EncodingStrategy.NONE:
                 continue
             
             # Convert to string
@@ -505,7 +518,7 @@ class DataCleaner:
             df_clean, encoding_info = encode_categorical_column(
                 df_clean,
                 col,
-                strategy,
+                col_strategy,
                 ordinal_categories=ordinal_cats,
             )
             
