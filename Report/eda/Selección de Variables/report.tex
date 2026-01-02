@@ -1,0 +1,721 @@
+\documentclass[11pt,a4paper]{article}
+
+% Configuración básica
+\usepackage[margin=2cm,bottom=2.5cm]{geometry}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{csquotes}
+\usepackage{microtype}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+% Tablas
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{ragged2e}
+\usepackage{makecell}
+\usepackage{float} % Para controlar posición de tablas
+\renewcommand{\arraystretch}{1.3}
+
+% Listas y enumeraciones
+\usepackage{enumitem}
+
+% Matemáticas
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% Colores para resaltar
+\definecolor{incluir}{RGB}{34, 139, 34}
+\definecolor{excluir}{RGB}{178, 34, 34}
+\definecolor{revisar}{RGB}{255, 140, 0}
+\definecolor{lightgray}{RGB}{245, 245, 245}
+\definecolor{headerblue}{RGB}{70, 130, 180}
+
+% Ajustes para evitar overfull en todo el documento
+\setlength{\emergencystretch}{4em}
+\hfuzz=100pt % Suprimir advertencias de overfull menores a 100pt
+\vfuzz=100pt
+\tolerance=9999
+\hbadness=99999
+\vbadness=99999
+\sloppy
+
+% Comando para permitir saltos en nombres de variables
+\usepackage{seqsplit}
+\newcommand{\var}[1]{\texttt{\seqsplit{#1}}}
+
+% Utilidad para celdas con mejor ajuste
+\newcolumntype{L}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+
+% Configuración para que las tablas no floten fuera de sección
+\usepackage{placeins}
+\let\Oldsection\section
+\renewcommand{\section}{\FloatBarrier\Oldsection}
+\let\Oldsubsection\subsection
+\renewcommand{\subsection}{\FloatBarrier\Oldsubsection}
+
+% Metadatos
+\newcommand{\DatasetNombre}{RECUIMA (Registro Cubano de Infarto Agudo de Miocardio)}
+\newcommand{\Proyecto}{Predicción de Mortalidad Intrahospitalaria en IAM}
+\newcommand{\Responsable}{Equipo de Machine Learning}
+
+\title{\textbf{Informe de Selección de Variables para Modelos Predictivos de Mortalidad Intrahospitalaria por Infarto Agudo de Miocardio}}
+\author{\Responsable \\ \small{Para validación por Dr. Maikel Santos Medina}}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+% ============================================================================
+\section{Introducción y Objetivos}
+% ============================================================================
+
+Este documento presenta un análisis exhaustivo de las variables del dataset \textbf{RECUIMA} para la selección de predictores en modelos de machine learning orientados a la predicción de mortalidad intrahospitalaria por infarto agudo de miocardio (IAM).
+
+\subsection{Objetivos del Documento}
+\begin{enumerate}
+    \item Identificar las variables más relevantes basándose en escalas clínicas validadas internacionalmente (GRACE, TIMI) y la escala RECUIMA desarrollada localmente.
+    \item Proporcionar justificación clínica y estadística para cada decisión de inclusión/exclusión.
+    \item Proponer estrategias de tratamiento para variables categóricas.
+    \item Recomendar métodos de imputación apropiados para valores faltantes.
+    \item Facilitar la comunicación con el equipo clínico para validación de decisiones.
+\end{enumerate}
+
+\subsection{Metodología de Priorización}
+
+Las variables se priorizan según los siguientes criterios:
+\begin{enumerate}
+    \item \textbf{Criterio 1 - Escalas Clínicas Validadas:} Variables incluidas en GRACE, TIMI o RECUIMA tienen máxima prioridad.
+    \item \textbf{Criterio 2 - Evidencia Científica:} Variables con soporte en literatura médica reciente.
+    \item \textbf{Criterio 3 - Disponibilidad de Datos:} Porcentaje de valores no faltantes en el dataset.
+    \item \textbf{Criterio 4 - Relevancia Temporal:} Variables disponibles al momento del ingreso vs. durante/después de la hospitalización.
+\end{enumerate}
+
+% ============================================================================
+\section{Revisión de Escalas Clínicas de Riesgo}
+% ============================================================================
+
+Las escalas de riesgo cardiovascular son herramientas validadas internacionalmente que permiten estratificar pacientes según su probabilidad de eventos adversos. Su revisión es fundamental para identificar las variables de mayor valor pronóstico.
+
+% ----------------------------------------------------------------------------
+\subsection{Escala GRACE (Global Registry of Acute Coronary Events)}
+% ----------------------------------------------------------------------------
+
+El \textbf{GRACE Score} es considerado el estándar de oro para la estratificación de riesgo en síndromes coronarios agudos. Fue desarrollado a partir de un registro multinacional con más de 100,000 pacientes y validado extensivamente.
+
+\subsubsection{Variables del GRACE Score}
+
+\begin{table}[H]
+\centering
+\caption{Variables de la Escala GRACE y su disponibilidad en el dataset RECUIMA}
+\label{tab:grace}
+\small
+\begin{tabular}{@{}L{2.8cm}L{3.2cm}L{4cm}C{2cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Descripción} & \textbf{Variable RECUIMA} & \textbf{Disponible} \\
+\midrule
+Edad & Años cumplidos & \texttt{edad} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Frecuencia \newline cardíaca & Latidos/min al ingreso & \texttt{frecuencia\_cardiaca} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+PAS & mmHg al ingreso & \texttt{presion\_arterial\_\newline sistolica} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Creatinina & mg/dL o $\mu$mol/L & \texttt{creatinina} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Clase Killip & Signos ICC (I-IV) & \texttt{indice\_killip} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Paro cardíaco & Reanimación al ingreso & \texttt{shock} (parcial) & \textcolor{revisar}{\textbf{Parcial}} \\
+\midrule
+Desviación ST & Elevación o depresión & \texttt{depresion\_st}, \newline \texttt{supradesnivel} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Enzimas \newline cardíacas & Troponina o CK-MB & \texttt{ck}, \texttt{ckmb} & \textcolor{incluir}{\textbf{Sí}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Categorías de Riesgo GRACE}
+\begin{itemize}
+    \item \textbf{Riesgo Bajo:} Score $<$ 109 (mortalidad intrahospitalaria $<$ 1\%)
+    \item \textbf{Riesgo Intermedio:} Score 109-140 (mortalidad 1-3\%)
+    \item \textbf{Riesgo Alto:} Score $>$ 140 (mortalidad $>$ 3\%)
+\end{itemize}
+
+\subsubsection{Relevancia para el Modelo}
+El dataset RECUIMA incluye la variable \texttt{escala\_grace} precalculada, lo cual es valioso para validación cruzada. Sin embargo, para modelos de machine learning, es preferible utilizar las \textbf{variables componentes individuales} en lugar del score agregado, ya que:
+\begin{enumerate}
+    \item Permite que el modelo aprenda ponderaciones óptimas para la población cubana.
+    \item Facilita la interpretabilidad de las predicciones.
+    \item Evita dependencia de cálculos externos.
+\end{enumerate}
+
+% ----------------------------------------------------------------------------
+\subsection{Escala TIMI (Thrombolysis In Myocardial Infarction)}
+% ----------------------------------------------------------------------------
+
+El \textbf{TIMI Risk Score} existe en dos versiones: una para STEMI (infarto con elevación del ST) y otra para UA/NSTEMI (angina inestable/infarto sin elevación del ST).
+
+\subsubsection{TIMI Risk Score para STEMI}
+
+\begin{table}[H]
+\centering
+\caption{Variables del TIMI Score para STEMI y disponibilidad en RECUIMA}
+\label{tab:timi-stemi}
+\small
+\begin{tabular}{@{}L{3cm}L{1.2cm}L{4.3cm}C{2cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Pts} & \textbf{Variable RECUIMA} & \textbf{Disponible} \\
+\midrule
+Edad $\geq$ 75 años & +3 & \texttt{edad} & \textcolor{incluir}{\textbf{Sí}} \\
+Edad 65-74 años & +2 & \texttt{edad} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+DM, HTA o Angina & +1 & \texttt{diabetes\_mellitus}, \newline \texttt{hipertension\_arterial}, \newline \texttt{angina} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+PAS $<$ 100 mmHg & +3 & \texttt{presion\_arterial\_\newline sistolica} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+FC $>$ 100 lpm & +2 & \texttt{frecuencia\_cardiaca} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Killip II-IV & +2 & \texttt{indice\_killip} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Peso $<$ 67 kg & +1 & \texttt{peso} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+ST anterior o BCRI & +1 & \texttt{scacest}, V1-V6 & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Tiempo tto $>$ 4h & +1 & \texttt{tiempo\_isquemia} & \textcolor{incluir}{\textbf{Sí}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{TIMI Risk Score para UA/NSTEMI}
+
+\begin{table}[H]
+\centering
+\caption{Variables del TIMI Score para UA/NSTEMI y disponibilidad en RECUIMA}
+\label{tab:timi-nstemi}
+\small
+\begin{tabular}{@{}L{3cm}L{1.2cm}L{4.3cm}C{2cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Pts} & \textbf{Variable RECUIMA} & \textbf{Disponible} \\
+\midrule
+Edad $\geq$ 65 años & +1 & \texttt{edad} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+$\geq$ 3 factores de \newline riesgo CAD & +1 & \texttt{hipertension\_arterial}, \newline \texttt{diabetes\_mellitus}, \newline \texttt{hiperlipoproteinemia}, \newline \texttt{tabaquismo} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Enf. coronaria \newline conocida ($\geq$ 50\%) & +1 & \texttt{enfermedad\_arterias\_\newline coronarias} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+ASA en últimos \newline 7 días & +1 & \texttt{asa} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Angina severa \newline ($\geq$ 2 ep. en 24h) & +1 & \texttt{angina24h} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Cambios ST \newline $\geq$ 0.5mm & +1 & \texttt{depresion\_st}, \newline \texttt{supradesnivel}, \newline \texttt{infradesnivel} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Marcadores \newline cardíacos positivos & +1 & \texttt{ck}, \texttt{ckmb} & \textcolor{incluir}{\textbf{Sí}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ----------------------------------------------------------------------------
+\subsection{Escala RECUIMA}
+% ----------------------------------------------------------------------------
+
+La escala \textbf{RECUIMA} fue desarrollada por el \textbf{Dr. Maikel Santos Medina} en el Hospital General Docente ``Dr. Ernesto Guevara de la Serna'' de Las Tunas, Cuba. Esta escala tiene especial relevancia para nuestro proyecto por:
+
+\begin{enumerate}
+    \item Está diseñada específicamente para la población cubana.
+    \item Fue desarrollada a partir del mismo registro (RECUIMA) que utilizamos.
+    \item Incluye variables validadas en el contexto local de atención cardiovascular.
+\end{enumerate}
+
+\subsubsection{Variables de la Escala RECUIMA}
+
+\begin{table}[H]
+\centering
+\caption{Variables de la Escala RECUIMA y su disponibilidad en el dataset}
+\label{tab:recuima}
+\small
+\begin{tabular}{@{}L{3cm}L{3cm}L{3.5cm}C{2cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Criterio} & \textbf{Variable Dataset} & \textbf{Disponible} \\
+\midrule
+Edad & $>$ 70 años & \texttt{edad} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+PAS & $<$ 100 mmHg & \texttt{presion\_arterial\_\newline sistolica} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Filtrado \newline glomerular & $<$ 60 mL/min/\newline 1.73m² & \texttt{filtrado\_\newline glomerular} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Derivaciones \newline ECG afectadas & $>$ 7 derivaciones & \texttt{v1-v9}, \texttt{d1-d3}, \newline \texttt{avl}, \texttt{avf}, \texttt{avr} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+Clase Killip & Clase IV (shock) & \texttt{indice\_killip} & \textcolor{incluir}{\textbf{Sí}} \\
+\midrule
+FV/TV & Presencia & \texttt{fibrilacion\_\newline auricular} (parcial) & \textcolor{revisar}{\textbf{Parcial}} \\
+\midrule
+BAV alto grado & BAV avanzado & No disponible & \textcolor{excluir}{\textbf{No}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Categorías de Riesgo RECUIMA}
+\begin{itemize}
+    \item \textbf{Riesgo Bajo:} Score $<$ 3 puntos
+    \item \textbf{Riesgo Alto:} Score $\geq$ 3 puntos
+\end{itemize}
+
+\subsubsection{Observaciones sobre la Escala RECUIMA}
+
+\textbf{Pregunta para el Dr. Santos Medina:}
+\begin{enumerate}
+    \item La variable de \textbf{Fibrilación/Taquicardia ventricular} en el dataset corresponde a \texttt{fibrilacion\_auricular}. ¿Es esta la variable correcta o existe otra variable que capture específicamente FV/TV?
+    \item El \textbf{Bloqueo AV de alto grado} no parece estar directamente disponible en el dataset. ¿Existe alguna variable proxy o debería agregarse?
+    \item ¿El número de derivaciones afectadas debe calcularse sumando las variables V1-V9, D1-D3, AVL, AVF, AVR cuando su valor es 1?
+\end{enumerate}
+
+% ============================================================================
+\section{Análisis Comparativo de Variables en las Tres Escalas}
+% ============================================================================
+
+\begin{table}[H]
+\centering
+\caption{Resumen de variables compartidas entre escalas clínicas}
+\label{tab:comparativo}
+\small
+\begin{tabular}{@{}L{3cm}C{1.5cm}C{1cm}C{1.2cm}C{1.8cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{GRACE} & \textbf{TIMI} & \textbf{REC.} & \textbf{Prioridad} \\
+\midrule
+Edad & \checkmark & \checkmark & \checkmark & \textcolor{incluir}{\textbf{Máxima}} \\
+PAS & \checkmark & \checkmark & \checkmark & \textcolor{incluir}{\textbf{Máxima}} \\
+Frecuencia cardíaca & \checkmark & \checkmark & -- & \textcolor{incluir}{\textbf{Alta}} \\
+Clase Killip & \checkmark & \checkmark & \checkmark & \textcolor{incluir}{\textbf{Máxima}} \\
+Creatinina/F. renal & \checkmark & -- & \checkmark & \textcolor{incluir}{\textbf{Máxima}} \\
+Cambios ST & \checkmark & \checkmark & \checkmark & \textcolor{incluir}{\textbf{Máxima}} \\
+Enzimas cardíacas & \checkmark & \checkmark & -- & \textcolor{incluir}{\textbf{Alta}} \\
+Diabetes mellitus & -- & \checkmark & -- & \textcolor{incluir}{\textbf{Alta}} \\
+Hipertensión & -- & \checkmark & -- & \textcolor{incluir}{\textbf{Alta}} \\
+Peso corporal & -- & \checkmark & -- & \textcolor{incluir}{\textbf{Media}} \\
+Tiempo a tto & -- & \checkmark & -- & \textcolor{incluir}{\textbf{Alta}} \\
+Derivaciones ECG & -- & -- & \checkmark & \textcolor{incluir}{\textbf{Alta}} \\
+Arritmias ventr. & -- & -- & \checkmark & \textcolor{incluir}{\textbf{Alta}} \\
+Bloqueo AV & -- & -- & \checkmark & \textcolor{revisar}{\textbf{Revisar}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================================
+\section{Variables Recomendadas para Inclusión}
+% ============================================================================
+
+A continuación se presenta la lista completa de variables recomendadas para el modelo predictivo, organizadas por categoría y con justificación detallada.
+
+% ----------------------------------------------------------------------------
+\subsection{Variables Demográficas y Antropométricas}
+% ----------------------------------------------------------------------------
+
+\begin{longtable}{@{}L{2.5cm}L{5.5cm}L{4.5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Justificación} & \textbf{Observaciones} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Variable} & \textbf{Justificación} & \textbf{Observaciones} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\texttt{edad} & Presente en GRACE, TIMI y RECUIMA. \newline Factor de riesgo independiente. & Usar como continua. \\
+\texttt{sexo} & Factor de riesgo reconocido. Mujeres \newline tienen mayor mortalidad ajustada. & Binaria (0=M, 1=F). \\
+\texttt{peso} & En TIMI-STEMI ($<$67 kg = mayor riesgo). & Continua o binaria. \\
+\texttt{talla} & Necesario para calcular IMC. & Secundaria si IMC \newline disponible. \\
+\texttt{imc} & Factor de riesgo cardiovascular. & Continua o categorizada. \\
+\end{longtable}
+
+% ----------------------------------------------------------------------------
+\subsection{Variables Hemodinámicas y Signos Vitales}
+% ----------------------------------------------------------------------------
+
+\begin{longtable}{@{}L{4cm}L{6cm}L{4.5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Justificación} & \textbf{Observaciones} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{presion\_\newline arterial\_\newline sistolica} & En las tres escalas. Hipotensión \newline ($<$100 mmHg) predice mortalidad. & \textbf{Duplicada:} Usar \newline valores al ingreso. \\
+\texttt{presion\_\newline arterial\_\newline diastolica} & Complementa evaluación. Presión \newline de pulso amplia = mal pronóstico. & \textbf{Duplicada:} Usar \newline valores al ingreso. \\
+\texttt{frecuencia\_\newline cardiaca} & En GRACE y TIMI. Taquicardia \newline ($>$100 lpm) = compromiso hemodin. & Usar como continua. \\
+\texttt{shock} & Indicador directo de compromiso \newline hemodinámico severo. & Codificar binaria. \\
+\texttt{indice\_\newline killip} & En GRACE, TIMI y RECUIMA. \newline Clasifica insuficiencia cardíaca. & Ordinal (I-IV) o dummies. \\
+\end{longtable}
+
+% ----------------------------------------------------------------------------
+\subsection{Variables Electrocardiográficas}
+% ----------------------------------------------------------------------------
+
+\begin{longtable}{@{}L{3cm}L{5.5cm}L{4.3cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Justificación} & \textbf{Observaciones} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{scacest} & Diferencia STEMI de NSTEMI. \newline Tratamiento y pronóstico diferente. & Binaria. \\
+\texttt{depresion\_\newline st} & Cambios ST predicen extensión \newline de isquemia. En GRACE y TIMI. & Codificar binaria. \\
+\texttt{supradesnivel} & Magnitud de elevación ST \newline correlaciona con tamaño infarto. & Numérica (mm). \\
+\texttt{infradesnivel} & Depresión ST recíproca o isquemia \newline a distancia. & Numérica (mm). \\
+\texttt{v1-v6, \newline v7-v9} & Localización del infarto. Anteriores \newline extensos = peor pronóstico. & Sumar para derivaciones \newline afectadas (RECUIMA). \\
+\texttt{d1-d3, avl, \newline avf, avr} & Complementan localización. & Incluir en suma. \\
+\texttt{v3r, v4r} & Detectan infarto de VD (mal pronóstico). & Incluir en suma. \\
+\end{longtable}
+
+% ----------------------------------------------------------------------------
+\subsection{Variables de Laboratorio}
+% ----------------------------------------------------------------------------
+
+\begin{longtable}{@{}L{3cm}L{5.5cm}L{4.3cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Justificación} & \textbf{Observaciones} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{creatinina} & En GRACE. Disfunción renal predice \newline mortalidad independientemente. & Confirmar unidades. \\
+\texttt{filtrado\_\newline glomerular} & En RECUIMA ($<$60 mL/min/1.73m²). \newline Más preciso que creatinina. & Preferir sobre creatinina. \\
+\texttt{ck} & Enzima cardíaca. Pico correlaciona \newline con tamaño del infarto. & Confirmar unidades. \\
+\texttt{ckmb} & Fracción MB más específica. \newline En GRACE y TIMI. & Confirmar unidades. \\
+\texttt{glicemia} & Hiperglucemia al ingreso asociada \newline a peor pronóstico (incluso sin DM). & Usar como continua. \\
+\texttt{hb} & Anemia asociada a peor pronóstico en IAM. & Confirmar unidades. \\
+\texttt{colesterol} & Factor de riesgo CV tradicional. & Secundaria. \\
+\texttt{trigliceridos} & Factor de riesgo cardiovascular. & Secundaria. \\
+\end{longtable}
+
+% ----------------------------------------------------------------------------
+\subsection{Antecedentes Patológicos (Comorbilidades)}
+% ----------------------------------------------------------------------------
+
+\begin{longtable}{@{}L{3cm}L{5cm}L{4.5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Justificación} & \textbf{Observaciones} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{diabetes\_\newline mellitus} & Factor riesgo en TIMI. \newline Aumenta mortalidad CV 2-4x. & Binaria. \\
+\texttt{hipertension\_\newline arterial} & Factor riesgo en TIMI. \newline Daño orgánico subclínico. & Binaria. \\
+\texttt{insuficiencia\_\newline cardiaca\_\newline congestiva} & ICC previa = disfunción \newline ventricular preexistente. & Binaria. \\
+\texttt{insuficiencia\_\newline renal\_cronica} & Aumenta riesgo complicaciones \newline y mortalidad. & Binaria. \\
+\texttt{enfermedad\_\newline arterias\_\newline coronarias} & En TIMI-NSTEMI. Enf. \newline coronaria conocida. & Binaria. \\
+\texttt{infarto\_\newline miocardio\_\newline agudo} & Infarto previo = daño \newline miocárdico preexistente. & Binaria. \\
+\texttt{fibrilacion\_\newline auricular} & Arritmia que complica \newline el manejo del IAM. & Binaria. \\
+\texttt{enfermedad\_\newline cerebro\_\newline vascular} & Indica enf. aterosclerótica \newline sistémica. & Binaria. \\
+\texttt{hiperlipo\-\newline proteinemia} & Factor riesgo TIMI-NSTEMI. & Binaria. \\
+\texttt{epoc} & Comorbilidad que aumenta \newline mortalidad. & Binaria. \\
+\texttt{anemia} & Factor de riesgo independiente. & Binaria. \\
+\texttt{tabaquismo} & Factor de riesgo TIMI-NSTEMI. & Binaria o categórica. \\
+\end{longtable}
+
+% ----------------------------------------------------------------------------
+\subsection{Variables de Procedimientos y Tiempos}
+% ----------------------------------------------------------------------------
+
+\begin{longtable}{@{}L{3cm}L{5.2cm}L{4.5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Justificación} & \textbf{Observaciones} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{tiempo\_\newline isquemia} & En TIMI ($>$4h = peor pronóstico). \newline ``Time is muscle''. & Confirmar unidad (min). \\
+\texttt{tiempo\_\newline puerta\_aguja} & Indicador de calidad. Retrasos \newline aumentan mortalidad. & Confirmar unidad (min). \\
+\texttt{reperfusion} & Tipo de reperfusión influye \newline directamente en pronóstico. & Categórica. \\
+\texttt{coronario\-\newline grafia} & Acceso a cateterismo indica \newline nivel de atención disponible. & Categórica. \\
+\texttt{estrepto\-\newline quinasa\_rec} & Trombolítico utilizado en Cuba. & Binaria. \\
+\end{longtable}
+
+% ----------------------------------------------------------------------------
+\subsection{Variables de Intervención y Soporte}
+% ----------------------------------------------------------------------------
+
+\begin{longtable}{@{}L{2.5cm}L{5.5cm}L{4.5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Justificación} & \textbf{Observaciones} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{aminas} & Uso de vasopresores indica shock/ \newline inestabilidad severa. & Binaria. \textbf{Precaución:} \newline Potencial fuga de datos. \\
+\texttt{vam} & Ventilación mecánica indica \newline compromiso respiratorio severo. & Binaria. \textbf{Precaución:} \newline Potencial fuga de datos. \\
+\texttt{mpt} & Marcapaso temporal indica trastornos \newline de conducción graves. & Binaria. \\
+\texttt{balon} & Balón de contrapulsación indica \newline compromiso hemodinámico severo. & Binaria. \\
+\end{longtable}
+
+% ----------------------------------------------------------------------------
+\subsection{Variables Ecocardiográficas}
+% ----------------------------------------------------------------------------
+
+\begin{longtable}{@{}L{2.5cm}L{5.5cm}L{4.5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Justificación} & \textbf{Observaciones} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{fraccion\_\newline eyeccion} & Predictor independiente fuerte. \newline FEVI $<$40\% = disfunción sistólica. & Continua o categorizada \newline ($<$40\%, 40-50\%, $>$50\%). \\
+\texttt{tapse} & Función ventricular derecha. \newline TAPSE $<$17mm = disfunción VD. & Continua. \\
+\end{longtable}
+
+% ============================================================================
+\section{Variables NO Recomendadas para Inclusión}
+% ============================================================================
+
+% ----------------------------------------------------------------------------
+\subsection{Variables con Fuga de Datos (Data Leakage)}
+% ----------------------------------------------------------------------------
+
+\textbf{Definición:} Variables que contienen información que no estaría disponible al momento de hacer la predicción o que son consecuencia directa del desenlace.
+
+\begin{longtable}{@{}L{3.5cm}L{5cm}L{4.5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Razón de Exclusión} & \textbf{Tipo de Fuga} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{estado\_vital} & Es la variable objetivo recodificada. & Fuga directa. \\
+\texttt{fecha\_\newline defuncion} & Solo existe si el paciente falleció. & Fuga directa. \\
+\texttt{estadia\_\newline intrahospitalaria} & Conocida solo al egreso. \newline Correlaciona con desenlace. & Fuga temporal. \\
+\texttt{estadia\_ucie} & Conocida solo al egreso. & Fuga temporal. \\
+\texttt{estadia\_uci} & Conocida solo al egreso. & Fuga temporal. \\
+\texttt{resultado} & Variable de seguimiento post-egreso. & Fuga temporal. \\
+\texttt{fecha\_egreso} & Solo conocida al egreso. & Fuga temporal. \\
+\texttt{complicaciones} & Registradas durante hospitalización. & Fuga temporal (parcial). \\
+\end{longtable}
+
+\textbf{Nota importante:} Algunas variables de intervención (\texttt{aminas}, \texttt{vam}, \texttt{balon}) podrían representar fuga de datos si se registran \textit{durante} la hospitalización y no al ingreso. \textbf{Consultar al cardiólogo:} ¿Estas variables representan el estado al ingreso o intervenciones realizadas durante la estancia?
+
+% ----------------------------------------------------------------------------
+\subsection{Variables de Identificación}
+% ----------------------------------------------------------------------------
+
+\begin{longtable}{@{}L{2.5cm}L{5.5cm}L{4.5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Razón de Exclusión} & \textbf{Acción} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{numero} & Identificador único sin valor predictivo. & Ya eliminada. \\
+\texttt{anno} & Año de registro. Podría introducir \newline sesgo temporal. & Ya eliminada. \\
+\texttt{unidad} & Código de unidad hospitalaria. & Ya eliminada. \\
+\texttt{idprovincia} & Identificador geográfico duplicado. & Redundante. \\
+\texttt{idmunicipio} & Identificador geográfico. & Redundante. \\
+\texttt{idareasalud} & Identificador geográfico. & Redundante. \\
+\end{longtable}
+
+% ----------------------------------------------------------------------------
+\subsection{Variables Geográficas y Administrativas}
+% ----------------------------------------------------------------------------
+
+\begin{longtable}{@{}L{2.5cm}L{5.5cm}L{4.5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Razón de Exclusión} & \textbf{Consideración} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{provincia} & No tiene valor clínico directo para \newline predicción. & Podría usarse para \newline análisis de equidad. \\
+\texttt{municipio} & Alta cardinalidad, difícil codificación. & Excluir de modelo. \\
+\texttt{area\_salud} & Alta cardinalidad. & Excluir de modelo. \\
+\end{longtable}
+
+% ----------------------------------------------------------------------------
+\subsection{Variables con Excesivos Valores Faltantes o Baja Calidad}
+% ----------------------------------------------------------------------------
+
+\begin{longtable}{@{}L{3.5cm}L{5cm}L{4.5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Razón de Exclusión} & \textbf{Consideración} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{observaciones} & Texto libre. Requiere NLP. & Excluir inicialmente. \\
+\texttt{proxima} & Significado no claro. Muchos \newline faltantes. & Excluir. \\
+\texttt{fecha\_consulta} & Variable de seguimiento. & Excluir. \\
+\texttt{ergometria} & Muchos faltantes. No realizada \newline en todos los pacientes. & Excluir o imputar con \newline cuidado. \\
+\texttt{razones\_\newline documentadas} & Contexto no claro. \newline Muchos faltantes. & Excluir. \\
+\texttt{volumen\_contraste} & Contexto no claro. Muchos faltantes. & Excluir. \\
+\end{longtable}
+
+% ----------------------------------------------------------------------------
+\subsection{Variables Redundantes}
+% ----------------------------------------------------------------------------
+
+\begin{longtable}{@{}L{3cm}L{5cm}L{4.5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Razón de Exclusión} & \textbf{Variable Preferida} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{indice\_mkillip} & Duplica información de \newline \texttt{indice\_killip}. & Usar \texttt{indice\_killip}. \\
+\texttt{escala\_grace} & Score precalculado. Preferimos \newline componentes individuales. & Usar variables componentes. \\
+\texttt{creatinina} & Si \texttt{filtrado\_glomerular} \newline está disponible. & Usar \texttt{filtrado\_\newline glomerular}. \\
+\texttt{anticalcico} vs \newline \texttt{anticalcicos} & Variables duplicadas. & Elegir una tras aclaración. \\
+\end{longtable}
+
+% ============================================================================
+\section{Tratamiento de Variables Categóricas}
+% ============================================================================
+
+\subsection{Estrategias de Codificación Recomendadas}
+
+\begin{longtable}{@{}L{3cm}L{2cm}L{3.5cm}L{4.5cm}@{}}
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Estrategia} & \textbf{Justificación} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+\texttt{sexo} & Binaria & Label Encoding (0/1) & Solo 2 categorías. \\
+\texttt{color\_piel} & Nominal \newline (3 cat.) & One-Hot Encoding & Sin orden natural. \\
+\texttt{indice\_killip} & Ordinal \newline (4 cat.) & Ordinal (1-4) o \newline Target Encoding & Orden clínico claro \newline (I$<$II$<$III$<$IV). \\
+\texttt{presentacion} & Nominal \newline (5 cat.) & One-Hot Encoding & Categorías mutuamente \newline excluyentes sin orden. \\
+\texttt{atencion\_\newline inicial} & Nominal \newline (3 cat.) & One-Hot Encoding & Sin orden natural. \\
+\texttt{horario\_\newline llegada} & Binaria & Label Encoding (0/1) & Solo 2 categorías \newline (7am-7pm vs 7pm-7am). \\
+\texttt{reperfusion} & Ordinal/\newline Nominal & Target Encoding o \newline One-Hot & Considerar ``no'' $<$ \newline ``parcial'' $<$ ``total''. \\
+\texttt{tabaquismo} & Binaria & Label Encoding (0/1) & Solo 2 categorías. \\
+\texttt{tipo\_\newline tabaquismo} & Nominal & One-Hot Encoding & ``activo'' vs ``no activo''. \\
+\texttt{angina} & Nominal & One-Hot Encoding & Múltiples tipos. \\
+\end{longtable}
+
+\subsection{Consideraciones Especiales}
+
+\begin{enumerate}
+    \item \textbf{Variables con categoría ``si/no'':} Codificar directamente como 1/0.
+    \item \textbf{Variables ordinales clínicas:} Mantener orden clínico (ej: Killip I$<$II$<$III$<$IV).
+    \item \textbf{Target Encoding:} Considerar para variables de alta cardinalidad, pero con validación cruzada para evitar fuga de datos.
+    \item \textbf{Variables duplicadas con formato diferente:} Unificar formato antes de codificar.
+\end{enumerate}
+
+% ============================================================================
+\section{Estrategias de Imputación de Valores Faltantes}
+% ============================================================================
+
+\subsection{Análisis de Patrones de Valores Faltantes}
+
+Antes de imputar, es fundamental analizar si los datos faltantes son:
+\begin{itemize}
+    \item \textbf{MCAR} (Missing Completely At Random): Faltantes aleatorios.
+    \item \textbf{MAR} (Missing At Random): Faltantes dependen de otras variables observadas.
+    \item \textbf{MNAR} (Missing Not At Random): Faltantes dependen del valor mismo.
+\end{itemize}
+
+\subsection{Recomendaciones por Tipo de Variable}
+
+\begin{longtable}{@{}L{3.5cm}L{2.3cm}L{4cm}L{3.5cm}@{}}
+\toprule
+\textbf{Variable/Grupo} & \textbf{Tipo} & \textbf{Método} & \textbf{Justificación} \\
+\midrule
+\endfirsthead
+\bottomrule
+\endfoot
+Variables numéricas \newline continuas (edad, peso, \newline PAS, FC) & Numérica & Imputación múltiple \newline (MICE) o KNN Imputer & Preserva distribución \newline y correlaciones. \\
+\midrule
+Variables de laboratorio \newline (creatinina, Hb, CK) & Numérica & Imputación por \newline mediana o MICE & Distribuciones \newline asimétricas. \\
+\midrule
+Variables binarias \newline (comorbilidades) & Categórica & Imputación por moda \newline o indicador faltante & Faltante puede indicar \newline ``no evaluado''. \\
+\midrule
+Variables con muchos \newline faltantes ($>$50\%) & Cualquiera & Indicador de faltante \newline + imputación simple & Patrón de faltante \newline puede ser informativo. \\
+\midrule
+Clase Killip & Ordinal & Imputación por moda \newline (Killip I) o KNN & Mayoría de pacientes \newline son Killip I. \\
+\midrule
+Variables \newline de tiempo \newline (tiempo\_isquemia) & Numérica & Mediana o MICE \newline con restricciones & Valores deben \newline ser $\geq$ 0. \\
+\midrule
+Derivaciones ECG \newline (V1-V9, etc.) & Binaria & Imputar como 0 \newline (sin alteración) & Faltante indica no \newline evaluado = normal. \\
+\midrule
+Variables \newline ecocardiográficas & Numérica & No imputar o MICE & Alto \% de faltantes. \newline Considerar exclusión. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Estrategia General Recomendada}
+
+\begin{enumerate}
+    \item \textbf{Variables con $<$5\% faltantes:} Imputación simple (mediana/moda) o eliminación de casos.
+    \item \textbf{Variables con 5-20\% faltantes:} MICE (Multiple Imputation by Chained Equations) o KNN Imputer.
+    \item \textbf{Variables con 20-50\% faltantes:} MICE + indicador de faltante como variable adicional.
+    \item \textbf{Variables con $>$50\% faltantes:} Evaluar exclusión del modelo o análisis de sensibilidad.
+\end{enumerate}
+
+\textbf{Pregunta para el Dr. Santos Medina:}
+\begin{itemize}
+    \item ¿En el contexto clínico cubano, cuando una variable binaria (ej: comorbilidad) no está registrada, debe interpretarse como ``ausente'' o como ``no evaluada''?
+\end{itemize}
+
+% ============================================================================
+\section{Resumen de Decisiones y Preguntas Pendientes}
+% ============================================================================
+
+\subsection{Variables Definitivamente Incluidas (Alta Confianza)}
+
+\begin{enumerate}
+    \item \texttt{edad}
+    \item \texttt{sexo}
+    \item \texttt{presion\_arterial\_sistolica} (al ingreso)
+    \item \texttt{presion\_arterial\_diastolica} (al ingreso)
+    \item \texttt{frecuencia\_cardiaca}
+    \item \texttt{indice\_killip}
+    \item \texttt{creatinina} o \texttt{filtrado\_glomerular}
+    \item \texttt{scacest}
+    \item \texttt{depresion\_st}
+    \item \texttt{diabetes\_mellitus}
+    \item \texttt{hipertension\_arterial}
+    \item \texttt{insuficiencia\_cardiaca\_congestiva}
+    \item \texttt{enfermedad\_arterias\_coronarias}
+    \item \texttt{ck}, \texttt{ckmb}
+\end{enumerate}
+
+\subsection{Variables Pendientes de Aclaración}
+
+\begin{enumerate}
+    \item \textbf{Variables duplicadas:} ¿Cuál versión usar (ingreso vs egreso)?
+    \item \textbf{Derivaciones ECG:} ¿Cómo calcular número de derivaciones afectadas?
+    \item \textbf{Arritmias ventriculares:} ¿Existe variable específica para FV/TV?
+    \item \textbf{Bloqueo AV:} ¿Existe variable para bloqueo AV de alto grado?
+    \item \textbf{Variables de intervención:} ¿Se registran al ingreso o durante hospitalización?
+\end{enumerate}
+
+\subsection{Próximos Pasos}
+
+\begin{enumerate}
+    \item Validar este documento con el Dr. Maikel Santos Medina.
+    \item Resolver dudas sobre variables duplicadas y codificaciones.
+    \item Implementar pipeline de preprocesamiento con las decisiones validadas.
+    \item Realizar análisis exploratorio de valores faltantes.
+    \item Entrenar modelos baseline con variables de alta confianza.
+\end{enumerate}
+
+% ============================================================================
+\section*{Anexo: Referencias Bibliográficas de Escalas Clínicas}
+% ============================================================================
+
+\begin{enumerate}
+    \item Fox KA, et al. \textit{Prediction of risk of death and myocardial infarction in the six months after presentation with acute coronary syndrome: prospective multinational observational study (GRACE)}. BMJ. 2006;333(7578):1091.
+    \item Antman EM, et al. \textit{The TIMI risk score for unstable angina/non-ST elevation MI: A method for prognostication and therapeutic decision making}. JAMA. 2000;284(7):835-42.
+    \item Morrow DA, et al. \textit{TIMI risk score for ST-elevation myocardial infarction: A convenient, bedside, clinical score for risk assessment at presentation}. Circulation. 2000;102(17):2031-7.
+    \item Santos Medina M. \textit{Escala predictiva de muerte hospitalaria por infarto agudo de miocardio}. Tesis Doctoral, Universidad de Ciencias Médicas de Santiago de Cuba.
+\end{enumerate}
+
+\end{document}

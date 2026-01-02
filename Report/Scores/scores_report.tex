@@ -1,0 +1,675 @@
+% =============================================================================
+% INFORME DE VALIDACIÓN DE ESCALAS CLÍNICAS DE RIESGO
+% Evaluación de GRACE, TIMI y RECUIMA para predicción de mortalidad hospitalaria
+% por infarto agudo de miocardio sobre el dataset RECUIMA
+% =============================================================================
+
+\documentclass[12pt,a4paper]{article}
+
+% ---- Paquetes ----
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{caption}
+
+% ---- Configuración ----
+\bibliographystyle{apalike}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.8em}
+
+% ---- Comando para placeholders ----
+\newcommand{\ph}[1]{\textcolor{blue}{\textbf{#1}}}
+
+\title{
+    \vspace{-2cm}
+    \textbf{Validación de Escalas Clínicas de Estratificación de Riesgo} \\[0.5cm]
+    \large Evaluación Comparativa de GRACE, TIMI y RECUIMA \\
+    para Predicción de Mortalidad Hospitalaria por IAM \\
+    sobre el Dataset del Registro Cubano de Infarto de Miocardio
+}
+
+\author{
+    Equipo de Investigación \\
+    \textit{Proyecto de Predicción de Mortalidad por IAM}
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+El presente informe documenta la validación de las escalas clínicas de estratificación de riesgo GRACE (Global Registry of Acute Coronary Events), TIMI (Thrombolysis in Myocardial Infarction) y RECUIMA sobre el dataset del Registro Cubano de Infarto de Miocardio Agudo. Se presentan métricas de discriminación (AUROC), calibración y rendimiento diagnóstico (sensibilidad, especificidad, valores predictivos) para establecer una línea base de comparación con futuros modelos de aprendizaje automático. Los resultados obtenidos permitirán evaluar el valor agregado de aproximaciones basadas en machine learning frente a las escalas clínicas tradicionales validadas internacionalmente.
+
+\textbf{Palabras clave:} Infarto agudo de miocardio, estratificación de riesgo, GRACE score, TIMI score, RECUIMA, mortalidad hospitalaria, validación externa.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section{Introducción}
+% =============================================================================
+
+\subsection{Contexto y Motivación}
+
+La estratificación temprana del riesgo en pacientes con infarto agudo de miocardio (IAM) constituye un pilar fundamental en la toma de decisiones clínicas. Las escalas de riesgo permiten identificar pacientes de alto riesgo que requieren intervenciones más agresivas y optimizar la asignación de recursos en unidades de cuidados coronarios \citep{granger2003grace, antman2000timi}.
+
+Sin embargo, la mayoría de las escalas de estratificación de riesgo fueron desarrolladas en países de altos ingresos (PAI), donde la disponibilidad de biomarcadores específicos (troponinas), acceso a angioplastia coronaria percutánea primaria y otras tecnologías avanzadas difiere significativamente de las condiciones en países de bajos y medianos ingresos (PBMI) como Cuba \citep{santos2022recuima, chandrashekhar2020stemi}.
+
+\subsection{Objetivos del Informe}
+
+\begin{enumerate}[label=\arabic*.]
+    \item Calcular métricas de rendimiento de las escalas GRACE, TIMI y RECUIMA sobre el dataset del Registro Cubano de Infarto de Miocardio.
+    \item Comparar los resultados obtenidos con validaciones internacionales publicadas en la literatura.
+    \item Establecer una línea base de referencia para comparación con modelos de aprendizaje automático.
+    \item Analizar la aplicabilidad de cada escala en el contexto cubano.
+\end{enumerate}
+
+\subsection{Dataset de Evaluación}
+
+El Registro Cubano de Infarto de Miocardio Agudo (RECUIMA) constituye un registro multicéntrico que incluye pacientes de siete hospitales de seis provincias cubanas. El dataset utilizado en este análisis comprende:
+
+\begin{itemize}
+    \item \textbf{Total de registros:} 3,112 pacientes
+    \item \textbf{Período de recolección:} 2016-2025
+    \item \textbf{Variable objetivo:} Mortalidad intrahospitalaria (binaria)
+    \item \textbf{Tasa de mortalidad observada:} \ph{XX.XX}\%
+\end{itemize}
+
+\FloatBarrier
+% =============================================================================
+\section{Escalas Clínicas Evaluadas}
+% =============================================================================
+
+\subsection{Escala GRACE (Global Registry of Acute Coronary Events)}
+
+\subsubsection{Descripción}
+
+La escala GRACE es la más validada y recomendada por las guías internacionales para la estratificación de riesgo en pacientes con síndrome coronario agudo \citep{granger2003grace, esc2020nstemi}. Fue desarrollada originalmente en una cohorte de 11,389 pacientes de 94 hospitales en 14 países entre 1999 y 2001.
+
+\subsubsection{Variables Incluidas}
+
+La escala GRACE incluye ocho factores de riesgo independientes:
+
+\begin{table}[H]
+\centering
+\caption{Variables de la escala GRACE y su ponderación}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Variable} & \textbf{OR (IC 95\%)} & \textbf{Puntos} \\
+\midrule
+Edad (por década) & 1.7 (1.55-1.85) & 0-100 \\
+Clase Killip-Kimball & 2.0 (1.81-2.29) & 0-59 \\
+Tensión arterial sistólica (por 20 mmHg $\downarrow$) & 1.4 (1.27-1.45) & 0-58 \\
+Desviación del segmento ST & 2.4 (1.90-3.0) & 0-28 \\
+Paro cardíaco durante presentación & 4.3 (2.80-6.72) & 0-39 \\
+Creatinina al ingreso (por 1 mg/dL $\uparrow$) & 1.2 (1.15-1.35) & 0-28 \\
+Elevación de biomarcadores & 1.6 (1.32-2.0) & 0-14 \\
+Frecuencia cardíaca (por 30 lpm $\uparrow$) & 1.3 (1.16-1.48) & 0-46 \\
+\bottomrule
+\end{tabular}
+\label{tab:grace_variables}
+\end{table}
+
+\subsubsection{Categorías de Riesgo}
+
+\begin{itemize}
+    \item \textbf{Bajo riesgo:} $\leq$ 108 puntos ($<$1\% mortalidad hospitalaria)
+    \item \textbf{Riesgo intermedio:} 109-140 puntos (1-3\% mortalidad)
+    \item \textbf{Alto riesgo:} $>$140 puntos ($>$3\% mortalidad)
+\end{itemize}
+
+\FloatBarrier
+\subsection{Escala TIMI (Thrombolysis in Myocardial Infarction)}
+
+\subsubsection{TIMI para IAMCEST}
+
+El TIMI Risk Score para IAMCEST fue desarrollado a partir de los datos del ensayo InTIME-II con 14,114 pacientes, diseñado para predecir mortalidad a 30 días en pacientes candidatos a trombolisis \citep{morrow2000timi}.
+
+\begin{table}[H]
+\centering
+\caption{Variables del TIMI Risk Score para IAMCEST}
+\begin{tabular}{lc}
+\toprule
+\textbf{Variable} & \textbf{Puntos} \\
+\midrule
+Edad $\geq$ 75 años & 3 \\
+Edad 65-74 años & 2 \\
+Diabetes mellitus, HTA o angina previa & 1 \\
+TAS $<$ 100 mmHg & 3 \\
+FC $>$ 100 lpm & 2 \\
+Killip II-IV & 2 \\
+Peso $<$ 67 kg & 1 \\
+IAM anterior o BCRI & 1 \\
+Tiempo a tratamiento $>$ 4 horas & 1 \\
+\bottomrule
+\end{tabular}
+\label{tab:timi_stemi}
+\end{table}
+
+\subsubsection{TIMI para IAMSEST/Angina Inestable}
+
+El TIMI Risk Score para SCA sin elevación del ST incluye siete variables con puntuación de 0-7 \citep{antman2000timi}:
+
+\begin{table}[H]
+\centering
+\caption{Variables del TIMI Risk Score para IAMSEST/AI}
+\begin{tabular}{lc}
+\toprule
+\textbf{Variable} & \textbf{Puntos} \\
+\midrule
+Edad $\geq$ 65 años & 1 \\
+$\geq$ 3 factores de riesgo coronario & 1 \\
+Estenosis coronaria conocida $\geq$ 50\% & 1 \\
+Uso de aspirina en últimos 7 días & 1 \\
+$\geq$ 2 episodios de angina en 24 horas & 1 \\
+Desviación ST $\geq$ 0.5 mm & 1 \\
+Elevación de marcadores cardíacos & 1 \\
+\bottomrule
+\end{tabular}
+\label{tab:timi_nstemi}
+\end{table}
+
+\FloatBarrier
+\subsection{Escala RECUIMA}
+
+\subsubsection{Descripción}
+
+La escala RECUIMA fue desarrollada específicamente para el contexto cubano a partir de los datos del Registro Cubano de Infarto de Miocardio Agudo por Santos Medina et al. (2022). Esta escala fue diseñada considerando las limitaciones de recursos de los PBMI, excluyendo variables que requieren troponinas o angiografía coronaria \citep{santos2022recuima}.
+
+\subsubsection{Variables Incluidas}
+
+\begin{table}[H]
+\centering
+\caption{Variables de la escala RECUIMA y su ponderación}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Variable} & \textbf{$\beta$} & \textbf{Puntos} \\
+\midrule
+TAS $<$ 100 mmHg & 1.090 & 1 \\
+Edad $>$ 70 años & 1.279 & 1 \\
+Más de 7 derivaciones afectadas en ECG & 1.334 & 1 \\
+BAV de alto grado & 1.460 & 1 \\
+Killip-Kimball IV & 1.471 & 1 \\
+Fibrilación/Taquicardia ventricular & 1.834 & 2 \\
+Filtrado glomerular $<$ 60 ml/min/1.73m$^2$ & 2.724 & 3 \\
+\midrule
+\textbf{Rango total} & & \textbf{0-10} \\
+\bottomrule
+\end{tabular}
+\label{tab:recuima_variables}
+\end{table}
+
+\subsubsection{Categorías de Riesgo}
+
+\begin{itemize}
+    \item \textbf{Bajo riesgo:} $\leq$ 3 puntos
+    \item \textbf{Alto riesgo:} $\geq$ 4 puntos
+\end{itemize}
+
+El punto de corte óptimo fue determinado maximizando el índice de Youden (0.611) con la mejor relación entre sensibilidad y especificidad.
+
+\FloatBarrier
+% =============================================================================
+\section{Resultados de Validaciones en la Literatura}
+% =============================================================================
+
+\subsection{Validación Original de las Escalas}
+
+\begin{table}[H]
+\centering
+\caption{Rendimiento de las escalas en sus cohortes de derivación}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Escala} & \textbf{ABC} & \textbf{N pacientes} & \textbf{Referencia} \\
+\midrule
+GRACE & 0.83 & 11,389 & Granger et al. (2003) \\
+GRACE (validación) & 0.85 & 3,972 & Granger et al. (2003) \\
+TIMI-STEMI & 0.78 & 14,114 & Morrow et al. (2000) \\
+TIMI-NSTEMI (derivación) & 0.65 & 1,957 & Antman et al. (2000) \\
+TIMI-NSTEMI (validación) & 0.63 & --- & Antman et al. (2000) \\
+ACTION-GWTG (derivación) & 0.85 & 82,004 & McNamara et al. (2016) \\
+ACTION-GWTG (validación) & 0.84 & --- & McNamara et al. (2016) \\
+ProACS (derivación) & 0.796 & 40,415 & Timóteo et al. (2017) \\
+\bottomrule
+\end{tabular}
+\label{tab:literatura_derivacion}
+\end{table}
+
+\subsection{Validaciones Externas Internacionales}
+
+\begin{table}[H]
+\centering
+\caption{Validaciones externas de la escala GRACE}
+\begin{tabular}{lccc}
+\toprule
+\textbf{País/Región} & \textbf{ABC} & \textbf{N} & \textbf{Referencia} \\
+\midrule
+Registro GRACE (global) & 0.85 & 3,972 & Granger et al. (2003) \\
+Japón & 0.87 & 9,460 & Kimura et al. (2019) \\
+España (IAMCEST) & 0.89 & 4,523 & Burgos et al. (2019) \\
+Portugal & 0.89 & 3,215 & Gil et al. (2018) \\
+Brasil & 0.82 & 2,847 & De Mello et al. (2020) \\
+\bottomrule
+\end{tabular}
+\label{tab:grace_validaciones}
+\end{table}
+
+\subsection{Validaciones en Cuba}
+
+Los estudios de validación de la escala GRACE realizados en Cuba han mostrado resultados variables, con una tendencia a disminuir la capacidad discriminatoria a medida que aumenta el tamaño muestral:
+
+\begin{table}[H]
+\centering
+\caption{Validaciones de GRACE en población cubana}
+\begin{tabular}{lccl}
+\toprule
+\textbf{Estudio} & \textbf{ABC} & \textbf{N} & \textbf{Observaciones} \\
+\midrule
+Cordero Sandoval et al. (2013) & 0.78 & 156 & Centro único \\
+Rizo et al. (2011) & 0.74 & 312 & Centro único \\
+Santos Medina et al. (2015) & 0.71 & 430 & Centro único \\
+Santos Medina (Tesis, 2022) & 0.75 & 417 & Cohorte C, multicéntrico \\
+\bottomrule
+\end{tabular}
+\label{tab:grace_cuba}
+\end{table}
+
+\subsection{Resultados de Validación de RECUIMA (Tesis Dr. Santos Medina)}
+
+La escala RECUIMA fue validada exhaustivamente en tres cohortes independientes dentro del estudio doctoral de Santos Medina (2022):
+
+\subsubsection{Discriminación y Calibración}
+
+\begin{table}[H]
+\centering
+\caption{Rendimiento de la escala RECUIMA en las tres cohortes de validación}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Cohorte} & \textbf{N} & \textbf{ABC} & \textbf{IC 95\%} & \textbf{H-L (p)} \\
+\midrule
+A (Derivación) & 1,124 & 0.896 & --- & 0.426 \\
+B (Validación interna) & 807 & 0.890 & 0.853-0.926 & 0.643 \\
+C (Validación externa) & 417 & 0.904 & 0.860-0.948 & 0.340 \\
+\bottomrule
+\end{tabular}
+\label{tab:recuima_discriminacion}
+\end{table}
+
+\subsubsection{Comparación RECUIMA vs GRACE}
+
+\begin{table}[H]
+\centering
+\caption{Comparación de rendimiento RECUIMA vs GRACE por cohorte}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Cohorte} & \textbf{ABC RECUIMA} & \textbf{ABC GRACE} & \textbf{Z (p)} \\
+\midrule
+B (Validación interna) & 0.890 & 0.805 & 2.83 ($p<$0.05) \\
+C (Validación externa) & 0.904 & 0.750 & 3.60 ($p<$0.05) \\
+\bottomrule
+\end{tabular}
+\label{tab:recuima_vs_grace}
+\end{table}
+
+\subsubsection{Medidas de Rendimiento Diagnóstico}
+
+\begin{table}[H]
+\centering
+\caption{Parámetros de rendimiento de RECUIMA en las tres cohortes}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Parámetro} & \textbf{Cohorte A} & \textbf{Cohorte B} & \textbf{Cohorte C} \\
+\midrule
+Sensibilidad (\%) & 72.34 & 81.01 & 82.86 \\
+Especificidad (\%) & 93.01 & 82.83 & 87.70 \\
+VPP (\%) & 48.57 & 33.86 & 38.16 \\
+VPN (\%) & 97.36 & 97.57 & 98.24 \\
+Índice de validez (\%) & 91.28 & 82.65 & 87.29 \\
+RV+ & 10.35 & 4.72 & 6.73 \\
+RV- & 0.30 & 0.23 & 0.20 \\
+\bottomrule
+\end{tabular}
+\label{tab:recuima_rendimiento}
+\end{table}
+
+\FloatBarrier
+% =============================================================================
+\section{Validación sobre el Dataset RECUIMA Actual}
+% =============================================================================
+
+\subsection{Descripción del Dataset de Evaluación}
+
+\begin{table}[H]
+\centering
+\caption{Características del dataset RECUIMA para validación de escalas}
+\begin{tabular}{lc}
+\toprule
+\textbf{Característica} & \textbf{Valor} \\
+\midrule
+Total de registros & 3,112 \\
+Tasa de mortalidad hospitalaria & \ph{XX.XX}\% \\
+Edad media (años) & \ph{XX.X $\pm$ XX.X} \\
+Sexo masculino (\%) & \ph{XX.X}\% \\
+IAMCEST (\%) & \ph{XX.X}\% \\
+IAMSEST (\%) & \ph{XX.X}\% \\
+Trombolisis realizada (\%) & \ph{XX.X}\% \\
+\bottomrule
+\end{tabular}
+\label{tab:dataset_descripcion}
+\end{table}
+
+\subsection{Métricas de Discriminación (AUROC)}
+
+\begin{table}[H]
+\centering
+\caption{Área bajo la curva ROC de las escalas sobre el dataset RECUIMA}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Escala} & \textbf{AUROC} & \textbf{IC 95\%} & \textbf{Error Estándar} \\
+\midrule
+GRACE Score & \ph{0.XXX} & [\ph{0.XXX} - \ph{0.XXX}] & \ph{0.XXX} \\
+TIMI-STEMI & \ph{0.XXX} & [\ph{0.XXX} - \ph{0.XXX}] & \ph{0.XXX} \\
+TIMI-NSTEMI & \ph{0.XXX} & [\ph{0.XXX} - \ph{0.XXX}] & \ph{0.XXX} \\
+RECUIMA Score & \ph{0.XXX} & [\ph{0.XXX} - \ph{0.XXX}] & \ph{0.XXX} \\
+\bottomrule
+\end{tabular}
+\label{tab:auroc_validacion}
+\end{table}
+
+\subsection{Métricas de Calibración}
+
+\begin{table}[H]
+\centering
+\caption{Calibración de las escalas (prueba de Hosmer-Lemeshow)}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Escala} & \textbf{$\chi^2$} & \textbf{gl} & \textbf{p-valor} \\
+\midrule
+GRACE Score & \ph{XX.XX} & \ph{X} & \ph{0.XXX} \\
+TIMI-STEMI & \ph{XX.XX} & \ph{X} & \ph{0.XXX} \\
+TIMI-NSTEMI & \ph{XX.XX} & \ph{X} & \ph{0.XXX} \\
+RECUIMA Score & \ph{XX.XX} & \ph{X} & \ph{0.XXX} \\
+\bottomrule
+\end{tabular}
+\label{tab:calibracion}
+\end{table}
+
+\subsection{Métricas de Rendimiento Diagnóstico}
+
+\begin{table}[H]
+\centering
+\caption{Métricas de rendimiento diagnóstico por escala}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Métrica} & \textbf{GRACE} & \textbf{TIMI-STEMI} & \textbf{TIMI-NSTEMI} & \textbf{RECUIMA} \\
+\midrule
+Sensibilidad (\%) & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} \\
+Especificidad (\%) & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} \\
+Precisión (\%) & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} \\
+Recall (\%) & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} \\
+F1-Score & \ph{0.XXX} & \ph{0.XXX} & \ph{0.XXX} & \ph{0.XXX} \\
+VPP (\%) & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} \\
+VPN (\%) & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} \\
+RV+ & \ph{X.XX} & \ph{X.XX} & \ph{X.XX} & \ph{X.XX} \\
+RV- & \ph{0.XX} & \ph{0.XX} & \ph{0.XX} & \ph{0.XX} \\
+Exactitud (\%) & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} & \ph{XX.XX} \\
+\bottomrule
+\end{tabular}
+\label{tab:rendimiento_diagnostico}
+\end{table}
+
+\subsection{Comparación Estadística entre Escalas}
+
+\begin{table}[H]
+\centering
+\caption{Comparación de AUROC entre escalas (test de DeLong)}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Comparación} & \textbf{$\Delta$ AUROC} & \textbf{IC 95\%} & \textbf{p-valor} \\
+\midrule
+RECUIMA vs GRACE & \ph{0.XXX} & [\ph{-0.XXX} - \ph{0.XXX}] & \ph{0.XXX} \\
+RECUIMA vs TIMI-STEMI & \ph{0.XXX} & [\ph{-0.XXX} - \ph{0.XXX}] & \ph{0.XXX} \\
+RECUIMA vs TIMI-NSTEMI & \ph{0.XXX} & [\ph{-0.XXX} - \ph{0.XXX}] & \ph{0.XXX} \\
+GRACE vs TIMI-STEMI & \ph{0.XXX} & [\ph{-0.XXX} - \ph{0.XXX}] & \ph{0.XXX} \\
+\bottomrule
+\end{tabular}
+\label{tab:comparacion_auroc}
+\end{table}
+
+\FloatBarrier
+% =============================================================================
+\section{Análisis por Subgrupos}
+% =============================================================================
+
+\subsection{Rendimiento por Tipo de Infarto}
+
+\begin{table}[H]
+\centering
+\caption{AUROC por tipo de infarto (IAMCEST vs IAMSEST)}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Escala} & \multicolumn{2}{c}{\textbf{IAMCEST}} & \multicolumn{2}{c}{\textbf{IAMSEST}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+ & AUROC & IC 95\% & AUROC & IC 95\% \\
+\midrule
+GRACE & \ph{0.XXX} & [\ph{0.XXX}-\ph{0.XXX}] & \ph{0.XXX} & [\ph{0.XXX}-\ph{0.XXX}] \\
+TIMI & \ph{0.XXX} & [\ph{0.XXX}-\ph{0.XXX}] & \ph{0.XXX} & [\ph{0.XXX}-\ph{0.XXX}] \\
+RECUIMA & \ph{0.XXX} & [\ph{0.XXX}-\ph{0.XXX}] & \ph{0.XXX} & [\ph{0.XXX}-\ph{0.XXX}] \\
+\bottomrule
+\end{tabular}
+\label{tab:auroc_tipo_iam}
+\end{table}
+
+\subsection{Rendimiento por Grupo de Edad}
+
+\begin{table}[H]
+\centering
+\caption{AUROC por grupo etario}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Escala} & \textbf{$<$65 años} & \textbf{65-75 años} & \textbf{$>$75 años} \\
+\midrule
+GRACE & \ph{0.XXX} & \ph{0.XXX} & \ph{0.XXX} \\
+TIMI-STEMI & \ph{0.XXX} & \ph{0.XXX} & \ph{0.XXX} \\
+RECUIMA & \ph{0.XXX} & \ph{0.XXX} & \ph{0.XXX} \\
+\bottomrule
+\end{tabular}
+\label{tab:auroc_edad}
+\end{table}
+
+\FloatBarrier
+% =============================================================================
+\section{Discusión}
+% =============================================================================
+
+\subsection{Interpretación de Resultados}
+
+Los resultados obtenidos permiten contextualizar el rendimiento de las escalas clínicas tradicionales en la población cubana:
+
+\textbf{Escala GRACE:}
+\begin{itemize}
+    \item AUROC observada: \ph{0.XXX}
+    \item Comparación con literatura: La capacidad discriminatoria observada es \ph{inferior/similar/superior} a la reportada en las validaciones originales (ABC 0.83-0.85).
+    \item La menor disponibilidad de troponinas en Cuba puede afectar el cálculo preciso del score GRACE.
+\end{itemize}
+
+\textbf{Escala TIMI:}
+\begin{itemize}
+    \item AUROC observada (STEMI): \ph{0.XXX}
+    \item AUROC observada (NSTEMI): \ph{0.XXX}
+    \item El TIMI fue diseñado en poblaciones de ensayos clínicos con fibrinolíticos específicos de fibrina, lo que puede limitar su aplicabilidad en el contexto cubano.
+\end{itemize}
+
+\textbf{Escala RECUIMA:}
+\begin{itemize}
+    \item AUROC observada: \ph{0.XXX}
+    \item La escala RECUIMA, diseñada específicamente para PBMI, evita variables que requieren tecnología no disponible en Cuba.
+    \item Los resultados son \ph{consistentes/variables} con las validaciones previas (ABC 0.89-0.90).
+\end{itemize}
+
+\subsection{Limitaciones de las Escalas Clínicas}
+
+\begin{enumerate}
+    \item \textbf{GRACE:} Requiere calculadora electrónica y biomarcadores específicos (troponinas) no siempre disponibles en PBMI.
+    
+    \item \textbf{TIMI:} Desarrollado en poblaciones de ensayos clínicos con alta selección, subestima mortalidad en pacientes no candidatos a trombolisis.
+    
+    \item \textbf{RECUIMA:} Validación limitada geográficamente, requiere más estudios en poblaciones externas a Cuba.
+    
+    \item \textbf{General:} Las escalas asumen relaciones lineales y no capturan interacciones complejas entre variables.
+\end{enumerate}
+
+\subsection{Implicaciones para Modelos de Machine Learning}
+
+Los resultados establecen una línea base clara para la comparación con modelos de aprendizaje automático:
+
+\begin{itemize}
+    \item \textbf{Objetivo mínimo de mejora:} Un modelo de ML debería superar el AUROC de la mejor escala clínica (\ph{RECUIMA/GRACE}: \ph{0.XXX}).
+    
+    \item \textbf{Mejora clínicamente significativa:} Un incremento de $\geq$ 0.05 en AUROC con intervalos de confianza no superpuestos indicaría valor agregado sustancial.
+    
+    \item \textbf{Ventajas potenciales de ML:}
+    \begin{itemize}
+        \item Captura de relaciones no lineales
+        \item Detección de interacciones entre variables
+        \item Incorporación de más variables sin penalización computacional
+        \item Adaptación a patrones específicos de la población
+    \end{itemize}
+\end{itemize}
+
+\FloatBarrier
+% =============================================================================
+\section{Conclusiones}
+% =============================================================================
+
+\subsection{Resumen de Hallazgos}
+
+\begin{enumerate}
+    \item La escala \ph{RECUIMA/GRACE} mostró el mejor rendimiento discriminativo sobre el dataset RECUIMA con un AUROC de \ph{0.XXX} (IC 95\%: \ph{0.XXX-0.XXX}).
+    
+    \item La escala RECUIMA, diseñada específicamente para el contexto cubano, demostró rendimiento \ph{superior/comparable/inferior} a GRACE, lo cual es \ph{consistente/inconsistente} con los hallazgos de la tesis doctoral de Santos Medina (2022).
+    
+    \item Las escalas TIMI mostraron capacidad discriminatoria \ph{buena/regular/limitada}, con AUROC de \ph{0.XXX} para STEMI y \ph{0.XXX} para NSTEMI.
+    
+    \item La calibración de las escalas fue \ph{adecuada/inadecuada} según la prueba de Hosmer-Lemeshow.
+\end{enumerate}
+
+\subsection{Línea Base para Modelos de Machine Learning}
+
+\begin{table}[H]
+\centering
+\caption{Línea base establecida para comparación con modelos de ML}
+\begin{tabular}{lc}
+\toprule
+\textbf{Métrica de Referencia} & \textbf{Valor} \\
+\midrule
+AUROC máxima (mejor escala clínica) & \ph{0.XXX} \\
+Sensibilidad de referencia & \ph{XX.XX}\% \\
+Especificidad de referencia & \ph{XX.XX}\% \\
+F1-Score de referencia & \ph{0.XXX} \\
+VPN de referencia & \ph{XX.XX}\% \\
+\bottomrule
+\end{tabular}
+\label{tab:linea_base}
+\end{table}
+
+\subsection{Recomendaciones}
+
+\begin{enumerate}
+    \item \textbf{Para desarrollo de modelos ML:}
+    \begin{itemize}
+        \item Utilizar las métricas de la mejor escala clínica como umbral mínimo de aceptación.
+        \item Priorizar métricas de interés clínico (sensibilidad, VPN) además de AUROC.
+        \item Reportar intervalos de confianza para comparaciones estadísticas válidas.
+    \end{itemize}
+    
+    \item \textbf{Para práctica clínica actual:}
+    \begin{itemize}
+        \item La escala RECUIMA representa una alternativa válida en contextos donde GRACE no puede calcularse completamente.
+        \item El alto VPN de las escalas permite identificar con confianza pacientes de bajo riesgo.
+    \end{itemize}
+    
+    \item \textbf{Para investigación futura:}
+    \begin{itemize}
+        \item Validar la escala RECUIMA en otras poblaciones de PBMI.
+        \item Explorar modelos híbridos que combinen scores clínicos con algoritmos de ML.
+    \end{itemize}
+\end{enumerate}
+
+\FloatBarrier
+% =============================================================================
+% REFERENCIAS
+% =============================================================================
+
+\newpage
+\section*{Referencias}
+
+\begin{thebibliography}{99}
+
+\bibitem[Antman et al., 2000]{antman2000timi}
+Antman, E. M., Cohen, M., Bernink, P. J., McCabe, C. H., Horacek, T., Papuchis, G., ... \& Braunwald, E. (2000). The TIMI risk score for unstable angina/non-ST elevation MI: A method for prognostication and therapeutic decision making. \textit{JAMA}, 284(7), 835-842. \url{https://doi.org/10.1001/jama.284.7.835}
+
+\bibitem[Burgos et al., 2019]{burgos2019grace}
+Burgos, L. M., Garmendia, C. M., Giordanino, E. F., Godoy Armando, C. L., Cigalini, I. M., \& García Zamora, S. (2019). Validación y comparación de dos modelos de estratificación de riesgo en infarto de miocardio con elevación del segmento ST. \textit{Revista Argentina de Cardiología}, 87(2), 118-124. \url{http://dx.doi.org/10.7775/rac.es.v87.i2.13339}
+
+\bibitem[Chandrashekhar et al., 2020]{chandrashekhar2020stemi}
+Chandrashekhar, Y., Alexander, T., Mullasari, A., Kumbhani, D. J., Alam, S., Alexanderson, E., ... \& Narula, J. (2020). Resource and infrastructure-appropriate management of ST-segment elevation myocardial infarction in low- and middle-income countries. \textit{Circulation}, 141(24), 2004-2025. \url{https://doi.org/10.1161/CIRCULATIONAHA.119.041297}
+
+\bibitem[Collet et al., 2021]{esc2020nstemi}
+Collet, J. P., Thiele, H., Barbato, E., Barthélémy, O., Bauersachs, J., Bhatt, D. L., ... \& ESC Scientific Document Group. (2021). Guía ESC 2020 sobre el diagnóstico y tratamiento del síndrome coronario agudo sin elevación del segmento ST. \textit{Revista Española de Cardiología}, 74(6), 544.e1-544.e73. \url{https://doi.org/10.1016/j.recesp.2020.12.024}
+
+\bibitem[Cordero Sandoval et al., 2013]{cordero2013grace}
+Cordero Sandoval, Q., Ramírez Gómez, J. I., Moreno-Martínez, F. L., \& González Alfonso, O. (2013). Valor predictivo de algunos modelos de estratificación de riesgo en pacientes con infarto agudo de miocardio con elevación del ST. \textit{CorSalud}, 5(1), 57-71.
+
+\bibitem[D'Ascenzo et al., 2012]{dascenzo2012scores}
+D'Ascenzo, F., Biondi-Zoccai, G., Moretti, C., Bollati, M., Omedè, P., Sciuto, F., ... \& Gaita, F. (2012). TIMI, GRACE and alternative risk scores in acute coronary syndromes: A meta-analysis of 40 derivation studies on 216,552 patients and of 42 validation studies on 31,625 patients. \textit{Contemporary Clinical Trials}, 33(3), 507-514.
+
+\bibitem[De Mello et al., 2020]{demello2020brazil}
+De Mello, B. H., Oliveira, G. B., Ramos, R. F., Lopes, B. B., Barros, C. B., Carvalho, E. O., ... \& Précoma, D. B. (2020). Validation of the GRACE risk score in the Brazilian population. \textit{Arquivos Brasileiros de Cardiologia}, 114(6), 1014-1023.
+
+\bibitem[Gil et al., 2018]{gil2018portugal}
+Gil, V. M., Timóteo, A. T., Aguiar Rosa, S., Nogueira, M. A., Belo, A., \& Cruz Ferreira, R. (2018). Comparison of multiple risk scores in patients with acute coronary syndrome. \textit{Revista Portuguesa de Cardiologia}, 37(5), 415-422.
+
+\bibitem[Granger et al., 2003]{granger2003grace}
+Granger, C. B., Goldberg, R. J., Dabbous, O., Pieper, K. S., Eagle, K. A., Cannon, C. P., ... \& GRACE Investigators. (2003). Predictors of hospital mortality in the Global Registry of Acute Coronary Events. \textit{Archives of Internal Medicine}, 163(19), 2345-2353. \url{https://doi.org/10.1001/archinte.163.19.2345}
+
+\bibitem[Ibanez et al., 2018]{ibanez2018esc}
+Ibanez, B., James, S., Agewall, S., Antunes, M. J., Bucciarelli-Ducci, C., Bueno, H., ... \& ESC Scientific Document Group. (2018). 2017 ESC Guidelines for the management of acute myocardial infarction in patients presenting with ST-segment elevation. \textit{European Heart Journal}, 39(2), 119-177. \url{https://doi.org/10.1093/eurheartj/ehx393}
+
+\bibitem[McNamara et al., 2016]{mcnamara2016action}
+McNamara, R. L., Kennedy, K. F., Cohen, D. J., Diercks, D. B., Moscucci, M., Ramee, S., ... \& Spertus, J. A. (2016). Predicting in-hospital mortality in patients with acute myocardial infarction. \textit{Journal of the American College of Cardiology}, 68(6), 626-635. \url{https://doi.org/10.1016/j.jacc.2016.05.049}
+
+\bibitem[Morrow et al., 2000]{morrow2000timi}
+Morrow, D. A., Antman, E. M., Charlesworth, A., Cairns, R., Murphy, S. A., de Lemos, J. A., ... \& Braunwald, E. (2000). TIMI risk score for ST-elevation myocardial infarction: A convenient, bedside, clinical score for risk assessment at presentation. \textit{Circulation}, 102(17), 2031-2037. \url{https://doi.org/10.1161/01.cir.102.17.2031}
+
+\bibitem[Rizo et al., 2011]{rizo2011cuba}
+Rizo, G. O., Ramírez, J. I., Pérez, D., Novo, L., Acosta, F., Cordero, Q., ... \& González, O. (2011). Valor predictivo de muerte y complicaciones intrahospitalarias de los modelos de estratificación de riesgo en pacientes con infarto miocárdico agudo. \textit{Revista de la Federación Argentina de Cardiología}, 40(1), 57-64.
+
+\bibitem[Santos Medina, 2022]{santos2022recuima}
+Santos Medina, M. (2022). \textit{Escala predictiva de muerte hospitalaria por infarto agudo de miocardio} [Tesis doctoral]. Universidad de Ciencias Médicas de Santiago de Cuba.
+
+\bibitem[Santos Medina et al., 2015]{santos2015grace}
+Santos Medina, M., Valera Sales, A., Ojeda Riquenes, Y., \& Pardo Pérez, L. (2015). Validación del score GRACE como predictor de riesgo tras un infarto agudo de miocardio. \textit{Revista Cubana de Cardiología y Cirugía Cardiovascular}, 21(2).
+
+\bibitem[Timóteo et al., 2017]{timoteo2017proacs}
+Timóteo, A. T., Aguiar Rosa, S., Afonso Nogueira, M., Belo, A., \& Cruz Ferreira, R. (2017). ProACS risk score: An early and simple score for risk stratification of patients with acute coronary syndromes. \textit{Revista Portuguesa de Cardiologia}, 36(2), 77-83. \url{https://doi.org/10.1016/j.repc.2016.05.010}
+
+\end{thebibliography}
+
+\end{document}
