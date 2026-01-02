@@ -1,15 +1,15 @@
-"""Clinical risk scoring module.
+"""Clinical scoring module."""
 
-This module provides implementations of clinical risk scores like GRACE and TIMI.
-"""
-
-from .grace import GraceScore
+from .grace import GRACEScore
 from .timi import TIMIScore
-from .registry import get_score, list_scores
+from .recuima import RECUIMAScorer
+from .registry import get_score, list_scores, register_score
 
 __all__ = [
-    "GraceScore",
+    "GRACEScore",
     "TIMIScore",
+    "RECUIMAScorer",
     "get_score",
     "list_scores",
+    "register_score",
 ]

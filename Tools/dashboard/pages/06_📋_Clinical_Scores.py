@@ -41,6 +41,7 @@ if not available_scores:
 score_options = {
     "grace": "GRACE Score (Global Registry of Acute Coronary Events)",
     "timi": "TIMI Score (Thrombolysis In Myocardial Infarction)",
+    "recuima": "RECUIMA Score (Registro Cubano de Infarto de Miocardio Agudo)",
 }
 
 # Filter to available scores
@@ -137,7 +138,7 @@ if selected_score == "grace":
     
     st.markdown("---")
     
-    if st.button("🧮 Calculate GRACE Score", type="primary", width='stretch'):
+    if st.button("🧮 Calculate GRACE Score", type="primary", use_container_width=True):
         try:
             # Get GRACE scorer
             grace_scorer = get_score("grace")
@@ -220,6 +221,228 @@ elif selected_score == "timi":
     **Score ranges from 0-7 points**
     """)
 
+# RECUIMA Score Calculator
+elif selected_score == "recuima":
+    st.subheader("🇨🇺 Escala RECUIMA")
+    
+    st.markdown("""
+    **Escala predictiva de muerte hospitalaria por infarto agudo de miocardio**
+    
+    Desarrollada por el **Dr. Maikel Santos Medina** a partir del Registro Cubano de Infarto (RECUIMA).
+    
+    *Universidad de Ciencias Médicas de Santiago de Cuba - Hospital General Docente "Dr. Ernesto Guevara de la Serna", Las Tunas*
+    """)
+    
+    st.info("""
+    📖 Esta escala fue construida y validada en población cubana, utilizando datos del 
+    Registro Cubano de Infarto de Miocardio Agudo (RECUIMA) entre enero 2018 y diciembre 2020.
+    """)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### Datos Demográficos y Hemodinámicos")
+        
+        age_recuima = st.number_input(
+            "Edad (años)",
+            min_value=0,
+            max_value=120,
+            value=65,
+            help="Edad del paciente en años",
+            key="recuima_age"
+        )
+        
+        systolic_bp_recuima = st.number_input(
+            "Tensión Arterial Sistólica (mmHg)",
+            min_value=30,
+            max_value=250,
+            value=120,
+            help="TAS en mmHg. Factor de riesgo si < 100 mmHg",
+            key="recuima_sbp"
+        )
+        
+        gfr_recuima = st.number_input(
+            "Filtrado Glomerular (ml/min/1.73m²)",
+            min_value=0.0,
+            max_value=200.0,
+            value=90.0,
+            step=1.0,
+            help="FGR estimado. Factor de riesgo si < 60 ml/min/1.73m²",
+            key="recuima_gfr"
+        )
+        
+        st.markdown("#### Hallazgos Electrocardiográficos")
+        
+        ecg_leads = st.number_input(
+            "Derivaciones ECG Afectadas",
+            min_value=0,
+            max_value=12,
+            value=2,
+            help="Número de derivaciones con cambios del ST (0-12). Factor de riesgo si > 7",
+            key="recuima_ecg"
+        )
+    
+    with col2:
+        st.markdown("#### Clasificación Clínica")
+        
+        killip_class_recuima = st.selectbox(
+            "Clase Killip-Kimball",
+            ["I - Sin insuficiencia cardíaca", 
+             "II - Estertores, S3, congestión venosa",
+             "III - Edema pulmonar franco",
+             "IV - Shock cardiogénico"],
+            index=0,
+            help="Clasificación de insuficiencia cardíaca. Factor de riesgo si Killip IV",
+            key="recuima_killip"
+        )
+        
+        st.markdown("#### Arritmias y Trastornos de Conducción")
+        
+        vf_vt_recuima = st.checkbox(
+            "Fibrilación Ventricular / Taquicardia Ventricular",
+            value=False,
+            help="Presencia de FV o TV durante la hospitalización",
+            key="recuima_vfvt"
+        )
+        
+        avb_recuima = st.checkbox(
+            "Bloqueo AV de Alto Grado",
+            value=False,
+            help="BAV de segundo grado Mobitz II o BAV completo (tercer grado)",
+            key="recuima_avb"
+        )
+    
+    st.markdown("---")
+    
+    # Show current risk factors
+    with st.expander("📋 Ver factores de riesgo actuales", expanded=True):
+        factors = []
+        if age_recuima > 70:
+            factors.append("✓ Edad > 70 años")
+        if systolic_bp_recuima < 100:
+            factors.append("✓ TAS < 100 mmHg")
+        if gfr_recuima < 60:
+            factors.append("✓ Filtrado glomerular < 60 ml/min/1.73m²")
+        if ecg_leads > 7:
+            factors.append("✓ > 7 derivaciones ECG afectadas")
+        if "IV" in killip_class_recuima:
+            factors.append("✓ Killip-Kimball IV (Shock cardiogénico)")
+        if vf_vt_recuima:
+            factors.append("✓ Fibrilación/Taquicardia ventricular")
+        if avb_recuima:
+            factors.append("✓ Bloqueo AV de alto grado")
+        
+        if factors:
+            st.warning(f"**Factores de riesgo presentes ({len(factors)}/7):**\n\n" + "\n".join(factors))
+        else:
+            st.success("**No hay factores de riesgo presentes**")
+    
+    if st.button("🧮 Calcular Escala RECUIMA", type="primary", use_container_width=True):
+        try:
+            # Get RECUIMA scorer
+            recuima_scorer = get_score("recuima")
+            
+            # Map Killip class
+            killip_value = 4 if "IV" in killip_class_recuima else (
+                3 if "III" in killip_class_recuima else (
+                    2 if "II" in killip_class_recuima else 1
+                )
+            )
+            
+            # Compute score
+            result = recuima_scorer.compute(
+                age=age_recuima,
+                systolic_bp=systolic_bp_recuima,
+                gfr=gfr_recuima,
+                ecg_leads_affected=ecg_leads,
+                killip_class=killip_value,
+                vf_vt=vf_vt_recuima,
+                high_grade_avb=avb_recuima,
+            )
+            
+            st.success("✅ Escala RECUIMA Calculada")
+            
+            # Display results
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric(
+                    "Puntuación RECUIMA",
+                    f"{result['score']}/7",
+                    help="Puntuación total de la escala RECUIMA"
+                )
+            
+            with col2:
+                risk_cat = "Alto" if result['risk_category'] == "high" else "Bajo"
+                risk_color = "🔴" if result['risk_category'] == "high" else "🟢"
+                
+                st.metric(
+                    "Categoría de Riesgo",
+                    f"{risk_color} {risk_cat}",
+                    help="Estratificación del riesgo de muerte hospitalaria"
+                )
+            
+            with col3:
+                st.metric(
+                    "Probabilidad Estimada",
+                    f"{result['probability']*100:.1f}%",
+                    help="Probabilidad estimada de muerte hospitalaria"
+                )
+            
+            # Component breakdown
+            st.markdown("---")
+            st.markdown("#### 📊 Desglose de Componentes")
+            
+            component_names = {
+                "age_gt_70": "Edad > 70 años",
+                "sbp_lt_100": "TAS < 100 mmHg",
+                "gfr_lt_60": "FGR < 60 ml/min/1.73m²",
+                "ecg_leads_gt_7": "> 7 derivaciones ECG",
+                "killip_iv": "Killip-Kimball IV",
+                "vf_vt": "FV/TV",
+                "high_grade_avb": "BAV alto grado",
+            }
+            
+            cols = st.columns(4)
+            for idx, (key, value) in enumerate(result['components'].items()):
+                with cols[idx % 4]:
+                    icon = "✅" if value == 1 else "❌"
+                    st.markdown(f"{icon} **{component_names.get(key, key)}**")
+            
+            # Risk interpretation
+            with st.expander("📖 Interpretación del Riesgo"):
+                st.markdown(f"""
+                ### Resultado: Riesgo {risk_cat}
+                
+                **Puntuación obtenida:** {result['score']} de 7 puntos posibles
+                
+                **Categorías de Riesgo RECUIMA:**
+                - **Riesgo Bajo (< 3 puntos):** Menor probabilidad de muerte hospitalaria
+                - **Riesgo Alto (≥ 3 puntos):** Mayor probabilidad de muerte hospitalaria, requiere monitorización intensiva
+                
+                **Recomendaciones según nivel de riesgo:**
+                """)
+                
+                if result['risk_category'] == "high":
+                    st.error("""
+                    ⚠️ **Paciente de Alto Riesgo**
+                    - Considerar ingreso en Unidad de Cuidados Intensivos Coronarios
+                    - Monitorización hemodinámica continua
+                    - Evaluación urgente para estrategia de reperfusión
+                    - Vigilancia estrecha de arritmias
+                    """)
+                else:
+                    st.success("""
+                    ✅ **Paciente de Bajo Riesgo**
+                    - Monitorización estándar en unidad coronaria
+                    - Seguimiento según protocolo institucional
+                    - Evaluación de estrategia de reperfusión según indicación
+                    """)
+        
+        except Exception as e:
+            st.error(f"❌ Error al calcular la escala RECUIMA: {e}")
+            st.exception(e)
+
 # Score comparison
 st.markdown("---")
 
@@ -237,6 +460,20 @@ with st.expander("📚 About Clinical Scores"):
     - Simpler, point-based system (0-7 points)
     - Predicts 14-day risk of death, MI, or urgent revascularization
     
+    **RECUIMA Score (🇨🇺 Cuban Registry):**
+    - Developed and validated in Cuban population
+    - Specifically designed for in-hospital mortality prediction in AMI
+    - Uses 7 easily obtainable clinical variables
+    - Two risk categories: Low and High
+    - Variables:
+        1. Age > 70 years
+        2. Systolic BP < 100 mmHg
+        3. GFR < 60 ml/min/1.73m²
+        4. > 7 ECG leads affected
+        5. Killip-Kimball class IV
+        6. Ventricular fibrillation/tachycardia
+        7. High-grade AV block
+    
     **Important Notes:**
     - These scores are tools to support clinical decision-making
     - Should not replace clinical judgment
@@ -246,5 +483,6 @@ with st.expander("📚 About Clinical Scores"):
     ### References
     - GRACE: Fox KA, et al. BMJ 2006
     - TIMI: Antman EM, et al. JAMA 2000
+    - RECUIMA: Santos Medina M. Tesis Doctoral, Universidad de Ciencias Médicas de Santiago de Cuba, 2020
     """)
 

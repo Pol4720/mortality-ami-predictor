@@ -1,7 +1,7 @@
 """TIMI risk score implementation (placeholder)."""
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Any
 import numpy as np
 
 
@@ -15,7 +15,8 @@ class TIMIScore:
     
     def __init__(self):
         """Initialize TIMI score calculator."""
-        pass
+        self.name = "TIMI"
+        self.version = "1.0"
     
     def compute(
         self,
@@ -24,7 +25,7 @@ class TIMIScore:
         hypertension: bool = False,
         prior_mi: bool = False,
         **kwargs
-    ) -> Dict[str, float]:
+    ) -> Dict[str, Any]:
         """Compute TIMI risk score (simplified version).
         
         Args:
@@ -73,17 +74,7 @@ class TIMIScore:
         hypertension: np.ndarray,
         prior_mi: np.ndarray,
     ) -> np.ndarray:
-        """Compute TIMI scores for multiple patients.
-        
-        Args:
-            age: Array of ages
-            diabetes: Array of diabetes indicators
-            hypertension: Array of hypertension indicators
-            prior_mi: Array of prior MI indicators
-            
-        Returns:
-            Array of TIMI scores
-        """
+        """Compute TIMI scores for multiple patients."""
         scores = []
         
         for i in range(len(age)):

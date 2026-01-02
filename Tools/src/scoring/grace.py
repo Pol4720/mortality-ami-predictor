@@ -5,7 +5,7 @@ from typing import Dict
 import numpy as np
 
 
-class GraceScore:
+class GRACEScore:
     """GRACE (Global Registry of Acute Coronary Events) risk score.
     
     Predicts in-hospital and 6-month mortality risk in ACS patients.
