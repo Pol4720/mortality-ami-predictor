@@ -48,10 +48,15 @@ class CleaningConfig:
         custom_imputation_strategies: Dict mapping column names to specific imputation strategies
         custom_constant_values: Dict mapping column names to specific constant values for imputation
         columns_to_drop: List of column names to drop (e.g., due to high missing rate)
-        outlier_method: Method for outlier detection
+        outlier_method: Method for outlier detection (iqr, zscore, modified_zscore, isolation_forest, lof, percentile)
         iqr_multiplier: Multiplier for IQR method
         zscore_threshold: Threshold for Z-score method
-        outlier_treatment: How to treat detected outliers
+        modified_zscore_threshold: Threshold for Modified Z-score method (MAD-based)
+        outlier_contamination: Contamination rate for ML methods (Isolation Forest, LOF)
+        lower_percentile: Lower percentile for percentile method
+        upper_percentile: Upper percentile for percentile method
+        lof_neighbors: Number of neighbors for LOF method
+        outlier_treatment: How to treat detected outliers (cap, remove, transform, none)
         categorical_encoding: Encoding strategy for categoricals
         ordinal_categories: Category orders for ordinal encoding
         discretization_strategy: Strategy for discretizing numeric variables
@@ -79,7 +84,17 @@ class CleaningConfig:
     outlier_method: str = "iqr"
     iqr_multiplier: float = 1.5
     zscore_threshold: float = 3.0
+    modified_zscore_threshold: float = 3.5  # For Modified Z-score (MAD)
+    outlier_contamination: float = 0.1  # For Isolation Forest and LOF
+    lower_percentile: float = 1.0  # For percentile method
+    upper_percentile: float = 99.0  # For percentile method
+    lof_neighbors: int = 20  # For LOF method
     outlier_treatment: str = "cap"
+    # Per-variable outlier configuration
+    custom_outlier_methods: Dict[str, str] = field(default_factory=dict)  # Per-variable detection method
+    custom_outlier_treatments: Dict[str, str] = field(default_factory=dict)  # Per-variable treatment
+    custom_outlier_params: Dict[str, Dict[str, Any]] = field(default_factory=dict)  # Per-variable parameters
+    columns_skip_outliers: List[str] = field(default_factory=list)  # Columns to skip outlier detection
     
     # Encoding
     categorical_encoding: str = "label"
@@ -304,12 +319,13 @@ class DataCleaner:
         df: pd.DataFrame,
         numeric_cols: List[str],
     ) -> pd.DataFrame:
-        """Detect and treat outliers in numeric columns."""
-        method = OutlierMethod(self.config.outlier_method)
-        treatment = OutlierTreatment(self.config.outlier_treatment)
+        """Detect and treat outliers in numeric columns.
         
-        if method == OutlierMethod.NONE:
-            return df
+        Supports both global settings and per-variable custom configuration
+        through custom_outlier_methods, custom_outlier_treatments, and custom_outlier_params.
+        """
+        global_method = OutlierMethod(self.config.outlier_method)
+        global_treatment = OutlierTreatment(self.config.outlier_treatment)
         
         df_clean = df.copy()
         
@@ -317,12 +333,48 @@ class DataCleaner:
             if col not in df_clean.columns:
                 continue
             
+            # Check if column should be skipped
+            if col in self.config.columns_skip_outliers:
+                continue
+            
+            # Determine method and treatment for this column
+            if col in self.config.custom_outlier_methods:
+                col_method_str = self.config.custom_outlier_methods[col]
+                if col_method_str == "none":
+                    continue  # Skip this column
+                method = OutlierMethod(col_method_str)
+            else:
+                method = global_method
+                if method == OutlierMethod.NONE:
+                    continue
+            
+            if col in self.config.custom_outlier_treatments:
+                treatment = OutlierTreatment(self.config.custom_outlier_treatments[col])
+            else:
+                treatment = global_treatment
+            
+            # Get parameters - use custom if available, else global
+            col_params = self.config.custom_outlier_params.get(col, {})
+            
+            iqr_mult = col_params.get('iqr_multiplier', self.config.iqr_multiplier)
+            zscore_thresh = col_params.get('zscore_threshold', self.config.zscore_threshold)
+            mod_zscore_thresh = col_params.get('modified_zscore_threshold', self.config.modified_zscore_threshold)
+            contamination = col_params.get('contamination', self.config.outlier_contamination)
+            lower_pct = col_params.get('lower_percentile', self.config.lower_percentile)
+            upper_pct = col_params.get('upper_percentile', self.config.upper_percentile)
+            lof_neighbors = col_params.get('lof_neighbors', self.config.lof_neighbors)
+            
             result, n_outliers = handle_column_outliers(
                 df_clean[col],
                 method=method,
                 treatment=treatment,
-                iqr_multiplier=self.config.iqr_multiplier,
-                zscore_threshold=self.config.zscore_threshold,
+                iqr_multiplier=iqr_mult,
+                zscore_threshold=zscore_thresh,
+                modified_zscore_threshold=mod_zscore_thresh,
+                contamination=contamination,
+                lower_percentile=lower_pct,
+                upper_percentile=upper_pct,
+                lof_neighbors=lof_neighbors,
             )
             
             df_clean[col] = result
@@ -332,7 +384,7 @@ class DataCleaner:
                 self.metadata[col].outliers_treated = n_outliers
                 if n_outliers > 0:
                     self.metadata[col].quality_flags.append(
-                        f"outliers_{treatment.value}_{n_outliers}"
+                        f"outliers_{method.value}_{treatment.value}_{n_outliers}"
                     )
         
         return df_clean

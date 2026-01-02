@@ -1141,6 +1141,288 @@ def custom_discretization_fragment(df, numeric_cols):
         st.dataframe(config_df, use_container_width=True, hide_index=True)
 
 
+@st.fragment
+def custom_outlier_fragment(df, numeric_cols):
+    """Fragment para configuración de outliers personalizada por variable."""
+    st.subheader("Configurar tratamiento de outliers por variable")
+    
+    # Inicializar diccionarios en session_state
+    if 'custom_outlier_methods' not in st.session_state:
+        st.session_state.custom_outlier_methods = {}
+    if 'custom_outlier_treatments' not in st.session_state:
+        st.session_state.custom_outlier_treatments = {}
+    if 'custom_outlier_params' not in st.session_state:
+        st.session_state.custom_outlier_params = {}
+    if 'columns_skip_outliers' not in st.session_state:
+        st.session_state.columns_skip_outliers = set()
+    
+    if not numeric_cols:
+        st.info("ℹ️ No hay variables numéricas en el dataset.")
+        return
+    
+    st.info(f"📊 **{len(numeric_cols)}** variables numéricas disponibles para tratamiento de outliers")
+    
+    # Calcular estadísticas de outliers para cada variable (usando IQR como referencia)
+    outlier_stats = {}
+    for col in numeric_cols:
+        if col in df.columns:
+            Q1 = df[col].quantile(0.25)
+            Q3 = df[col].quantile(0.75)
+            IQR = Q3 - Q1
+            lower = Q1 - 1.5 * IQR
+            upper = Q3 + 1.5 * IQR
+            n_outliers = ((df[col] < lower) | (df[col] > upper)).sum()
+            pct_outliers = (n_outliers / len(df[col].dropna())) * 100 if len(df[col].dropna()) > 0 else 0
+            outlier_stats[col] = {
+                'n_outliers': n_outliers,
+                'pct': pct_outliers,
+                'lower': lower,
+                'upper': upper,
+                'min': df[col].min(),
+                'max': df[col].max()
+            }
+    
+    # Crear lista de opciones con info de outliers
+    var_options_with_info = {
+        f"{'🔴' if outlier_stats.get(var, {}).get('pct', 0) >= 10 else '🟡' if outlier_stats.get(var, {}).get('pct', 0) >= 5 else '🟢'} {var} ({outlier_stats.get(var, {}).get('n_outliers', 0)} outliers - {outlier_stats.get(var, {}).get('pct', 0):.1f}%)": var 
+        for var in numeric_cols if var in outlier_stats
+    }
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        selected_option = st.selectbox(
+            "Selecciona variable para configurar",
+            [""] + list(var_options_with_info.keys()),
+            key="outlier_var_select_frag",
+            help="🔴 ≥10% outliers | 🟡 ≥5% outliers | 🟢 <5% outliers (usando IQR 1.5x)"
+        )
+        var_to_config = var_options_with_info.get(selected_option, "") if selected_option else ""
+    
+    with col2:
+        if st.button("🗑️ Limpiar todas las configuraciones", key="clear_outlier_config_frag"):
+            st.session_state.custom_outlier_methods = {}
+            st.session_state.custom_outlier_treatments = {}
+            st.session_state.custom_outlier_params = {}
+            st.session_state.columns_skip_outliers = set()
+            st.rerun()
+    
+    if var_to_config:
+        stats = outlier_stats.get(var_to_config, {})
+        
+        # Mostrar info de la variable
+        outlier_level = "🔴 Alto" if stats.get('pct', 0) >= 10 else "🟡 Medio" if stats.get('pct', 0) >= 5 else "🟢 Bajo"
+        st.markdown(f"""
+        **Variable:** `{var_to_config}`  
+        **Outliers detectados (IQR 1.5x):** {stats.get('n_outliers', 0):,} ({stats.get('pct', 0):.2f}%) - Nivel: {outlier_level}  
+        **Rango datos:** [{stats.get('min', 0):.2f}, {stats.get('max', 0):.2f}]  
+        **Límites IQR:** [{stats.get('lower', 0):.2f}, {stats.get('upper', 0):.2f}]
+        """)
+        
+        # Verificar si está marcada para omitir
+        is_skipped = var_to_config in st.session_state.columns_skip_outliers
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            skip_var = st.checkbox(
+                "⏭️ **Omitir esta variable** (no tratar outliers)",
+                value=is_skipped,
+                key=f"skip_outlier_{var_to_config}_frag",
+                help="Marca esta variable para no aplicar ningún tratamiento de outliers"
+            )
+        
+        with col2:
+            if skip_var:
+                st.info("ℹ️ No se tratarán outliers en esta variable")
+        
+        # Si NO está marcada para omitir, mostrar opciones
+        if not skip_var:
+            st.markdown("---")
+            st.markdown("**Configuración de detección y tratamiento:**")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                methods = ["iqr", "zscore", "modified_zscore", "isolation_forest", "lof", "percentile"]
+                method_labels = {
+                    "iqr": "📊 IQR (Rango Intercuartílico)",
+                    "zscore": "📈 Z-score",
+                    "modified_zscore": "📉 Modified Z-score (MAD)",
+                    "isolation_forest": "🌲 Isolation Forest",
+                    "lof": "🔍 LOF",
+                    "percentile": "📏 Percentil"
+                }
+                
+                current_method = st.session_state.custom_outlier_methods.get(var_to_config, "")
+                selected_method = st.selectbox(
+                    "Método de detección",
+                    ["(usar global)"] + methods,
+                    index=methods.index(current_method) + 1 if current_method in methods else 0,
+                    format_func=lambda x: method_labels.get(x, x) if x != "(usar global)" else "🌐 Usar configuración global",
+                    key=f"outlier_method_{var_to_config}_frag"
+                )
+            
+            with col2:
+                treatments = ["cap", "remove", "transform"]
+                treatment_labels = {
+                    "cap": "🔒 Limitar (Winsorización)",
+                    "remove": "🗑️ Eliminar (NaN)",
+                    "transform": "🔄 Transformar (log/sqrt)"
+                }
+                
+                current_treatment = st.session_state.custom_outlier_treatments.get(var_to_config, "")
+                selected_treatment = st.selectbox(
+                    "Tratamiento",
+                    ["(usar global)"] + treatments,
+                    index=treatments.index(current_treatment) + 1 if current_treatment in treatments else 0,
+                    format_func=lambda x: treatment_labels.get(x, x) if x != "(usar global)" else "🌐 Usar configuración global",
+                    key=f"outlier_treatment_{var_to_config}_frag"
+                )
+            
+            # Parámetros específicos según el método
+            custom_params = st.session_state.custom_outlier_params.get(var_to_config, {})
+            new_params = {}
+            
+            actual_method = selected_method if selected_method != "(usar global)" else "iqr"
+            
+            if actual_method == "iqr":
+                new_params['iqr_multiplier'] = st.slider(
+                    "Multiplicador IQR",
+                    1.0, 3.0, 
+                    custom_params.get('iqr_multiplier', 1.5),
+                    0.1,
+                    key=f"iqr_mult_{var_to_config}_frag"
+                )
+            elif actual_method == "zscore":
+                new_params['zscore_threshold'] = st.slider(
+                    "Umbral Z-score",
+                    2.0, 4.0,
+                    custom_params.get('zscore_threshold', 3.0),
+                    0.1,
+                    key=f"zscore_{var_to_config}_frag"
+                )
+            elif actual_method == "modified_zscore":
+                new_params['modified_zscore_threshold'] = st.slider(
+                    "Umbral Modified Z-score",
+                    2.5, 5.0,
+                    custom_params.get('modified_zscore_threshold', 3.5),
+                    0.1,
+                    key=f"mod_zscore_{var_to_config}_frag"
+                )
+            elif actual_method in ["isolation_forest", "lof"]:
+                new_params['contamination'] = st.slider(
+                    "% Contaminación",
+                    0.01, 0.3,
+                    custom_params.get('contamination', 0.1),
+                    0.01,
+                    key=f"contam_{var_to_config}_frag"
+                )
+                if actual_method == "lof":
+                    new_params['lof_neighbors'] = st.slider(
+                        "Vecinos LOF",
+                        5, 50,
+                        custom_params.get('lof_neighbors', 20),
+                        5,
+                        key=f"lof_n_{var_to_config}_frag"
+                    )
+            elif actual_method == "percentile":
+                col_p1, col_p2 = st.columns(2)
+                with col_p1:
+                    new_params['lower_percentile'] = st.number_input(
+                        "Percentil inferior",
+                        0.0, 25.0,
+                        custom_params.get('lower_percentile', 1.0),
+                        0.5,
+                        key=f"low_pct_{var_to_config}_frag"
+                    )
+                with col_p2:
+                    new_params['upper_percentile'] = st.number_input(
+                        "Percentil superior",
+                        75.0, 100.0,
+                        custom_params.get('upper_percentile', 99.0),
+                        0.5,
+                        key=f"up_pct_{var_to_config}_frag"
+                    )
+        
+        # Botones de acción
+        st.markdown("---")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("✅ Aplicar configuración", key=f"apply_outlier_{var_to_config}_frag", type="primary"):
+                if skip_var:
+                    st.session_state.columns_skip_outliers.add(var_to_config)
+                    # Limpiar otras configuraciones
+                    if var_to_config in st.session_state.custom_outlier_methods:
+                        del st.session_state.custom_outlier_methods[var_to_config]
+                    if var_to_config in st.session_state.custom_outlier_treatments:
+                        del st.session_state.custom_outlier_treatments[var_to_config]
+                    if var_to_config in st.session_state.custom_outlier_params:
+                        del st.session_state.custom_outlier_params[var_to_config]
+                    st.success(f"✅ Variable `{var_to_config}` marcada para omitir tratamiento de outliers")
+                else:
+                    st.session_state.columns_skip_outliers.discard(var_to_config)
+                    if selected_method != "(usar global)":
+                        st.session_state.custom_outlier_methods[var_to_config] = selected_method
+                        st.session_state.custom_outlier_params[var_to_config] = new_params
+                    else:
+                        if var_to_config in st.session_state.custom_outlier_methods:
+                            del st.session_state.custom_outlier_methods[var_to_config]
+                        if var_to_config in st.session_state.custom_outlier_params:
+                            del st.session_state.custom_outlier_params[var_to_config]
+                    
+                    if selected_treatment != "(usar global)":
+                        st.session_state.custom_outlier_treatments[var_to_config] = selected_treatment
+                    else:
+                        if var_to_config in st.session_state.custom_outlier_treatments:
+                            del st.session_state.custom_outlier_treatments[var_to_config]
+                    
+                    st.success(f"✅ Configuración de outliers guardada para {var_to_config}")
+        
+        with col2:
+            if st.button("🗑️ Eliminar configuración", key=f"remove_outlier_{var_to_config}_frag"):
+                st.session_state.columns_skip_outliers.discard(var_to_config)
+                if var_to_config in st.session_state.custom_outlier_methods:
+                    del st.session_state.custom_outlier_methods[var_to_config]
+                if var_to_config in st.session_state.custom_outlier_treatments:
+                    del st.session_state.custom_outlier_treatments[var_to_config]
+                if var_to_config in st.session_state.custom_outlier_params:
+                    del st.session_state.custom_outlier_params[var_to_config]
+                st.info(f"ℹ️ Configuración eliminada para {var_to_config}")
+    
+    # Mostrar configuraciones actuales
+    st.markdown("---")
+    
+    # Variables omitidas
+    if st.session_state.columns_skip_outliers:
+        st.markdown("**⏭️ Variables OMITIDAS (sin tratamiento de outliers):**")
+        skip_list = list(st.session_state.columns_skip_outliers)
+        st.write(", ".join([f"`{v}`" for v in skip_list]))
+    
+    # Configuraciones personalizadas
+    if st.session_state.custom_outlier_methods or st.session_state.custom_outlier_treatments:
+        st.markdown("**📋 Configuraciones de outliers personalizadas:**")
+        config_data = []
+        all_vars = set(st.session_state.custom_outlier_methods.keys()) | set(st.session_state.custom_outlier_treatments.keys())
+        
+        for var in all_vars:
+            method = st.session_state.custom_outlier_methods.get(var, "(global)")
+            treatment = st.session_state.custom_outlier_treatments.get(var, "(global)")
+            params = st.session_state.custom_outlier_params.get(var, {})
+            params_str = ", ".join([f"{k}={v}" for k, v in params.items()]) if params else "-"
+            config_data.append({
+                'Variable': var,
+                'Método': method,
+                'Tratamiento': treatment,
+                'Parámetros': params_str
+            })
+        
+        if config_data:
+            config_df = pd.DataFrame(config_data)
+            st.dataframe(config_df, use_container_width=True, hide_index=True)
+
+
 def data_cleaning_page():
     """Sección de limpieza de datos."""
     st.header("🧹 Limpieza de Datos")
@@ -1217,26 +1499,90 @@ def data_cleaning_page():
             
             outlier_method = st.selectbox(
                 "Método de detección",
-                ["iqr", "zscore", "none"],
+                ["iqr", "zscore", "modified_zscore", "isolation_forest", "lof", "percentile", "none"],
                 index=0,
-                help="IQR (rango intercuartílico), Z-score, o ninguno"
+                format_func=lambda x: {
+                    "iqr": "📊 IQR (Rango Intercuartílico)",
+                    "zscore": "📈 Z-score (Desviación estándar)",
+                    "modified_zscore": "📉 Modified Z-score (MAD - robusto)",
+                    "isolation_forest": "🌲 Isolation Forest (ML)",
+                    "lof": "🔍 LOF (Local Outlier Factor)",
+                    "percentile": "📏 Percentil",
+                    "none": "❌ Ninguno"
+                }.get(x, x),
+                help="""
+                • **IQR**: Clásico, usa Q1-1.5*IQR y Q3+1.5*IQR
+                • **Z-score**: Basado en desviación estándar (sensible a extremos)
+                • **Modified Z-score**: Usa MAD, más robusto ante extremos
+                • **Isolation Forest**: Algoritmo ML, detecta anomalías complejas
+                • **LOF**: Basado en densidad local, bueno para clusters
+                • **Percentil**: Simple, usa percentiles configurables
+                """
             )
             
+            # Parámetros según el método
+            iqr_multiplier = 1.5
+            zscore_threshold = 3.0
+            modified_zscore_threshold = 3.5
+            outlier_contamination = 0.1
+            lower_percentile = 1.0
+            upper_percentile = 99.0
+            lof_neighbors = 20
+            
             if outlier_method == "iqr":
-                iqr_multiplier = st.slider("Multiplicador IQR", 1.0, 3.0, 1.5, 0.1)
-                zscore_threshold = 3.0
+                iqr_multiplier = st.slider(
+                    "Multiplicador IQR", 1.0, 3.0, 1.5, 0.1,
+                    help="1.5 = moderado, 3.0 = solo extremos"
+                )
             elif outlier_method == "zscore":
-                zscore_threshold = st.slider("Umbral Z-score", 2.0, 4.0, 3.0, 0.1)
-                iqr_multiplier = 1.5
-            else:
-                iqr_multiplier = 1.5
-                zscore_threshold = 3.0
+                zscore_threshold = st.slider(
+                    "Umbral Z-score", 2.0, 4.0, 3.0, 0.1,
+                    help="2.0 = sensible, 3.0 = estándar, 4.0 = conservador"
+                )
+            elif outlier_method == "modified_zscore":
+                modified_zscore_threshold = st.slider(
+                    "Umbral Modified Z-score", 2.5, 5.0, 3.5, 0.1,
+                    help="3.5 es el valor recomendado (Iglewicz & Hoaglin)"
+                )
+            elif outlier_method in ["isolation_forest", "lof"]:
+                outlier_contamination = st.slider(
+                    "% Contaminación esperada", 0.01, 0.3, 0.1, 0.01,
+                    help="Proporción esperada de outliers en los datos"
+                )
+                if outlier_method == "lof":
+                    lof_neighbors = st.slider(
+                        "Vecinos LOF", 5, 50, 20, 5,
+                        help="Número de vecinos para calcular densidad local"
+                    )
+            elif outlier_method == "percentile":
+                col_p1, col_p2 = st.columns(2)
+                with col_p1:
+                    lower_percentile = st.number_input(
+                        "Percentil inferior", 0.0, 25.0, 1.0, 0.5,
+                        help="Valores por debajo son outliers"
+                    )
+                with col_p2:
+                    upper_percentile = st.number_input(
+                        "Percentil superior", 75.0, 100.0, 99.0, 0.5,
+                        help="Valores por encima son outliers"
+                    )
             
             outlier_treatment = st.selectbox(
                 "Tratamiento de outliers",
-                ["cap", "remove", "none"],
+                ["cap", "remove", "transform", "none"],
                 index=0,
-                help="Limitar a rangos válidos, eliminar (marcar como NaN), o no tratar"
+                format_func=lambda x: {
+                    "cap": "🔒 Limitar (Winsorización)",
+                    "remove": "🗑️ Eliminar (marcar NaN)",
+                    "transform": "🔄 Transformar (log/sqrt)",
+                    "none": "👁️ Solo detectar"
+                }.get(x, x),
+                help="""
+                • **Limitar**: Recorta valores a los umbrales
+                • **Eliminar**: Convierte outliers a NaN (luego se imputan)
+                • **Transformar**: Aplica log1p o sqrt para reducir impacto
+                • **Solo detectar**: Marca pero no modifica
+                """
             )
         
         col3, col4 = st.columns(2)
@@ -1295,15 +1641,19 @@ def data_cleaning_page():
         missing_pct = (df.isnull().sum() / len(df) * 100).round(2)
         vars_with_missing = missing_info[missing_info > 0].index.tolist()
         
-        # Tabs para imputación, codificación y discretización
-        tab_impute, tab_encoding, tab_discretize = st.tabs([
-            "💉 Imputación Personalizada", 
+        # Tabs para imputación, outliers, codificación y discretización
+        tab_impute, tab_outliers, tab_encoding, tab_discretize = st.tabs([
+            "💉 Imputación Personalizada",
+            "📈 Outliers Personalizado", 
             "🏷️ Codificación Personalizada",
             "📊 Discretización Personalizada"
         ])
         
         with tab_impute:
             custom_imputation_fragment(df, numeric_cols, categorical_cols, vars_with_missing, missing_info, missing_pct)
+        
+        with tab_outliers:
+            custom_outlier_fragment(df, numeric_cols)
         
         with tab_encoding:
             custom_encoding_fragment(df, categorical_cols)
@@ -1314,6 +1664,7 @@ def data_cleaning_page():
     # Crear configuración
     # Combinar columnas a eliminar por missings con las configuradas manualmente
     columns_to_drop_list = list(st.session_state.get('columns_to_drop_missing', set()))
+    columns_skip_outliers_list = list(st.session_state.get('columns_skip_outliers', set()))
     
     config = CleaningConfig(
         numeric_imputation=numeric_imputation,
@@ -1326,7 +1677,16 @@ def data_cleaning_page():
         outlier_method=outlier_method,
         iqr_multiplier=iqr_multiplier,
         zscore_threshold=zscore_threshold,
+        modified_zscore_threshold=modified_zscore_threshold,
+        outlier_contamination=outlier_contamination,
+        lower_percentile=lower_percentile,
+        upper_percentile=upper_percentile,
+        lof_neighbors=lof_neighbors,
         outlier_treatment=outlier_treatment,
+        custom_outlier_methods=st.session_state.get('custom_outlier_methods', {}),
+        custom_outlier_treatments=st.session_state.get('custom_outlier_treatments', {}),
+        custom_outlier_params=st.session_state.get('custom_outlier_params', {}),
+        columns_skip_outliers=columns_skip_outliers_list,
         categorical_encoding=categorical_encoding,
         custom_encoding_strategies=st.session_state.get('custom_encoding', {}),
         ordinal_categories=st.session_state.get('custom_encoding_order', {}),
@@ -1408,6 +1768,16 @@ def data_cleaning_page():
                     # Columnas a eliminar
                     if 'columns_to_drop' in loaded_config:
                         st.session_state.columns_to_drop_missing = set(loaded_config['columns_to_drop'])
+                    
+                    # Outliers personalizados
+                    if 'custom_outlier_methods' in loaded_config:
+                        st.session_state.custom_outlier_methods = loaded_config['custom_outlier_methods']
+                    if 'custom_outlier_treatments' in loaded_config:
+                        st.session_state.custom_outlier_treatments = loaded_config['custom_outlier_treatments']
+                    if 'custom_outlier_params' in loaded_config:
+                        st.session_state.custom_outlier_params = loaded_config['custom_outlier_params']
+                    if 'columns_skip_outliers' in loaded_config:
+                        st.session_state.columns_skip_outliers = set(loaded_config['columns_skip_outliers'])
                     
                     # Codificación personalizada
                     if 'custom_encoding_strategies' in loaded_config:
