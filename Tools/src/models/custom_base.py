@@ -5,9 +5,11 @@ custom model architectures that can integrate seamlessly with the existing
 sklearn-based pipeline.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, Optional, Tuple, List, Union, TYPE_CHECKING
 import json
 import pickle
 
@@ -42,7 +44,7 @@ class BaseCustomModel(BaseEstimator, ABC):
         self.is_fitted_: bool = False
     
     @abstractmethod
-    def fit(self, X: np.ndarray | pd.DataFrame, y: np.ndarray | pd.Series, **kwargs) -> 'BaseCustomModel':
+    def fit(self, X: Union[np.ndarray, pd.DataFrame], y: Union[np.ndarray, pd.Series], **kwargs) -> 'BaseCustomModel':
         """
         Fit the model to training data.
         
@@ -57,7 +59,7 @@ class BaseCustomModel(BaseEstimator, ABC):
         pass
     
     @abstractmethod
-    def predict(self, X: np.ndarray | pd.DataFrame) -> np.ndarray:
+    def predict(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
         """
         Make predictions.
         
@@ -69,7 +71,7 @@ class BaseCustomModel(BaseEstimator, ABC):
         """
         pass
     
-    def _validate_input(self, X: np.ndarray | pd.DataFrame, training: bool = False):
+    def _validate_input(self, X: Union[np.ndarray, pd.DataFrame], training: bool = False):
         """
         Validate input data.
         
@@ -106,7 +108,7 @@ class BaseCustomModel(BaseEstimator, ABC):
                     f"{self.n_features_in_} features"
                 )
     
-    def _convert_to_array(self, X: np.ndarray | pd.DataFrame) -> np.ndarray:
+    def _convert_to_array(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
         """Convert input to numpy array."""
         if isinstance(X, pd.DataFrame):
             return X.values
@@ -121,7 +123,7 @@ class BaseCustomModel(BaseEstimator, ABC):
         """Support for unpickling."""
         self.__dict__.update(state)
     
-    def save(self, path: str | Path) -> Path:
+    def save(self, path: Union[str, Path]) -> Path:
         """
         Save model to disk.
         
@@ -140,7 +142,7 @@ class BaseCustomModel(BaseEstimator, ABC):
         return path
     
     @classmethod
-    def load(cls, path: str | Path) -> 'BaseCustomModel':
+    def load(cls, path: Union[str, Path]) -> 'BaseCustomModel':
         """
         Load model from disk.
         
@@ -187,7 +189,7 @@ class BaseCustomClassifier(BaseCustomModel, ClassifierMixin):
         self.n_classes_: Optional[int] = None
     
     @abstractmethod
-    def predict_proba(self, X: np.ndarray | pd.DataFrame) -> np.ndarray:
+    def predict_proba(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
         """
         Predict class probabilities.
         
@@ -199,7 +201,7 @@ class BaseCustomClassifier(BaseCustomModel, ClassifierMixin):
         """
         pass
     
-    def predict(self, X: np.ndarray | pd.DataFrame) -> np.ndarray:
+    def predict(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
         """
         Predict class labels.
         
@@ -212,7 +214,7 @@ class BaseCustomClassifier(BaseCustomModel, ClassifierMixin):
         proba = self.predict_proba(X)
         return self.classes_[np.argmax(proba, axis=1)]
     
-    def _validate_targets(self, y: np.ndarray | pd.Series, training: bool = False):
+    def _validate_targets(self, y: Union[np.ndarray, pd.Series], training: bool = False):
         """
         Validate target labels.
         
@@ -275,7 +277,7 @@ class CustomModelWrapper:
         self.preprocessing = preprocessing
         self.hyperparameters = hyperparameters or {}
     
-    def fit(self, X: np.ndarray | pd.DataFrame, y: np.ndarray | pd.Series, **kwargs):
+    def fit(self, X: Union[np.ndarray, pd.DataFrame], y: Union[np.ndarray, pd.Series], **kwargs):
         """Fit the model."""
         if self.preprocessing:
             X = self.preprocessing.fit_transform(X)
@@ -283,14 +285,14 @@ class CustomModelWrapper:
         self.model.fit(X, y, **kwargs)
         return self
     
-    def predict(self, X: np.ndarray | pd.DataFrame) -> np.ndarray:
+    def predict(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
         """Make predictions."""
         if self.preprocessing:
             X = self.preprocessing.transform(X)
         
         return self.model.predict(X)
     
-    def predict_proba(self, X: np.ndarray | pd.DataFrame) -> np.ndarray:
+    def predict_proba(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
         """Predict probabilities (for classifiers)."""
         if not isinstance(self.model, BaseCustomClassifier):
             raise AttributeError("Model does not support probability predictions")
@@ -300,7 +302,7 @@ class CustomModelWrapper:
         
         return self.model.predict_proba(X)
     
-    def save(self, path: str | Path) -> Path:
+    def save(self, path: Union[str, Path]) -> Path:
         """Save wrapped model."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -329,7 +331,7 @@ class CustomModelWrapper:
         return path
     
     @classmethod
-    def load(cls, path: str | Path) -> 'CustomModelWrapper':
+    def load(cls, path: Union[str, Path]) -> 'CustomModelWrapper':
         """Load wrapped model."""
         path = Path(path)
         
@@ -398,7 +400,7 @@ class SimpleMLPClassifier(BaseCustomClassifier):
             random_state=random_state
         )
     
-    def fit(self, X: np.ndarray | pd.DataFrame, y: np.ndarray | pd.Series, **kwargs):
+    def fit(self, X: Union[np.ndarray, pd.DataFrame], y: Union[np.ndarray, pd.Series], **kwargs):
         """Fit the MLP."""
         self._validate_input(X, training=True)
         y = self._validate_targets(y, training=True)
@@ -410,7 +412,7 @@ class SimpleMLPClassifier(BaseCustomClassifier):
         
         return self
     
-    def predict_proba(self, X: np.ndarray | pd.DataFrame) -> np.ndarray:
+    def predict_proba(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
         """Predict probabilities."""
         self._validate_input(X, training=False)
         X = self._convert_to_array(X)

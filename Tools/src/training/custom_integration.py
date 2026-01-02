@@ -4,6 +4,7 @@ This module extends the training pipeline to support custom models
 alongside sklearn/xgboost models, with metadata tracking and
 seamless integration with existing infrastructure.
 """
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any, Callable

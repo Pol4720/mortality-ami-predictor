@@ -3,6 +3,7 @@
 This module provides functions to generate comprehensive PDF reports
 for univariate, bivariate, and multivariate EDA.
 """
+from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Optional, Dict, Any

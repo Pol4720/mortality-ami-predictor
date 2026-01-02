@@ -3,6 +3,7 @@
 This module provides helper functions to integrate PDF report generation
 with Streamlit dashboards, including progress bars and download buttons.
 """
+from __future__ import annotations
 
 import time
 from pathlib import Path

@@ -3,6 +3,7 @@
 This module provides functionality for automatic best model selection
 based on evaluation metrics and configurable criteria.
 """
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any, Literal

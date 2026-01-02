@@ -3,6 +3,7 @@
 This module provides explainability methods (SHAP, permutation importance)
 that work uniformly with both custom and standard models.
 """
+from __future__ import annotations
 
 from typing import Dict, List, Optional, Any, Tuple
 import warnings

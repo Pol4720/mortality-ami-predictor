@@ -4,6 +4,7 @@ PDF Report Generator Module.
 This module provides a comprehensive framework for generating professional PDF reports
 with support for async generation, progress tracking, and elegant formatting.
 """
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime

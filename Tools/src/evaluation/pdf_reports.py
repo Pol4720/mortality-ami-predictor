@@ -4,6 +4,7 @@ This module provides functions to generate comprehensive PDF reports
 for model evaluation, including metrics, ROC curves, confusion matrices,
 calibration plots, and decision curve analysis.
 """
+from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple

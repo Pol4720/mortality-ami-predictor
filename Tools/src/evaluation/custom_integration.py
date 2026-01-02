@@ -3,6 +3,7 @@
 This module adapts the evaluation infrastructure to support custom models,
 ensuring uniform metric calculation across sklearn, xgboost, and custom models.
 """
+from __future__ import annotations
 
 from typing import Dict, List, Optional, Any, Tuple
 import warnings
