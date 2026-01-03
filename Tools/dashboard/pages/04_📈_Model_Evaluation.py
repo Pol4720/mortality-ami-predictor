@@ -13,6 +13,7 @@ import pandas as pd
 import streamlit as st
 import joblib
 import numpy as np
+import plotly.graph_objects as go
 
 from app import (
     get_state,
@@ -1146,6 +1147,417 @@ else:
     - Creatinina, paro cardíaco, desviación ST
     - Enzimas cardíacas elevadas, clase Killip
     """)
+
+# ========================================================================
+# SECCIÓN DE COMPARACIÓN CON RECUIMA SCORE
+# ========================================================================
+st.markdown("---")
+st.markdown("---")
+st.header("🇨🇺 Comparación con RECUIMA Score")
+
+st.info("""
+**RECUIMA (Registro Cubano de Infarto - Mortalidad Intrahospitalaria)** es una escala predictiva 
+desarrollada por el Dr. Maikel Santos Medina, validada específicamente para países con recursos limitados.
+
+**Ventajas sobre GRACE:**
+- ✅ No requiere troponinas (costosas y no disponibles en todos los centros)
+- ✅ No requiere coronariografía
+- ✅ Variables clínicas disponibles al ingreso
+- ✅ Mayor especificidad (87.70% vs 47.38% de GRACE)
+- ✅ Validada en población latinoamericana
+
+**Variables RECUIMA (máximo 10 puntos):**
+- Filtrado glomerular < 60 ml/min/1.73m² (3 pts) ⭐ Factor más importante
+- FV/TV - Arritmias ventriculares (2 pts)
+- Killip-Kimball IV (1 pt)
+- BAV alto grado (1 pt)
+- > 7 derivaciones ECG afectadas (1 pt)
+- Edad > 70 años (1 pt)
+- TAS < 100 mmHg (1 pt)
+
+**Categorías de riesgo:** Bajo (≤3) | Alto (≥4)
+""")
+
+# Verificar si el dataset tiene las variables necesarias para RECUIMA
+try:
+    from src.evaluation.recuima_comparison import (
+        check_recuima_requirements,
+        compute_recuima_scores,
+        compare_with_recuima,
+        plot_roc_comparison_recuima,
+        plot_calibration_comparison_recuima,
+        plot_metrics_comparison_recuima,
+        plot_nri_idi_recuima,
+        generate_comparison_report_recuima,
+        get_recuima_info,
+    )
+    
+    # Check requirements
+    can_compute_recuima, recuima_columns, missing_recuima = check_recuima_requirements(df)
+    
+    if can_compute_recuima:
+        st.success(f"✅ Variables RECUIMA encontradas en el dataset")
+        
+        with st.expander("📋 Variables detectadas", expanded=False):
+            for var_type, col_name in recuima_columns.items():
+                st.write(f"- **{var_type}**: `{col_name}`")
+        
+        # Verificar que tenemos un modelo evaluado y test set
+        if can_generate_plots and st.session_state.get('is_evaluated', False):
+            
+            with st.expander("🏥 **Análisis de Superioridad del Modelo ML vs RECUIMA**", expanded=True):
+                st.markdown("### Configuración de Comparación RECUIMA")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    recuima_info = get_recuima_info()
+                    st.markdown("**Información de la Escala:**")
+                    st.write(f"- **Autor:** {recuima_info['author']}")
+                    st.write(f"- **Institución:** {recuima_info['institution']}")
+                    st.write(f"- **AUC validado:** {recuima_info['validation']['auc']}")
+                
+                with col2:
+                    recuima_comparison_threshold = st.slider(
+                        "Umbral de clasificación (RECUIMA)",
+                        0.0, 1.0, 0.5, 0.05,
+                        help="Umbral para convertir probabilidades a clasificación binaria",
+                        key="recuima_threshold"
+                    )
+                
+                # Opción para cargar dataset original si el actual está codificado
+                st.markdown("---")
+                st.markdown("#### 📂 Dataset para Comparación RECUIMA")
+                
+                # Mostrar info del dataset actual
+                recuima_current_source = "Dataset cargado en la aplicación"
+                if 'recuima_custom_dataset' in st.session_state:
+                    recuima_current_source = "Dataset personalizado cargado"
+                st.info(f"📊 **Fuente actual:** {recuima_current_source} ({len(df)} registros)")
+                
+                with st.expander("⚠️ ¿El dataset tiene columnas codificadas numéricamente?", expanded=False):
+                    st.markdown("""
+Si el dataset principal fue preprocesado/limpiado, algunas columnas como `complicaciones` 
+pueden estar codificadas como números en lugar de texto. En ese caso, RECUIMA no podrá 
+detectar correctamente las complicaciones (FV, TV, BAV).
+
+**Carga aquí el dataset original con columnas en formato texto:**
+                    """)
+                    
+                    recuima_uploaded_file = st.file_uploader(
+                        "Cargar dataset RECUIMA original (CSV)",
+                        type=['csv'],
+                        key="recuima_dataset_uploader",
+                        help="Archivo CSV con columnas en formato original (complicaciones como texto, etc.)"
+                    )
+                    
+                    if recuima_uploaded_file is not None:
+                        # Detectar separador
+                        try:
+                            content_sample = recuima_uploaded_file.read(2048).decode('utf-8')
+                            recuima_uploaded_file.seek(0)
+                            sep = ';' if content_sample.count(';') > content_sample.count(',') else ','
+                            
+                            recuima_custom_df = pd.read_csv(recuima_uploaded_file, sep=sep, low_memory=False)
+                            st.session_state['recuima_custom_dataset'] = recuima_custom_df
+                            st.success(f"✅ Dataset cargado: {len(recuima_custom_df)} registros")
+                            
+                            # Preview
+                            cols_preview = ['complicaciones', 'indice_killip', 'edad', 'estado_vital']
+                            cols_available = [c for c in cols_preview if c in recuima_custom_df.columns]
+                            if cols_available:
+                                st.dataframe(recuima_custom_df[cols_available].head(3), use_container_width=True)
+                        except Exception as e:
+                            st.error(f"Error al cargar archivo: {e}")
+                    
+                    if 'recuima_custom_dataset' in st.session_state:
+                        if st.button("🗑️ Usar dataset principal (eliminar personalizado)", key="clear_recuima_custom"):
+                            del st.session_state['recuima_custom_dataset']
+                            st.rerun()
+                
+                st.markdown("---")
+                run_recuima_comparison = st.button("🚀 Ejecutar Comparación con RECUIMA", type="primary")
+                
+                if run_recuima_comparison:
+                    with st.spinner("Calculando scores RECUIMA y ejecutando análisis estadístico..."):
+                        try:
+                            # Cargar modelo y obtener predicciones si no existen
+                            if 'y_prob' not in locals():
+                                model = joblib.load(model_path)
+                                test_df = pd.read_parquet(testset_path)
+                                
+                                target = CONFIG.target_column if task == "mortality" else CONFIG.arrhythmia_column
+                                X_test = test_df.drop(columns=[target])
+                                y_test = test_df[target].values
+                                
+                                y_prob = model.predict_proba(X_test)[:, 1]
+                            
+                            # Usar el dataset cargado en la app (df) 
+                            # o el dataset RECUIMA personalizado si el usuario lo cargó
+                            df_recuima = st.session_state.get('recuima_custom_dataset', df)
+                            
+                            # Verificar si las columnas están en formato correcto para RECUIMA
+                            # El dataset limpiado puede tener columnas codificadas numéricamente
+                            recuima_format_valid = True
+                            format_issues = []
+                            
+                            # Verificar complicaciones (debe ser texto, no números)
+                            if 'complicaciones' in df_recuima.columns:
+                                sample_val = df_recuima['complicaciones'].dropna().iloc[0] if len(df_recuima['complicaciones'].dropna()) > 0 else None
+                                if sample_val is not None and isinstance(sample_val, (int, float)):
+                                    recuima_format_valid = False
+                                    format_issues.append("complicaciones (codificado numéricamente, necesita texto)")
+                            
+                            # Verificar indice_killip (debe ser 'IV' o 4, no 0-3)
+                            if 'indice_killip' in df_recuima.columns:
+                                killip_vals = df_recuima['indice_killip'].dropna().unique()
+                                # Si los valores son 0,1,2,3 y no hay 4 ni 'IV', probablemente está mal codificado
+                                if set(killip_vals).issubset({0, 1, 2, 3}):
+                                    recuima_format_valid = False
+                                    format_issues.append("indice_killip (codificado 0-3, necesita I-IV o 1-4)")
+                            
+                            if not recuima_format_valid:
+                                st.warning(f"""⚠️ **El dataset cargado tiene columnas codificadas que impiden calcular RECUIMA correctamente:**
+                                
+{chr(10).join(['• ' + issue for issue in format_issues])}
+
+Por favor, carga el dataset original con las columnas en formato texto usando el cargador de arriba.""")
+                                st.session_state.recuima_needs_original = True
+                                st.stop()
+                            
+                            # Determinar columna de mortalidad
+                            mortality_col = None
+                            for col_candidate in ['estado_vital', 'mortality', 'exitus', 'mortality_inhospital']:
+                                if col_candidate in df_recuima.columns:
+                                    mortality_col = col_candidate
+                                    break
+                            
+                            if mortality_col is None:
+                                st.error("❌ No se encontró columna de mortalidad en el dataset")
+                                st.stop()
+                            
+                            # Calcular y_true según el tipo de columna
+                            if mortality_col == 'estado_vital':
+                                y_true_recuima = (df_recuima[mortality_col].astype(str).str.lower().str.contains('fallecido', na=False)).astype(int).values
+                            else:
+                                y_true_recuima = df_recuima[mortality_col].values
+                            
+                            # Verificar columnas RECUIMA
+                            can_compute_orig, recuima_cols_orig, missing_orig = check_recuima_requirements(df_recuima)
+                            
+                            if not can_compute_orig:
+                                st.error(f"❌ Faltan columnas para RECUIMA: {missing_orig}")
+                                st.stop()
+                            
+                            # Calcular scores RECUIMA
+                            recuima_scores, recuima_probs, recuima_components = compute_recuima_scores(
+                                df_recuima, 
+                                column_mapping=recuima_cols_orig
+                            )
+                            
+                            # Verificar que los scores no sean todos 0 (indica que faltan columnas)
+                            if recuima_scores.max() == 0:
+                                st.warning("""⚠️ **Todos los scores RECUIMA son 0.** 
+                                Esto puede indicar que las variables clínicas no están disponibles o tienen valores faltantes.
+                                Verificando componentes individuales...""")
+                                
+                                components_info = []
+                                for comp_name, comp_values in recuima_components.items():
+                                    non_zero = np.sum(comp_values > 0)
+                                    components_info.append(f"  - {comp_name}: {non_zero} pacientes con puntos")
+                                st.code("\n".join(components_info))
+                            
+                            # Para la comparación ML vs RECUIMA, usamos RECUIMA en todo el dataset
+                            # ya que el testset preprocesado no tiene las variables originales
+                            st.info("""ℹ️ **Nota metodológica:** La comparación usa RECUIMA calculado sobre 
+                            todo el dataset original, mientras que las predicciones ML corresponden al test set. 
+                            Para una comparación más rigurosa, considere reentrenar preservando las variables originales.""")
+                            
+                            # Mostrar distribución de scores
+                            st.markdown("#### 📊 Distribución de Scores RECUIMA en Dataset Completo")
+                            
+                            col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+                            col_s1.metric("Score Medio", f"{np.mean(recuima_scores):.2f}")
+                            col_s2.metric("Score Mediana", f"{np.median(recuima_scores):.2f}")
+                            col_s3.metric("Bajo Riesgo (≤3)", f"{np.sum(recuima_scores <= 3)} ({100*np.mean(recuima_scores <= 3):.1f}%)")
+                            col_s4.metric("Alto Riesgo (≥4)", f"{np.sum(recuima_scores >= 4)} ({100*np.mean(recuima_scores >= 4):.1f}%)")
+                            
+                            # Calcular métricas RECUIMA usando dataset completo
+                            # (ya que el testset preprocesado no tiene variables originales)
+                            from sklearn.metrics import roc_auc_score, confusion_matrix as cm_sklearn
+                            
+                            # Filtrar valores válidos
+                            valid_mask = ~np.isnan(y_true_recuima) & ~np.isnan(recuima_probs)
+                            y_true_valid = y_true_recuima[valid_mask]
+                            recuima_probs_valid = recuima_probs[valid_mask]
+                            recuima_scores_valid = recuima_scores[valid_mask]
+                            
+                            # AUROC RECUIMA
+                            recuima_auroc = roc_auc_score(y_true_valid, recuima_scores_valid)
+                            
+                            # Métricas con umbral RECUIMA >= 3 (alto riesgo)
+                            recuima_pred_binary = (recuima_scores_valid >= 3).astype(int)
+                            cm_recuima = cm_sklearn(y_true_valid, recuima_pred_binary)
+                            tn_r, fp_r, fn_r, tp_r = cm_recuima.ravel() if cm_recuima.size == 4 else (0, 0, 0, 0)
+                            
+                            sens_recuima = tp_r / (tp_r + fn_r) if (tp_r + fn_r) > 0 else 0
+                            spec_recuima = tn_r / (tn_r + fp_r) if (tn_r + fp_r) > 0 else 0
+                            acc_recuima = (tp_r + tn_r) / len(y_true_valid) if len(y_true_valid) > 0 else 0
+                            ppv_recuima = tp_r / (tp_r + fp_r) if (tp_r + fp_r) > 0 else 0
+                            npv_recuima = tn_r / (tn_r + fn_r) if (tn_r + fn_r) > 0 else 0
+                            
+                            # Mostrar métricas RECUIMA directamente
+                            st.markdown("---")
+                            st.markdown("### 📊 Métricas RECUIMA (Dataset Completo)")
+                            
+                            col_r1, col_r2, col_r3, col_r4 = st.columns(4)
+                            col_r1.metric("AUROC", f"{recuima_auroc:.3f}")
+                            col_r2.metric("Sensibilidad", f"{sens_recuima:.1%}")
+                            col_r3.metric("Especificidad", f"{spec_recuima:.1%}")
+                            col_r4.metric("Exactitud", f"{acc_recuima:.1%}")
+                            
+                            col_r5, col_r6, col_r7, col_r8 = st.columns(4)
+                            col_r5.metric("VPP", f"{ppv_recuima:.1%}")
+                            col_r6.metric("VPN", f"{npv_recuima:.1%}")
+                            col_r7.metric("N pacientes", len(y_true_valid))
+                            col_r8.metric("Eventos (fallecidos)", int(y_true_valid.sum()))
+                            
+                            # Crear resultado simplificado para visualización
+                            # Nota: La comparación directa con DeLong requiere los mismos pacientes
+                            # Por ahora, mostramos métricas side-by-side
+                            
+                            # Si hay un modelo evaluado, mostrar comparación side-by-side
+                            if 'y_prob' in locals() and 'y_test' in locals():
+                                st.markdown("---")
+                                st.markdown("### 📊 Comparación: Modelo ML (Test Set) vs RECUIMA (Dataset Completo)")
+                                st.warning("""⚠️ **Nota:** Esta comparación es **indicativa** ya que se usan diferentes conjuntos de datos:
+                                - **Modelo ML**: Evaluado en el test set preprocesado
+                                - **RECUIMA**: Evaluado en todo el dataset original""")
+                                
+                                # Calcular métricas del modelo ML
+                                ml_auroc = roc_auc_score(y_test, y_prob)
+                                ml_pred_binary = (y_prob >= recuima_comparison_threshold).astype(int)
+                                cm_ml = cm_sklearn(y_test, ml_pred_binary)
+                                tn_m, fp_m, fn_m, tp_m = cm_ml.ravel() if cm_ml.size == 4 else (0, 0, 0, 0)
+                                
+                                sens_ml = tp_m / (tp_m + fn_m) if (tp_m + fn_m) > 0 else 0
+                                spec_ml = tn_m / (tn_m + fp_m) if (tn_m + fp_m) > 0 else 0
+                                
+                                # Tabla comparativa
+                                comparison_data = {
+                                    'Métrica': ['AUROC', 'Sensibilidad', 'Especificidad', 'N pacientes', 'Eventos'],
+                                    'Modelo ML (Test Set)': [f"{ml_auroc:.3f}", f"{sens_ml:.1%}", f"{spec_ml:.1%}", len(y_test), int(y_test.sum())],
+                                    'RECUIMA (Dataset)': [f"{recuima_auroc:.3f}", f"{sens_recuima:.1%}", f"{spec_recuima:.1%}", len(y_true_valid), int(y_true_valid.sum())],
+                                }
+                                st.table(pd.DataFrame(comparison_data).set_index('Métrica'))
+                            
+                            # Guardar en session state para visualizaciones
+                            st.session_state.recuima_scores = recuima_scores_valid
+                            st.session_state.recuima_probs = recuima_probs_valid
+                            st.session_state.recuima_y_true = y_true_valid
+                            st.session_state.recuima_auroc = recuima_auroc
+                            st.session_state.recuima_sensitivity = sens_recuima
+                            st.session_state.recuima_specificity = spec_recuima
+                            
+                            st.success("✅ Análisis RECUIMA completado!")
+                            
+                        except Exception as e:
+                            st.error(f"❌ Error durante la comparación con RECUIMA: {e}")
+                            st.exception(e)
+                
+                # Mostrar curva ROC de RECUIMA si tenemos los datos
+                if 'recuima_scores' in st.session_state and 'recuima_y_true' in st.session_state:
+                    st.markdown("---")
+                    st.markdown("### 📈 Curva ROC de RECUIMA")
+                    
+                    recuima_scores_plot = st.session_state.recuima_scores
+                    recuima_y_true_plot = st.session_state.recuima_y_true
+                    recuima_auroc_plot = st.session_state.get('recuima_auroc', 0)
+                    
+                    # Crear curva ROC
+                    from sklearn.metrics import roc_curve
+                    fpr, tpr, _ = roc_curve(recuima_y_true_plot, recuima_scores_plot)
+                    
+                    fig_roc = go.Figure()
+                    fig_roc.add_trace(go.Scatter(
+                        x=fpr, y=tpr,
+                        mode='lines',
+                        name=f'RECUIMA (AUC = {recuima_auroc_plot:.3f})',
+                        line=dict(color='#1f77b4', width=2)
+                    ))
+                    fig_roc.add_trace(go.Scatter(
+                        x=[0, 1], y=[0, 1],
+                        mode='lines',
+                        name='Referencia (AUC = 0.5)',
+                        line=dict(color='gray', dash='dash')
+                    ))
+                    fig_roc.update_layout(
+                        title='Curva ROC - RECUIMA Score',
+                        xaxis_title='Tasa de Falsos Positivos (1 - Especificidad)',
+                        yaxis_title='Tasa de Verdaderos Positivos (Sensibilidad)',
+                        xaxis=dict(range=[0, 1]),
+                        yaxis=dict(range=[0, 1]),
+                        showlegend=True,
+                        height=450
+                    )
+                    st.plotly_chart(fig_roc, use_container_width=True, config=plotly_config)
+                    
+                    # Mostrar métricas adicionales
+                    st.markdown("#### 📊 Resumen de Rendimiento RECUIMA")
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("AUROC", f"{recuima_auroc_plot:.3f}")
+                    col2.metric("Sensibilidad", f"{st.session_state.get('recuima_sensitivity', 0):.1%}")
+                    col3.metric("Especificidad", f"{st.session_state.get('recuima_specificity', 0):.1%}")
+                    
+                    # Contexto científico
+                    with st.expander("📚 Contexto Científico de RECUIMA", expanded=False):
+                        st.markdown("""
+                        **Escala RECUIMA** fue desarrollada y validada por el Dr. Maikel Santos Medina
+                        en su tesis doctoral (Universidad de Ciencias Médicas de Santiago de Cuba).
+                        
+                        **Validación:**
+                        - 3 cohortes de validación
+                        - 2,348 pacientes totales
+                        - AUC: 0.890-0.904
+                        - Superioridad estadística sobre GRACE (test de Hanley-McNeil)
+                        
+                        **Por qué es importante para países de bajos recursos:**
+                        1. GRACE requiere troponinas → costosas y no siempre disponibles
+                        2. GRACE requiere coronariografía para validación → no disponible en hospitales rurales
+                        3. RECUIMA usa solo variables clínicas disponibles al ingreso
+                        
+                        **Referencia:** Santos Medina, M. (2023). Escala predictiva de muerte hospitalaria 
+                        por infarto agudo de miocardio. Tesis Doctoral, Universidad de Ciencias Médicas 
+                        de Santiago de Cuba.
+                        """)
+        else:
+            st.info("ℹ️ Ejecuta la evaluación del modelo primero para habilitar la comparación con RECUIMA")
+    
+    else:
+        st.warning(f"""
+        ⚠️ **Faltan variables para calcular RECUIMA Score**
+        
+        Variables faltantes: {', '.join([f'`{m}`' for m in missing_recuima])}
+        
+        **Variables requeridas para RECUIMA:**
+        - `edad` o `age` - Edad del paciente
+        - `presion_arterial_sistolica` o `tas` - Presión arterial sistólica
+        - `filtrado_glomerular` o `gfr` - Filtrado glomerular
+        - `indice_killip` o `killip_class` - Clase Killip
+        - Derivaciones ECG (v1-v6, d1-d3, avf, avl, avc)
+        
+        **Variables opcionales:**
+        - `fv_tv` - Fibrilación/taquicardia ventricular
+        - `bav` - Bloqueo auriculoventricular de alto grado
+        
+        **Para habilitar RECUIMA:**
+        Asegúrate de que tu dataset incluya las variables requeridas con los nombres correctos.
+        """)
+
+except ImportError as e:
+    st.error(f"❌ Error al importar módulo RECUIMA: {e}")
+except Exception as e:
+    st.warning(f"⚠️ No se pudo verificar requisitos RECUIMA: {e}")
 
 # Exportación PDF
 st.markdown("---")

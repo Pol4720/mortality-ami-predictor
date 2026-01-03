@@ -34,6 +34,18 @@ from .grace_comparison import (
     generate_comparison_report,
     ComparisonResult,
 )
+from .recuima_comparison import (
+    compare_with_recuima,
+    plot_roc_comparison_recuima,
+    plot_calibration_comparison_recuima,
+    plot_metrics_comparison_recuima,
+    plot_nri_idi_recuima,
+    generate_comparison_report_recuima,
+    RECUIMAComparisonResult,
+    check_recuima_requirements,
+    compute_recuima_scores,
+    get_recuima_info,
+)
 
 __all__ = [
     "compute_classification_metrics",
@@ -65,4 +77,15 @@ __all__ = [
     "plot_nri_idi",
     "generate_comparison_report",
     "ComparisonResult",
+    # RECUIMA comparison
+    "compare_with_recuima",
+    "plot_roc_comparison_recuima",
+    "plot_calibration_comparison_recuima",
+    "plot_metrics_comparison_recuima",
+    "plot_nri_idi_recuima",
+    "generate_comparison_report_recuima",
+    "RECUIMAComparisonResult",
+    "check_recuima_requirements",
+    "compute_recuima_scores",
+    "get_recuima_info",
 ]

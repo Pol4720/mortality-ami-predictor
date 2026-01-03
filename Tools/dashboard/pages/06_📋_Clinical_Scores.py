@@ -368,8 +368,8 @@ elif selected_score == "recuima":
             with col1:
                 st.metric(
                     "Puntuación RECUIMA",
-                    f"{result['score']}/7",
-                    help="Puntuación total de la escala RECUIMA"
+                    f"{result['score']}/10",
+                    help="Puntuación total (FG=3pts, FV/TV=2pts, demás=1pt)"
                 )
             
             with col2:
@@ -394,31 +394,37 @@ elif selected_score == "recuima":
             st.markdown("#### 📊 Desglose de Componentes")
             
             component_names = {
-                "age_gt_70": "Edad > 70 años",
-                "sbp_lt_100": "TAS < 100 mmHg",
-                "gfr_lt_60": "FGR < 60 ml/min/1.73m²",
-                "ecg_leads_gt_7": "> 7 derivaciones ECG",
-                "killip_iv": "Killip-Kimball IV",
-                "vf_vt": "FV/TV",
-                "high_grade_avb": "BAV alto grado",
+                "age_gt_70": "Edad > 70 años (1pt)",
+                "sbp_lt_100": "TAS < 100 mmHg (1pt)",
+                "gfr_lt_60": "FGR < 60 ml/min (3pts)",
+                "ecg_leads_gt_7": "> 7 derivaciones ECG (1pt)",
+                "killip_iv": "Killip-Kimball IV (1pt)",
+                "vf_vt": "FV/TV (2pts)",
+                "high_grade_avb": "BAV alto grado (1pt)",
             }
             
             cols = st.columns(4)
             for idx, (key, value) in enumerate(result['components'].items()):
                 with cols[idx % 4]:
-                    icon = "✅" if value == 1 else "❌"
-                    st.markdown(f"{icon} **{component_names.get(key, key)}**")
+                    icon = "✅" if value > 0 else "❌"
+                    pts = f"({value}pts)" if value > 0 else ""
+                    st.markdown(f"{icon} **{component_names.get(key, key)}** {pts}")
             
             # Risk interpretation
             with st.expander("📖 Interpretación del Riesgo"):
                 st.markdown(f"""
                 ### Resultado: Riesgo {risk_cat}
                 
-                **Puntuación obtenida:** {result['score']} de 7 puntos posibles
+                **Puntuación obtenida:** {result['score']} de 10 puntos posibles
+                
+                **Pesos de la Escala RECUIMA:**
+                - Filtrado glomerular < 60: **3 puntos** (⭐ Factor más importante)
+                - FV/TV: **2 puntos**
+                - Demás variables: **1 punto** cada una
                 
                 **Categorías de Riesgo RECUIMA:**
-                - **Riesgo Bajo (< 3 puntos):** Menor probabilidad de muerte hospitalaria
-                - **Riesgo Alto (≥ 3 puntos):** Mayor probabilidad de muerte hospitalaria, requiere monitorización intensiva
+                - **Riesgo Bajo (≤ 3 puntos):** Menor probabilidad de muerte hospitalaria
+                - **Riesgo Alto (≥ 4 puntos):** Mayor probabilidad de muerte hospitalaria, requiere monitorización intensiva
                 
                 **Recomendaciones según nivel de riesgo:**
                 """)
@@ -463,16 +469,16 @@ with st.expander("📚 About Clinical Scores"):
     **RECUIMA Score (🇨🇺 Cuban Registry):**
     - Developed and validated in Cuban population
     - Specifically designed for in-hospital mortality prediction in AMI
-    - Uses 7 easily obtainable clinical variables
-    - Two risk categories: Low and High
-    - Variables:
-        1. Age > 70 years
-        2. Systolic BP < 100 mmHg
-        3. GFR < 60 ml/min/1.73m²
-        4. > 7 ECG leads affected
-        5. Killip-Kimball class IV
-        6. Ventricular fibrillation/tachycardia
-        7. High-grade AV block
+    - Uses 7 clinical variables with weighted scoring (max 10 points)
+    - Two risk categories: Low (≤3) and High (≥4)
+    - Variables and weights:
+        1. Age > 70 years (1 pt)
+        2. Systolic BP < 100 mmHg (1 pt)
+        3. GFR < 60 ml/min/1.73m² (**3 pts** - most important)
+        4. > 7 ECG leads affected (1 pt)
+        5. Killip-Kimball class IV (1 pt)
+        6. Ventricular fibrillation/tachycardia (**2 pts**)
+        7. High-grade AV block (1 pt)
     
     **Important Notes:**
     - These scores are tools to support clinical decision-making

@@ -1017,6 +1017,31 @@ with tab2:
                 import autokeras as ak
                 import shutil
                 
+                # =====================================================================
+                # MONKEY PATCH: Fix Keras 3.x compatibility issue with AutoKeras
+                # Keras 3.13+ has stricter validation for 'units' parameter in Dense
+                # layer. AutoKeras may pass numpy integers instead of Python int,
+                # causing "ValueError: Received an invalid value for `units`"
+                # =====================================================================
+                try:
+                    import keras
+                    from keras.src.layers.core import dense as dense_module
+                    _original_dense_init = keras.layers.Dense.__init__
+                    
+                    def _patched_dense_init(self, units, *args, **kwargs):
+                        # Convert units to native Python int to avoid validation error
+                        if hasattr(units, 'item'):  # numpy scalar
+                            units = int(units.item())
+                        else:
+                            units = int(units)
+                        return _original_dense_init(self, units, *args, **kwargs)
+                    
+                    keras.layers.Dense.__init__ = _patched_dense_init
+                    st.session_state.nas_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] 🔧 Aplicado parche de compatibilidad Keras 3.x")
+                except Exception as patch_err:
+                    st.session_state.nas_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ No se pudo aplicar parche: {patch_err}")
+                # =====================================================================
+                
                 # Clean up previous AutoKeras directory
                 ak_dir = "./autokeras_dashboard"
                 if os.path.exists(ak_dir):
