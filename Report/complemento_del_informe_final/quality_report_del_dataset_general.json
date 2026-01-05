@@ -1,0 +1,1481 @@
+{
+  "timestamp": "2026-01-11T15:28:05.621679",
+  "dataset_type": "raw",
+  "shape": {
+    "rows": 3112,
+    "columns": 195
+  },
+  "missing_summary": [
+    {
+      "Variable": "coronariografias_centro",
+      "Missing Count": 3112,
+      "Missing %": 100.0
+    },
+    {
+      "Variable": "coronariografias_medico",
+      "Missing Count": 3112,
+      "Missing %": 100.0
+    },
+    {
+      "Variable": "fecha_defuncion",
+      "Missing Count": 3099,
+      "Missing %": 99.58226221079691
+    },
+    {
+      "Variable": "proteccion_embolica",
+      "Missing Count": 3092,
+      "Missing %": 99.3573264781491
+    },
+    {
+      "Variable": "participacion_registro",
+      "Missing Count": 3092,
+      "Missing %": 99.3573264781491
+    },
+    {
+      "Variable": "rehabilitacion",
+      "Missing Count": 3092,
+      "Missing %": 99.3573264781491
+    },
+    {
+      "Variable": "prescripcion_optima",
+      "Missing Count": 3092,
+      "Missing %": 99.3573264781491
+    },
+    {
+      "Variable": "volumen_contraste",
+      "Missing Count": 3092,
+      "Missing %": 99.3573264781491
+    },
+    {
+      "Variable": "anti_agregacion_plaquetaria",
+      "Missing Count": 3092,
+      "Missing %": 99.3573264781491
+    },
+    {
+      "Variable": "riesgo_beneficio",
+      "Missing Count": 3092,
+      "Missing %": 99.3573264781491
+    },
+    {
+      "Variable": "razones_documentadas",
+      "Missing Count": 3092,
+      "Missing %": 99.3573264781491
+    },
+    {
+      "Variable": "funcion_renal",
+      "Missing Count": 3092,
+      "Missing %": 99.3573264781491
+    },
+    {
+      "Variable": "fecha_egreso.1",
+      "Missing Count": 3077,
+      "Missing %": 98.87532133676092
+    },
+    {
+      "Variable": "motivo",
+      "Missing Count": 3077,
+      "Missing %": 98.87532133676092
+    },
+    {
+      "Variable": " fecha_ingreso",
+      "Missing Count": 3077,
+      "Missing %": 98.87532133676092
+    },
+    {
+      "Variable": "otras",
+      "Missing Count": 3061,
+      "Missing %": 98.3611825192802
+    },
+    {
+      "Variable": "insuficiencia_cardiaca",
+      "Missing Count": 3061,
+      "Missing %": 98.3611825192802
+    },
+    {
+      "Variable": "angina_inestable",
+      "Missing Count": 3061,
+      "Missing %": 98.3611825192802
+    },
+    {
+      "Variable": "estenosis",
+      "Missing Count": 2888,
+      "Missing %": 92.80205655526991
+    },
+    {
+      "Variable": "idresultado",
+      "Missing Count": 2888,
+      "Missing %": 92.80205655526991
+    },
+    {
+      "Variable": "localizacion",
+      "Missing Count": 2888,
+      "Missing %": 92.80205655526991
+    },
+    {
+      "Variable": "arteria",
+      "Missing Count": 2888,
+      "Missing %": 92.80205655526991
+    },
+    {
+      "Variable": "abordaje",
+      "Missing Count": 2888,
+      "Missing %": 92.80205655526991
+    },
+    {
+      "Variable": "annos_sin_fumar",
+      "Missing Count": 2870,
+      "Missing %": 92.22365038560412
+    },
+    {
+      "Variable": "fecha_realizacion",
+      "Missing Count": 2866,
+      "Missing %": 92.09511568123393
+    },
+    {
+      "Variable": "angina",
+      "Missing Count": 2846,
+      "Missing %": 91.45244215938303
+    },
+    {
+      "Variable": "observaciones",
+      "Missing Count": 2808,
+      "Missing %": 90.23136246786633
+    },
+    {
+      "Variable": "tiempo_llegada",
+      "Missing Count": 2641,
+      "Missing %": 84.8650385604113
+    },
+    {
+      "Variable": "tiempo_respuesta",
+      "Missing Count": 2641,
+      "Missing %": 84.8650385604113
+    },
+    {
+      "Variable": "insulina",
+      "Missing Count": 2591,
+      "Missing %": 83.25835475578405
+    },
+    {
+      "Variable": "fs",
+      "Missing Count": 2524,
+      "Missing %": 81.10539845758355
+    },
+    {
+      "Variable": "ingresos_anteriores",
+      "Missing Count": 2430,
+      "Missing %": 78.08483290488432
+    },
+    {
+      "Variable": "ud",
+      "Missing Count": 2403,
+      "Missing %": 77.2172236503856
+    },
+    {
+      "Variable": "pat",
+      "Missing Count": 2400,
+      "Missing %": 77.12082262210797
+    },
+    {
+      "Variable": "fecha_consulta",
+      "Missing Count": 2328,
+      "Missing %": 74.80719794344472
+    },
+    {
+      "Variable": "resultado",
+      "Missing Count": 2328,
+      "Missing %": 74.80719794344472
+    },
+    {
+      "Variable": "proxima",
+      "Missing Count": 2268,
+      "Missing %": 72.87917737789203
+    },
+    {
+      "Variable": "ee",
+      "Missing Count": 2033,
+      "Missing %": 65.32776349614396
+    },
+    {
+      "Variable": "tiempo_isquemia",
+      "Missing Count": 1995,
+      "Missing %": 64.10668380462725
+    },
+    {
+      "Variable": "tapse",
+      "Missing Count": 1956,
+      "Missing %": 62.853470437018
+    },
+    {
+      "Variable": "ea",
+      "Missing Count": 1905,
+      "Missing %": 61.214652956298195
+    },
+    {
+      "Variable": "idareasalud",
+      "Missing Count": 1874,
+      "Missing %": 60.21850899742931
+    },
+    {
+      "Variable": "area_salud",
+      "Missing Count": 1874,
+      "Missing %": 60.21850899742931
+    },
+    {
+      "Variable": "pp",
+      "Missing Count": 1860,
+      "Missing %": 59.768637532133674
+    },
+    {
+      "Variable": "dsvi",
+      "Missing Count": 1857,
+      "Missing %": 59.67223650385605
+    },
+    {
+      "Variable": "tiv",
+      "Missing Count": 1853,
+      "Missing %": 59.54370179948586
+    },
+    {
+      "Variable": "ckmb",
+      "Missing Count": 1705,
+      "Missing %": 54.78791773778921
+    },
+    {
+      "Variable": "ddvi",
+      "Missing Count": 1690,
+      "Missing %": 54.30591259640103
+    },
+    {
+      "Variable": "ck",
+      "Missing Count": 1667,
+      "Missing %": 53.566838046272494
+    },
+    {
+      "Variable": "complicaciones",
+      "Missing Count": 1561,
+      "Missing %": 50.160668380462724
+    },
+    {
+      "Variable": "tipo_tabaquismo",
+      "Missing Count": 1492,
+      "Missing %": 47.943444730077125
+    },
+    {
+      "Variable": "annos_fumando",
+      "Missing Count": 1492,
+      "Missing %": 47.943444730077125
+    },
+    {
+      "Variable": "tiempo_puerta_aguja",
+      "Missing Count": 1449,
+      "Missing %": 46.56169665809769
+    },
+    {
+      "Variable": "lugar_trombolisis",
+      "Missing Count": 1448,
+      "Missing %": 46.52956298200514
+    },
+    {
+      "Variable": "betabloqueadores",
+      "Missing Count": 710,
+      "Missing %": 22.81491002570694
+    },
+    {
+      "Variable": "leuco",
+      "Missing Count": 662,
+      "Missing %": 21.272493573264782
+    },
+    {
+      "Variable": "infradesnivel",
+      "Missing Count": 623,
+      "Missing %": 20.019280205655527
+    },
+    {
+      "Variable": "trigliceridos",
+      "Missing Count": 599,
+      "Missing %": 19.248071979434446
+    },
+    {
+      "Variable": "supradesnivel",
+      "Missing Count": 449,
+      "Missing %": 14.428020565552698
+    },
+    {
+      "Variable": "fraccion_eyeccion",
+      "Missing Count": 432,
+      "Missing %": 13.881748071979436
+    },
+    {
+      "Variable": "hb",
+      "Missing Count": 390,
+      "Missing %": 12.532133676092544
+    },
+    {
+      "Variable": "estadia_ucie",
+      "Missing Count": 382,
+      "Missing %": 12.275064267352185
+    },
+    {
+      "Variable": "colesterol",
+      "Missing Count": 376,
+      "Missing %": 12.082262210796916
+    },
+    {
+      "Variable": "otra_institucion",
+      "Missing Count": 274,
+      "Missing %": 8.804627249357326
+    },
+    {
+      "Variable": "presion_arterial_sistolica.1",
+      "Missing Count": 274,
+      "Missing %": 8.804627249357326
+    },
+    {
+      "Variable": "presion_arterial_diastolica.1",
+      "Missing Count": 274,
+      "Missing %": 8.804627249357326
+    },
+    {
+      "Variable": "ecg",
+      "Missing Count": 145,
+      "Missing %": 4.659383033419023
+    },
+    {
+      "Variable": "glicemia",
+      "Missing Count": 144,
+      "Missing %": 4.627249357326478
+    },
+    {
+      "Variable": "creatinina",
+      "Missing Count": 140,
+      "Missing %": 4.4987146529562985
+    },
+    {
+      "Variable": "escala_grace",
+      "Missing Count": 140,
+      "Missing %": 4.4987146529562985
+    },
+    {
+      "Variable": "filtrado_glomerular",
+      "Missing Count": 140,
+      "Missing %": 4.4987146529562985
+    },
+    {
+      "Variable": "depresion_st",
+      "Missing Count": 92,
+      "Missing %": 2.956298200514139
+    },
+    {
+      "Variable": "asa",
+      "Missing Count": 78,
+      "Missing %": 2.506426735218509
+    },
+    {
+      "Variable": "primera_asistencia_medica",
+      "Missing Count": 65,
+      "Missing %": 2.0886889460154245
+    },
+    {
+      "Variable": "llamada_emergencias",
+      "Missing Count": 65,
+      "Missing %": 2.0886889460154245
+    },
+    {
+      "Variable": "v5",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "v6",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "v4r",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "v3r",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "estmit",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "insmit",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "estao",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "insao",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "v3",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "avr",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "ergometria",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "avf",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "v4",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "v2",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "avl",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "d3",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "d2",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "d1",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "v9",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "v8",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "v7",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    },
+    {
+      "Variable": "v1",
+      "Missing Count": 55,
+      "Missing %": 1.7673521850899745
+    }
+  ],
+  "duplicates": {
+    "count": 0,
+    "percentage": 0.0
+  },
+  "cardinality": [
+    {
+      "Variable": "filtrado_glomerular",
+      "Unique Values": 2317,
+      "Cardinality %": 74.45372750642673
+    },
+    {
+      "Variable": "fecha_ingreso",
+      "Unique Values": 1637,
+      "Cardinality %": 52.60282776349614
+    },
+    {
+      "Variable": "fecha_egreso",
+      "Unique Values": 1567,
+      "Cardinality %": 50.353470437018
+    },
+    {
+      "Variable": "ck",
+      "Unique Values": 1029,
+      "Cardinality %": 33.06555269922879
+    },
+    {
+      "Variable": "imc",
+      "Unique Values": 689,
+      "Cardinality %": 22.140102827763496
+    },
+    {
+      "Variable": "glicemia",
+      "Unique Values": 535,
+      "Cardinality %": 17.191516709511568
+    },
+    {
+      "Variable": "complicaciones",
+      "Unique Values": 507,
+      "Cardinality %": 16.29177377892031
+    },
+    {
+      "Variable": "numero",
+      "Unique Values": 506,
+      "Cardinality %": 16.259640102827763
+    },
+    {
+      "Variable": "ckmb",
+      "Unique Values": 499,
+      "Cardinality %": 16.03470437017995
+    },
+    {
+      "Variable": "colesterol",
+      "Unique Values": 424,
+      "Cardinality %": 13.624678663239074
+    },
+    {
+      "Variable": "fecha_consulta",
+      "Unique Values": 361,
+      "Cardinality %": 11.60025706940874
+    },
+    {
+      "Variable": "trigliceridos",
+      "Unique Values": 344,
+      "Cardinality %": 11.053984575835475
+    },
+    {
+      "Variable": "ee",
+      "Unique Values": 266,
+      "Cardinality %": 8.547557840616966
+    },
+    {
+      "Variable": "observaciones",
+      "Unique Values": 255,
+      "Cardinality %": 8.194087403598973
+    },
+    {
+      "Variable": "creatinina",
+      "Unique Values": 223,
+      "Cardinality %": 7.165809768637532
+    },
+    {
+      "Variable": "leuco",
+      "Unique Values": 183,
+      "Cardinality %": 5.880462724935732
+    },
+    {
+      "Variable": "ea",
+      "Unique Values": 155,
+      "Cardinality %": 4.9807197943444725
+    },
+    {
+      "Variable": "escala_grace",
+      "Unique Values": 141,
+      "Cardinality %": 4.530848329048843
+    },
+    {
+      "Variable": "fecha_realizacion",
+      "Unique Values": 122,
+      "Cardinality %": 3.9203084832904884
+    },
+    {
+      "Variable": "frecuencia_cardiaca",
+      "Unique Values": 111,
+      "Cardinality %": 3.5668380462724936
+    },
+    {
+      "Variable": "hb",
+      "Unique Values": 108,
+      "Cardinality %": 3.470437017994859
+    },
+    {
+      "Variable": "primera_asistencia_medica",
+      "Unique Values": 105,
+      "Cardinality %": 3.374035989717224
+    },
+    {
+      "Variable": "fs",
+      "Unique Values": 102,
+      "Cardinality %": 3.2776349614395883
+    },
+    {
+      "Variable": "peso",
+      "Unique Values": 85,
+      "Cardinality %": 2.7313624678663238
+    },
+    {
+      "Variable": "nombre",
+      "Unique Values": 83,
+      "Cardinality %": 2.667095115681234
+    },
+    {
+      "Variable": "edad",
+      "Unique Values": 80,
+      "Cardinality %": 2.570694087403599
+    },
+    {
+      "Variable": "tiempo_isquemia",
+      "Unique Values": 79,
+      "Cardinality %": 2.538560411311054
+    },
+    {
+      "Variable": "tiempo_puerta_aguja",
+      "Unique Values": 73,
+      "Cardinality %": 2.345758354755784
+    },
+    {
+      "Variable": "annos_fumando",
+      "Unique Values": 69,
+      "Cardinality %": 2.217223650385604
+    },
+    {
+      "Variable": "fraccion_eyeccion",
+      "Unique Values": 65,
+      "Cardinality %": 2.0886889460154245
+    },
+    {
+      "Variable": "talla",
+      "Unique Values": 60,
+      "Cardinality %": 1.9280205655526992
+    },
+    {
+      "Variable": "supradesnivel",
+      "Unique Values": 56,
+      "Cardinality %": 1.7994858611825193
+    },
+    {
+      "Variable": "pat",
+      "Unique Values": 54,
+      "Cardinality %": 1.7352185089974295
+    },
+    {
+      "Variable": "ddvi",
+      "Unique Values": 50,
+      "Cardinality %": 1.6066838046272494
+    },
+    {
+      "Variable": "estadia_ucie",
+      "Unique Values": 43,
+      "Cardinality %": 1.3817480719794344
+    },
+    {
+      "Variable": "dsvi",
+      "Unique Values": 43,
+      "Cardinality %": 1.3817480719794344
+    },
+    {
+      "Variable": "ecg",
+      "Unique Values": 42,
+      "Cardinality %": 1.3496143958868894
+    },
+    {
+      "Variable": "presion_arterial_sistolica",
+      "Unique Values": 39,
+      "Cardinality %": 1.2532133676092545
+    },
+    {
+      "Variable": "estadia_intrahospitalaria",
+      "Unique Values": 39,
+      "Cardinality %": 1.2532133676092545
+    },
+    {
+      "Variable": "betabloqueadores",
+      "Unique Values": 38,
+      "Cardinality %": 1.2210796915167095
+    },
+    {
+      "Variable": "fecha_egreso.1",
+      "Unique Values": 35,
+      "Cardinality %": 1.1246786632390746
+    },
+    {
+      "Variable": "presion_arterial_diastolica",
+      "Unique Values": 35,
+      "Cardinality %": 1.1246786632390746
+    },
+    {
+      "Variable": "ud",
+      "Unique Values": 34,
+      "Cardinality %": 1.0925449871465296
+    },
+    {
+      "Variable": " fecha_ingreso",
+      "Unique Values": 34,
+      "Cardinality %": 1.0925449871465296
+    },
+    {
+      "Variable": "infradesnivel",
+      "Unique Values": 34,
+      "Cardinality %": 1.0925449871465296
+    },
+    {
+      "Variable": "tapse",
+      "Unique Values": 31,
+      "Cardinality %": 0.9961439588688945
+    },
+    {
+      "Variable": "tiempo_respuesta",
+      "Unique Values": 28,
+      "Cardinality %": 0.8997429305912596
+    },
+    {
+      "Variable": "estadia_uci",
+      "Unique Values": 27,
+      "Cardinality %": 0.8676092544987147
+    },
+    {
+      "Variable": "annos_sin_fumar",
+      "Unique Values": 27,
+      "Cardinality %": 0.8676092544987147
+    },
+    {
+      "Variable": "tiempo_llegada",
+      "Unique Values": 26,
+      "Cardinality %": 0.8354755784061696
+    },
+    {
+      "Variable": "presion_arterial_sistolica.1",
+      "Unique Values": 24,
+      "Cardinality %": 0.7712082262210797
+    },
+    {
+      "Variable": "asa",
+      "Unique Values": 24,
+      "Cardinality %": 0.7712082262210797
+    },
+    {
+      "Variable": "insulina",
+      "Unique Values": 23,
+      "Cardinality %": 0.7390745501285347
+    },
+    {
+      "Variable": "area_salud",
+      "Unique Values": 23,
+      "Cardinality %": 0.7390745501285347
+    },
+    {
+      "Variable": "idareasalud",
+      "Unique Values": 23,
+      "Cardinality %": 0.7390745501285347
+    },
+    {
+      "Variable": "presion_arterial_diastolica.1",
+      "Unique Values": 22,
+      "Cardinality %": 0.7069408740359897
+    },
+    {
+      "Variable": "tiv",
+      "Unique Values": 20,
+      "Cardinality %": 0.6426735218508998
+    },
+    {
+      "Variable": "estenosis",
+      "Unique Values": 18,
+      "Cardinality %": 0.5784061696658097
+    },
+    {
+      "Variable": "pp",
+      "Unique Values": 18,
+      "Cardinality %": 0.5784061696658097
+    },
+    {
+      "Variable": "idmunicipio",
+      "Unique Values": 15,
+      "Cardinality %": 0.4820051413881748
+    },
+    {
+      "Variable": "idprovincia",
+      "Unique Values": 15,
+      "Cardinality %": 0.4820051413881748
+    },
+    {
+      "Variable": "provincia.1",
+      "Unique Values": 15,
+      "Cardinality %": 0.4820051413881748
+    },
+    {
+      "Variable": "municipio",
+      "Unique Values": 15,
+      "Cardinality %": 0.4820051413881748
+    },
+    {
+      "Variable": "provincia",
+      "Unique Values": 15,
+      "Cardinality %": 0.4820051413881748
+    },
+    {
+      "Variable": "idprovincia.1",
+      "Unique Values": 15,
+      "Cardinality %": 0.4820051413881748
+    },
+    {
+      "Variable": "proxima",
+      "Unique Values": 10,
+      "Cardinality %": 0.3213367609254499
+    },
+    {
+      "Variable": "fecha_defuncion",
+      "Unique Values": 10,
+      "Cardinality %": 0.3213367609254499
+    },
+    {
+      "Variable": "anno",
+      "Unique Values": 8,
+      "Cardinality %": 0.2570694087403599
+    },
+    {
+      "Variable": "unidad",
+      "Unique Values": 7,
+      "Cardinality %": 0.2249357326478149
+    },
+    {
+      "Variable": "idresultado",
+      "Unique Values": 7,
+      "Cardinality %": 0.2249357326478149
+    },
+    {
+      "Variable": "presentacion",
+      "Unique Values": 7,
+      "Cardinality %": 0.2249357326478149
+    },
+    {
+      "Variable": "resultado",
+      "Unique Values": 5,
+      "Cardinality %": 0.16066838046272494
+    },
+    {
+      "Variable": "localizacion",
+      "Unique Values": 5,
+      "Cardinality %": 0.16066838046272494
+    },
+    {
+      "Variable": "arteria",
+      "Unique Values": 4,
+      "Cardinality %": 0.12853470437017994
+    },
+    {
+      "Variable": "abordaje",
+      "Unique Values": 4,
+      "Cardinality %": 0.12853470437017994
+    },
+    {
+      "Variable": "ergometria",
+      "Unique Values": 4,
+      "Cardinality %": 0.12853470437017994
+    },
+    {
+      "Variable": "indice_killip",
+      "Unique Values": 4,
+      "Cardinality %": 0.12853470437017994
+    },
+    {
+      "Variable": "indice_mkillip",
+      "Unique Values": 4,
+      "Cardinality %": 0.12853470437017994
+    },
+    {
+      "Variable": "lugar_trombolisis",
+      "Unique Values": 3,
+      "Cardinality %": 0.09640102827763496
+    },
+    {
+      "Variable": "reperfusion",
+      "Unique Values": 3,
+      "Cardinality %": 0.09640102827763496
+    },
+    {
+      "Variable": "coronariografia",
+      "Unique Values": 3,
+      "Cardinality %": 0.09640102827763496
+    },
+    {
+      "Variable": "atencion_inicial",
+      "Unique Values": 3,
+      "Cardinality %": 0.09640102827763496
+    },
+    {
+      "Variable": "motivo",
+      "Unique Values": 3,
+      "Cardinality %": 0.09640102827763496
+    },
+    {
+      "Variable": "ingresos_anteriores",
+      "Unique Values": 3,
+      "Cardinality %": 0.09640102827763496
+    },
+    {
+      "Variable": "color_piel",
+      "Unique Values": 3,
+      "Cardinality %": 0.09640102827763496
+    },
+    {
+      "Variable": "estmit",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "otros_diureticos.1",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "nitratos.1",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "anticoagulantes.1",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "comp_fv_tv",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "comp_bav_alto_grado",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "comp_shock",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "comp_tv",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "comp_bav_bajo_grado",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "comp_pcr",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "comp_ic",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "comp_fv",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "comp_otras_arritmias",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "furosemida.1",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "dieta",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "rehabilitacion.1",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "consejeria",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "consejeria_antitabaquica",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "clopidogrel.1",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "sexo",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "mpp",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "aminas",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "insmit",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "estao",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "insao",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "furosemida",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "nitratos",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "anticoagulantes",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "anticalcicos",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "llamada_emergencias",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "estreptoquinasa_recombinante",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "ieca",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "otros_diureticos",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "estatinas.1",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "avc",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "mpt",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "vam",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "estatinas",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "heparina",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "clopidogrel",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "mortality_inhospital",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "acx",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "ada",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "acd",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "anticalcico",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "scacest",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "ieca.1",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "betabloqueadores.1",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "tipo_tabaquismo",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "tabaquismo",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "cabg",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "intervencion_coronaria_percutanea",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "fibrilacion_auricular",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "infarto_miocardio_agudo",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "enfermedad_arterias_coronarias",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "hiperlipoproteinemia",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "hipertension_arterial",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "insuficiencia_cardiaca_congestiva",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "diabetes_mellitus",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "v4r",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "v3r",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "avr",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "avf",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "avl",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "d3",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "d2",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "d1",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "v9",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "v8",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "v7",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "v6",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "v5",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "v4",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "v3",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "v2",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "v1",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "shock",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "depresion_ondat",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "depresion_st",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "enfermedad_venosa_periferica",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "insuficiencia_renal_cronica",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "asa.1",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "horario_llegada",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "ecg_previo",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "otra_institucion",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "estado_vital",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "scacest_secundario",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "participacion_registro",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "rehabilitacion",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "prescripcion_optima",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "volumen_contraste",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "funcion_renal",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "proteccion_embolica",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "anti_agregacion_plaquetaria",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "riesgo_beneficio",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "razones_documentadas",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "angina",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "otras",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "angina_inestable",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "insuficiencia_cardiaca",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "otros",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "epoc",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "anemia",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "angina24h",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "enfermedad_cerebro_vascular",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "dialisis",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "comp_mecanicas",
+      "Unique Values": 2,
+      "Cardinality %": 0.06426735218508997
+    },
+    {
+      "Variable": "balon",
+      "Unique Values": 1,
+      "Cardinality %": 0.032133676092544985
+    },
+    {
+      "Variable": "coronariografias_medico",
+      "Unique Values": 0,
+      "Cardinality %": 0.0
+    },
+    {
+      "Variable": "coronariografias_centro",
+      "Unique Values": 0,
+      "Cardinality %": 0.0
+    }
+  ],
+  "quality_score": 70,
+  "issues": [
+    "🔴 Alto porcentaje de valores faltantes (23.6%)",
+    "🔴 1 variables constantes detectadas"
+  ]
+}

@@ -1,0 +1,92 @@
+🔄 Progreso de Evaluación
+✓ Using test set from metadata: /home/abraham/Escritorio/ML/mortality-ami-predictor/Tools/processed/models/testsets/testset_mortality_inhospital_20260110_223905.parquet
+
+🔍 Debugging Info:
+Model loaded from: /home/abraham/Escritorio/ML/mortality-ami-predictor/Tools/processed/models/xgb/model_xgb_20260110_223905.joblib
+Test set loaded from: /home/abraham/Escritorio/ML/mortality-ami-predictor/Tools/processed/models/testsets/testset_mortality_inhospital_20260110_223905.parquet
+  Test set shape: (623, 11)
+  Test set columns (first 10): ['filtrado_glomerular', 'fraccion_eyeccion', 'edad', 'glicemia', 'presion_arterial_diastolica', 'creatinina', 'presion_arterial_sistolica', 'diabetes_mellitus', 'frecuencia_cardiaca', 'betabloqueadores']
+  Target column: mortality_inhospital
+  Target distribution: {0: 568, 1: 55}
+
+⚠️  VALIDATION CHECK:
+  Expected test samples from metadata: 623
+  Actual test samples loaded: 623
+  Expected train samples from metadata: 2489
+  ✓ Test set size matches metadata - validation passed
+  Features shape: (623, 10)
+  Target shape: (623,)
+  Predictions shape: (623,)
+  Probability range: [0.0003, 0.9992]
+  Unique predictions: 609
+
+📊 FASE 2: Resampling Evaluation (Bootstrap + Jackknife)
+🔄 Bootstrap Evaluation (1000 iterations)...
+  Progress: 100/1000
+  Progress: 200/1000
+  Progress: 300/1000
+  Progress: 400/1000
+  Progress: 500/1000
+  Progress: 600/1000
+  Progress: 700/1000
+  Progress: 800/1000
+  Progress: 900/1000
+  Progress: 1000/1000
+✅ Bootstrap complete with 1000 successful iterations
+   accuracy: 0.8715 ± 0.0133 | 95% CI: [0.8443, 0.8957]
+   auprc: 0.5680 ± 0.0664 | 95% CI: [0.4220, 0.6896]
+   auroc: 0.9009 ± 0.0216 | 95% CI: [0.8548, 0.9369]
+   brier: 0.0960 ± 0.0097 | 95% CI: [0.0773, 0.1164]
+   f1: 0.4915 ± 0.0493 | 95% CI: [0.3876, 0.5823]
+   precision: 0.3780 ± 0.0478 | 95% CI: [0.2818, 0.4688]
+   recall: 0.7089 ± 0.0621 | 95% CI: [0.5853, 0.8235]
+🔄 Jackknife Evaluation (Leave-One-Out, n=623)...
+  Progress: 50/623
+  Progress: 100/623
+  Progress: 150/623
+  Progress: 200/623
+  Progress: 250/623
+  Progress: 300/623
+  Progress: 350/623
+  Progress: 400/623
+  Progress: 450/623
+  Progress: 500/623
+  Progress: 550/623
+  Progress: 600/623
+✅ Jackknife complete with 623 successful iterations
+   accuracy: 0.8716 ± 0.0134 | 95% CI: [0.8705, 0.8726]
+   auprc: 0.5641 ± 0.0671 | 95% CI: [0.5588, 0.5694]
+   auroc: 0.9015 ± 0.0209 | 95% CI: [0.8998, 0.9031]
+   brier: 0.0957 ± 0.0097 | 95% CI: [0.0949, 0.0965]
+   f1: 0.4937 ± 0.0493 | 95% CI: [0.4898, 0.4975]
+   precision: 0.3786 ± 0.0482 | 95% CI: [0.3748, 0.3824]
+   recall: 0.7091 ± 0.0623 | 95% CI: [0.7042, 0.7140]
+
+  📊 Resampling plot saved: /home/abraham/Escritorio/ML/mortality-ami-predictor/Tools/processed/plots/evaluation/resampling_mortality.png
+
+📈 Generating standard evaluation plots...
+
+✅ Evaluation complete!
+📊 Metrics saved to: /home/abraham/Escritorio/ML/mortality-ami-predictor/Tools/processed/plots/evaluation/evaluation_metrics_mortality.csv
+📈 Calibration plot: /home/abraham/Escritorio/ML/mortality-ami-predictor/Tools/processed/plots/evaluation/calibration_mortality.png
+📉 Decision curve: /home/abraham/Escritorio/ML/mortality-ami-predictor/Tools/processed/plots/evaluation/decision_curve_mortality.png
+🔲 Confusion matrix: /home/abraham/Escritorio/ML/mortality-ami-predictor/Tools/processed/plots/evaluation/confusion_mortality.png
+📊 ROC curve: /home/abraham/Escritorio/ML/mortality-ami-predictor/Tools/processed/plots/evaluation/roc_mortality.png
+📊 Resampling plot: /home/abraham/Escritorio/ML/mortality-ami-predictor/Tools/processed/plots/evaluation/resampling_mortality.png
+
+## Key Metrics:
+  auroc: 0.9015
+  auprc: 0.5641
+  accuracy: 0.8716
+  f1: 0.4937
+  brier: 0.0957
+
+## Bootstrap & Jackknife Results (AUROC):
+  Bootstrap:  0.9009 ± 0.0216
+              95% CI: [0.8548, 0.9369]
+  Jackknife:  0.9015 ± 0.0209
+              95% CI: [0.8998, 0.9031]
+
+
+---------------------------------------------------------------------------
+

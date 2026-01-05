@@ -1,0 +1,7 @@
+﻿Modelo 1,Modelo 2,Test Usado,p-value,Significativo (p<0.05),Diferencia de medias,Effect Size (Cohen's d),Normalidad M1,Normalidad M2
+rf,xgb,Paired t-test,0.2768,❌ NO,-0.0047,-0.2413 (Small),✓,✓
+rf,xgb_balanced,Paired t-test,0.2962,❌ NO,-0.0046,-0.2440 (Small),✓,✓
+rf,lgbm,Paired t-test,0.2411,❌ NO,0.0052,0.2649 (Small),✓,✓
+xgb,xgb_balanced,Paired t-test,0.9524,❌ NO,0.0001,0.0044 (Negligible),✓,✓
+xgb,lgbm,Paired t-test,0.0002,✅ SÍ,0.0099,0.5098 (Medium),✓,✓
+xgb_balanced,lgbm,Paired t-test,0.0003,✅ SÍ,0.0098,0.5201 (Medium),✓,✓

@@ -1,0 +1,11 @@
+﻿Feature,Mean |SHAP|
+fraccion_eyeccion,0.0721625181568961
+edad,0.05087567846542357
+filtrado_glomerular,0.04779235372538655
+frecuencia_cardiaca,0.0430728167264885
+presion_arterial_diastolica,0.042956651424463664
+betabloqueadores,0.04233111490161609
+glicemia,0.03679071839261455
+creatinina,0.026885076441402558
+presion_arterial_sistolica,0.014731738429014868
+diabetes_mellitus,0.006058082327988823

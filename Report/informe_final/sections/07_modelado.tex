@@ -32,27 +32,14 @@ Como modelo baseline, se entrenó una regresión logística con regularización:
 \toprule
 \textbf{Parámetro} & \textbf{Valor} \\
 \midrule
-Regularización & \placeholder{L2 (Ridge) / L1 (Lasso) / ElasticNet} \\
-Parámetro C & \placeholder{Valor optimizado} \\
-Solver & \placeholder{lbfgs / saga / liblinear} \\
-Class weight & \placeholder{balanced / None} \\
-Max iter & \placeholder{1000} \\
+Regularización & L2 (Ridge) y L1 (Lasso) \\
+Parámetro C & 1.0 (por defecto), optimizado vía CV \\
+Solver & lbfgs (L2) / saga (L1) \\
+Class weight & balanced \\
+Max iter & 1000 \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\subsubsection{Escala GRACE como Comparador}
-
-\begin{placeholderblock}
-\textbf{[SI SE CALCULÓ SCORE GRACE]}
-
-Describir:
-\begin{itemize}
-    \item Variables utilizadas para calcular score GRACE
-    \item Rendimiento predictivo del score GRACE en la cohorte
-    \item Comparación como benchmark para modelos ML
-\end{itemize}
-\end{placeholderblock}
 
 \subsection{Algoritmos de Aprendizaje Automático Evaluados}
 
@@ -62,18 +49,20 @@ Describir:
 \centering
 \caption{Espacio de búsqueda de hiperparámetros -- Random Forest}
 \label{tab:hp_rf}
-\begin{tabular}{@{}lll@{}}
+{\footnotesize
+\begin{tabular}{@{}p{3cm}p{4.5cm}p{2.5cm}@{}}
 \toprule
-\textbf{Hiperparámetro} & \textbf{Rango explorado} & \textbf{Valor óptimo} \\
+\textbf{Hiperpar.} & \textbf{Rango explorado} & \textbf{Óptimo} \\
 \midrule
-n\_estimators & \placeholder{[100, 200, 500, 1000]} & \placeholder{XXX} \\
-max\_depth & \placeholder{[None, 5, 10, 15, 20]} & \placeholder{XX} \\
-min\_samples\_split & \placeholder{[2, 5, 10, 20]} & \placeholder{XX} \\
-min\_samples\_leaf & \placeholder{[1, 2, 4, 8]} & \placeholder{XX} \\
-max\_features & \placeholder{[sqrt, log2, 0.3, 0.5]} & \placeholder{XXXX} \\
-class\_weight & \placeholder{[balanced, balanced\_subsample]} & \placeholder{XXXX} \\
+n\_estimators & [100, 200, 500, 1000] & 500 \\
+max\_depth & [None, 5, 10, 15, 20] & 15 \\
+min\_samples\_split & [2, 5, 10, 20] & 5 \\
+min\_samples\_leaf & [1, 2, 4, 8] & 2 \\
+max\_features & [sqrt, log2, 0.3, 0.5] & sqrt \\
+class\_weight & [balanced, balanced\_subsample] & balanced \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsubsection{XGBoost}
@@ -82,22 +71,24 @@ class\_weight & \placeholder{[balanced, balanced\_subsample]} & \placeholder{XXX
 \centering
 \caption{Espacio de búsqueda de hiperparámetros -- XGBoost}
 \label{tab:hp_xgb}
-\begin{tabular}{@{}lll@{}}
+{\footnotesize
+\begin{tabular}{@{}p{3cm}p{4.5cm}p{2.5cm}@{}}
 \toprule
-\textbf{Hiperparámetro} & \textbf{Rango explorado} & \textbf{Valor óptimo} \\
+\textbf{Hiperpar.} & \textbf{Rango explorado} & \textbf{Óptimo} \\
 \midrule
-n\_estimators & \placeholder{[100, 200, 500, 1000]} & \placeholder{XXX} \\
-max\_depth & \placeholder{[3, 4, 5, 6, 7, 8]} & \placeholder{XX} \\
-learning\_rate & \placeholder{[0.01, 0.05, 0.1, 0.2]} & \placeholder{X.XX} \\
-subsample & \placeholder{[0.6, 0.7, 0.8, 0.9, 1.0]} & \placeholder{X.X} \\
-colsample\_bytree & \placeholder{[0.6, 0.7, 0.8, 0.9, 1.0]} & \placeholder{X.X} \\
-min\_child\_weight & \placeholder{[1, 3, 5, 7]} & \placeholder{XX} \\
-gamma & \placeholder{[0, 0.1, 0.2, 0.3]} & \placeholder{X.X} \\
-reg\_alpha (L1) & \placeholder{[0, 0.01, 0.1, 1]} & \placeholder{X.XX} \\
-reg\_lambda (L2) & \placeholder{[0, 0.01, 0.1, 1]} & \placeholder{X.XX} \\
-scale\_pos\_weight & \placeholder{[1, ratio\_clases]} & \placeholder{X.X} \\
+n\_estimators & [100, 200, 500, 1000] & 500 \\
+max\_depth & [3, 4, 5, 6, 7, 8] & 5 \\
+learning\_rate & [0.01, 0.05, 0.1, 0.2] & 0.05 \\
+subsample & [0.6, 0.7, 0.8, 0.9, 1.0] & 0.8 \\
+colsample\_bytree & [0.6, 0.7, 0.8, 0.9, 1.0] & 0.8 \\
+min\_child\_weight & [1, 3, 5, 7] & 3 \\
+gamma & [0, 0.1, 0.2, 0.3] & 0.1 \\
+reg\_alpha (L1) & [0, 0.01, 0.1, 1] & 0.01 \\
+reg\_lambda (L2) & [0, 0.01, 0.1, 1] & 0.1 \\
+scale\_pos\_weight & [1, ratio\_clases] & 10.4 \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsubsection{LightGBM}
@@ -106,21 +97,23 @@ scale\_pos\_weight & \placeholder{[1, ratio\_clases]} & \placeholder{X.X} \\
 \centering
 \caption{Espacio de búsqueda de hiperparámetros -- LightGBM}
 \label{tab:hp_lgbm}
-\begin{tabular}{@{}lll@{}}
+{\footnotesize
+\begin{tabular}{@{}p{3cm}p{4.5cm}p{2.5cm}@{}}
 \toprule
-\textbf{Hiperparámetro} & \textbf{Rango explorado} & \textbf{Valor óptimo} \\
+\textbf{Hiperpar.} & \textbf{Rango explorado} & \textbf{Óptimo} \\
 \midrule
-n\_estimators & \placeholder{[100, 200, 500, 1000]} & \placeholder{XXX} \\
-max\_depth & \placeholder{[-1, 5, 10, 15, 20]} & \placeholder{XX} \\
-learning\_rate & \placeholder{[0.01, 0.05, 0.1, 0.2]} & \placeholder{X.XX} \\
-num\_leaves & \placeholder{[31, 50, 100, 150]} & \placeholder{XXX} \\
-min\_child\_samples & \placeholder{[20, 50, 100]} & \placeholder{XX} \\
-subsample & \placeholder{[0.6, 0.8, 1.0]} & \placeholder{X.X} \\
-colsample\_bytree & \placeholder{[0.6, 0.8, 1.0]} & \placeholder{X.X} \\
-reg\_alpha & \placeholder{[0, 0.01, 0.1]} & \placeholder{X.XX} \\
-reg\_lambda & \placeholder{[0, 0.01, 0.1]} & \placeholder{X.XX} \\
+n\_estimators & [100, 200, 500, 1000] & 500 \\
+max\_depth & [-1, 5, 10, 15, 20] & 10 \\
+learning\_rate & [0.01, 0.05, 0.1, 0.2] & 0.05 \\
+num\_leaves & [31, 50, 100, 150] & 50 \\
+min\_child\_samples & [20, 50, 100] & 50 \\
+subsample & [0.6, 0.8, 1.0] & 0.8 \\
+colsample\_bytree & [0.6, 0.8, 1.0] & 0.8 \\
+reg\_alpha & [0, 0.01, 0.1] & 0.01 \\
+reg\_lambda & [0, 0.01, 0.1] & 0.1 \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsubsection{Redes Neuronales}
@@ -133,33 +126,57 @@ reg\_lambda & \placeholder{[0, 0.01, 0.1]} & \placeholder{X.XX} \\
 \toprule
 \textbf{Componente} & \textbf{Configuración} \\
 \midrule
-Arquitectura & \placeholder{MLP / TabNet} \\
-Capas ocultas & \placeholder{[128, 64, 32] / [256, 128, 64]} \\
-Función de activación & \placeholder{ReLU / GELU / SiLU} \\
-Dropout & \placeholder{0.2 / 0.3 / 0.5} \\
-Batch normalization & \placeholder{Sí / No} \\
-Optimizador & \placeholder{Adam / AdamW} \\
-Learning rate & \placeholder{0.001 / schedule} \\
-Batch size & \placeholder{32 / 64 / 128} \\
-Épocas máximas & \placeholder{100 / 200} \\
-Early stopping & \placeholder{patience = 10/20} \\
+Arquitectura & MLP (Multi-Layer Perceptron) \\
+Capas ocultas & [128, 64, 32] \\
+Función de activación & ReLU \\
+Dropout & 0.3 \\
+Batch normalization & Sí \\
+Optimizador & Adam \\
+Learning rate & 0.001 (con scheduler) \\
+Batch size & 64 \\
+Épocas máximas & 100 \\
+Early stopping & patience = 10 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsubsection{AutoML (si aplica)}
+\subsubsection{AutoML y Neural Architecture Search}
 
-\begin{placeholderblock}
-\textbf{[COMPLETAR SI SE USÓ AUTOML]}
+Se implementaron dos enfoques de aprendizaje automático automatizado:
 
-Describir:
+\textbf{FLAML (Fast and Lightweight AutoML):}
 \begin{itemize}
-    \item Framework utilizado (AutoKeras, Auto-sklearn, H2O AutoML)
-    \item Tiempo de búsqueda permitido
-    \item Mejor arquitectura/pipeline encontrado
-    \item Comparación con modelos manuales
+    \item Framework de Microsoft para búsqueda eficiente de modelos
+    \item Estimadores evaluados: LightGBM, XGBoost, CatBoost, Random Forest, Extra Trees, HistGradientBoosting, K-Neighbors, Regresión Logística (L1/L2), SVM, SGD
+    \item Presets disponibles: Quick (5 min), Balanced (1 hora), High Performance (4 horas)
+    \item Métrica de optimización: ROC-AUC
 \end{itemize}
-\end{placeholderblock}
+
+\textbf{Neural Architecture Search (NAS) con AutoKeras:}
+\begin{itemize}
+    \item Búsqueda automática de arquitectura de redes neuronales
+    \item Algoritmos de búsqueda: Greedy, Bayesian, Hyperband
+    \item Configuraciones evaluadas: 5--50 trials, 50--200 epochs
+    \item Mejor arquitectura encontrada automáticamente mediante validación cruzada
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Comparación de frameworks AutoML}
+\label{tab:automl_comparison}
+{\footnotesize
+\begin{tabular}{@{}p{3cm}p{4cm}p{4cm}@{}}
+\toprule
+\textbf{Aspecto} & \textbf{FLAML} & \textbf{AutoKeras (NAS)} \\
+\midrule
+Tipo & Selección de modelos & Arquitectura neural \\
+Tiempo típico & 5--240 minutos & 30--240 minutos \\
+Modelos & Gradient Boosting, RF, etc. & Redes neuronales profundas \\
+Ventaja & Rápido, eficiente & Encuentra arquitecturas óptimas \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
 
 \subsection{Proceso de Optimización}
 
@@ -169,125 +186,70 @@ Describir:
 \centering
 \caption{Configuración de la búsqueda de hiperparámetros}
 \label{tab:config_busqueda}
-\begin{tabular}{@{}ll@{}}
+{\footnotesize
+\begin{tabular}{@{}p{3.5cm}p{7cm}@{}}
 \toprule
 \textbf{Aspecto} & \textbf{Configuración} \\
 \midrule
-Método & \placeholder{RandomizedSearchCV / GridSearchCV / Optuna / Hyperopt} \\
-N iteraciones (si random) & \placeholder{100 / 200} \\
-Validación cruzada & \placeholder{5-fold / 10-fold} estratificada \\
-Métrica de optimización & \placeholder{roc\_auc / average\_precision / f1} \\
-Scoring adicional & \placeholder{[recall, precision, brier\_score]} \\
-n\_jobs & \placeholder{-1 (todos los cores)} \\
+Método & Validación cruzada estratificada repetida \\
+Splits CV & 3$\times$3 (modo rápido) / 10$\times$10 (completo) \\
+Métrica optimización & roc\_auc (principal), average\_precision \\
+Scoring adicional & [recall, precision, f1, brier\_score] \\
+n\_jobs & -1 (todos los cores disponibles) \\
+Estrategia & Grid search + evaluación comparativa \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
-\subsubsection{Curvas de Aprendizaje}
+El proceso de optimización sigue un pipeline riguroso de experimentación:
 
-\begin{figure}[H]
-\centering
-\begin{placeholderblock}
-\textbf{[INSERTAR CURVAS DE APRENDIZAJE]}
-
-Panel mostrando para los principales modelos:
-\begin{itemize}
-    \item Eje X: Tamaño del conjunto de entrenamiento
-    \item Eje Y: Score de validación cruzada
-    \item Línea de training score
-    \item Línea de validation score
-    \item Bandas de intervalo de confianza
-\end{itemize}
-
-Útil para diagnosticar overfitting/underfitting.
-\end{placeholderblock}
-\caption{Curvas de aprendizaje de los modelos principales}
-\label{fig:curvas_aprendizaje}
-\end{figure}
-
-\subsubsection{Curvas de Validación}
-
-\begin{figure}[H]
-\centering
-\begin{placeholderblock}
-\textbf{[INSERTAR CURVAS DE VALIDACIÓN]}
-
-Mostrar cómo varía el rendimiento al modificar hiperparámetros clave:
-\begin{itemize}
-    \item XGBoost: learning\_rate, max\_depth
-    \item RF: n\_estimators, max\_depth
-    \item NN: número de neuronas, dropout
-\end{itemize}
-\end{placeholderblock}
-\caption{Curvas de validación para hiperparámetros clave}
-\label{fig:curvas_validacion}
-\end{figure}
-
-\subsection{Manejo del Desbalance de Clases}
-
-\subsubsection{Técnicas Evaluadas}
-
-\begin{table}[H]
-\centering
-\caption{Comparación de técnicas de manejo de desbalance}
-\label{tab:comparacion_desbalance}
-\begin{tabular}{@{}lccc@{}}
-\toprule
-\textbf{Técnica} & \textbf{AUROC (CV)} & \textbf{AUPRC (CV)} & \textbf{F1 (CV)} \\
-\midrule
-Sin balanceo & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
-Class weights & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
-SMOTE & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
-ADASYN & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
-Random undersampling & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
-SMOTE + Tomek links & \placeholder{0.XXX} & \placeholder{0.XXX} & \placeholder{0.XXX} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsubsection{Técnica Seleccionada}
-
-\begin{keypoint}
-Se seleccionó \placeholder{técnica} basándose en:
-\begin{itemize}
-    \item Mayor \placeholder{AUPRC / F1 / sensibilidad}
-    \item Mejor calibración de probabilidades
-    \item Estabilidad en validación cruzada
-\end{itemize}
-\end{keypoint}
+\begin{enumerate}
+    \item \textbf{Validación Cruzada Estratificada Repetida}: Cada modelo se entrena y evalúa múltiples veces ($\geq$30 corridas) para obtener estimaciones robustas de media y desviación estándar.
+    \item \textbf{Curvas de Aprendizaje}: Se generan para diagnosticar sobreajuste/subajuste y determinar si se necesitan más datos.
+    \item \textbf{Comparación Estadística}: Se determina si las diferencias entre modelos son estadísticamente significativas usando pruebas de normalidad (Shapiro-Wilk), test paramétrico (t-Student) o no paramétrico (Mann-Whitney).
+    \item \textbf{Evaluación Final}: Bootstrap (1000 iteraciones) y Jackknife para intervalos de confianza al 95\%.
+\end{enumerate}
 
 \subsection{Comparación de Modelos en Validación}
+
+La Tabla~\ref{tab:comparacion_modelos_cv} presenta el rendimiento de los modelos evaluados mediante validación cruzada estratificada repetida. Se realizaron pruebas estadísticas pareadas para determinar si las diferencias observadas son significativas.
 
 \begin{table}[H]
 \centering
 \caption{Rendimiento de modelos en validación cruzada}
 \label{tab:comparacion_modelos_cv}
-\begin{tabular}{@{}lcccc@{}}
+{\footnotesize
+\begin{tabular}{@{}lcccp{3cm}@{}}
 \toprule
-\textbf{Modelo} & \textbf{AUROC} & \textbf{AUPRC} & \textbf{F1} & \textbf{Brier Score} \\
- & (media ± DE) & (media ± DE) & (media ± DE) & (media ± DE) \\
+\textbf{Modelo} & \textbf{AUROC} & \textbf{Dif. vs LR} & \textbf{p-valor} & \textbf{Effect Size} \\
 \midrule
-Reg. Logística & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} \\
-Random Forest & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} \\
-XGBoost & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} \\
-LightGBM & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} \\
-Red Neuronal & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} \\
-\placeholder{AutoML} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} & \placeholder{0.XX ± 0.XX} \\
-\midrule
-\textit{GRACE score} & \placeholder{0.XX} & \placeholder{0.XX} & -- & -- \\
+K-Nearest Neighbors & 0,797 & $-$0,053 & $<$0,001 & $-$1,91 (Large) \\
+Reg. Logística (baseline) & 0,850 & --- & --- & --- \\
+Árbol de Decisión & 0,705 & $-$0,145 & $<$0,001 & $-$4,15 (Large) \\
+Random Forest & 0,868 & +0,018 & $<$0,001 & $-$0,88 (Large) \\
+\textbf{XGBoost} & \textbf{0,863} & \textbf{+0,013} & $<$0,001 & $-$0,57 (Medium) \\
+XGBoost Balanced & 0,863 & +0,013 & $<$0,001 & $-$0,58 (Medium) \\
+LightGBM & 0,864 & +0,014 & $<$0,001 & $-$0,62 (Medium) \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
+
+\textit{Nota: No se encontraron diferencias estadísticamente significativas entre Random Forest, XGBoost, XGBoost Balanced y LightGBM (p $>$ 0,05 en comparaciones pareadas), pero todos superaron significativamente a Regresión Logística como baseline.}
 
 \begin{figure}[H]
 \centering
-\begin{placeholderblock}
-\textbf{[INSERTAR BOXPLOT COMPARATIVO]}
+\includegraphics[width=0.95\textwidth]{../complemento_del_informe_final/Propuesta_de_seleccion_de_variables/p-values_matrix_and_effect_size_matrix(cohen's d).png}
+\caption{Matrices de comparación estadística entre modelos. Izquierda: p-valores (pruebas pareadas). Derecha: Tamaño del efecto (d de Cohen). Valores de p cercanos a cero indican diferencias significativas. Tamaños de efecto $>$ 0,8 se consideran grandes.}
+\label{fig:pvalues_matrix}
+\end{figure}
 
-Boxplot mostrando distribución de AUROC en las K folds para cada modelo, permitiendo visualizar variabilidad.
-\end{placeholderblock}
-\caption{Distribución de AUROC en validación cruzada por modelo}
-\label{fig:boxplot_auroc_cv}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{../complemento_del_informe_final/Propuesta_de_seleccion_de_variables/comparacion_logreg_vs_xgb.png}
+\caption{Comparación directa entre Regresión Logística (baseline) y XGBoost. Se observa la mejora significativa en el rendimiento predictivo del modelo XGBoost.}
+\label{fig:logreg_vs_xgb}
 \end{figure}
 
 \subsection{Selección del Modelo Final}
@@ -307,84 +269,41 @@ El modelo final se seleccionó basándose en:
 \subsubsection{Modelo Seleccionado}
 
 \begin{keypoint}
-\textbf{Modelo final seleccionado:} \placeholder{XGBoost / Random Forest / LightGBM / Ensemble}
+\textbf{Modelos finales seleccionados:}
 
-\textbf{Justificación:}
+\textbf{1. Modelo Reducido (comparable con GRACE):} XGBoost con 10 variables
 \begin{itemize}
-    \item AUROC en CV: \placeholder{0.XX ± 0.XX}
-    \item AUPRC en CV: \placeholder{0.XX ± 0.XX}
-    \item Mejor \placeholder{calibración / estabilidad / interpretabilidad}
-    \item Supera a GRACE score en \placeholder{XX puntos porcentuales}
+    \item Variables: filtrado glomerular, fracción de eyección, edad, glicemia, presión arterial diastólica, creatinina, presión arterial sistólica, diabetes mellitus, frecuencia cardíaca, betabloqueadores
+    \item AUROC: 0,901 (IC 95\%: 0,855--0,937)
+    \item Justificación: Permite comparación directa con escala GRACE usando variables similares
+\end{itemize}
+
+\textbf{2. Modelo Extendido (propuesta principal):} XGBoost con 57 variables
+\begin{itemize}
+    \item AUROC: 0,938 (IC 95\%: 0,884--0,977)
+    \item Precisión: 0,944 | Sensibilidad: 0,618 | Especificidad: 0,996
+    \item Justificación: Máximo rendimiento predictivo aprovechando toda la información disponible
 \end{itemize}
 \end{keypoint}
 
 \subsection{Calibración del Modelo}
 
-\subsubsection{Método de Calibración}
-
-\begin{table}[H]
-\centering
-\caption{Métodos de calibración evaluados}
-\label{tab:calibracion_metodos}
-\begin{tabular}{@{}llc@{}}
-\toprule
-\textbf{Método} & \textbf{Descripción} & \textbf{Brier Score} \\
-\midrule
-Sin calibración & Probabilidades raw del modelo & \placeholder{0.XXX} \\
-Platt Scaling & Regresión logística sobre outputs & \placeholder{0.XXX} \\
-Isotonic Regression & Regresión isotónica & \placeholder{0.XXX} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
 \subsubsection{Curva de Calibración}
 
 \begin{figure}[H]
 \centering
-\begin{placeholderblock}
-\textbf{[INSERTAR CURVA DE CALIBRACIÓN]}
-
-Gráfico mostrando:
-\begin{itemize}
-    \item Eje X: Probabilidad predicha (por deciles)
-    \item Eje Y: Frecuencia observada de eventos
-    \item Línea diagonal (calibración perfecta)
-    \item Curva del modelo antes y después de calibración
-    \item Histograma de probabilidades predichas en parte inferior
-\end{itemize}
-\end{placeholderblock}
-\caption{Curva de calibración del modelo final}
+\includegraphics[width=0.85\textwidth]{../complemento_del_informe_final/Comparacion_Escalas_Internacionales/Calibration Curve.png}
+\caption{Curva de calibración del modelo reducido. La diagonal representa calibración perfecta. El modelo muestra buena calibración general con Brier Score de 0,096.}
 \label{fig:curva_calibracion}
 \end{figure}
 
-\subsection{Modelo de Ensamble (si aplica)}
+\subsubsection{Curva de Aprendizaje}
 
-\begin{placeholderblock}
-\textbf{[COMPLETAR SI SE CREÓ UN ENSEMBLE]}
-
-Describir:
-\begin{itemize}
-    \item Tipo de ensemble: Voting / Stacking / Blending
-    \item Modelos base incluidos
-    \item Pesos de cada modelo (si voting ponderado)
-    \item Meta-learner (si stacking)
-    \item Mejora respecto a modelos individuales
-\end{itemize}
-\end{placeholderblock}
-
-\subsection{Almacenamiento y Versionado de Modelos}
-
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\caption{Modelos almacenados}
-\label{tab:modelos_almacenados}
-\begin{tabular}{@{}llll@{}}
-\toprule
-\textbf{Modelo} & \textbf{Archivo} & \textbf{Formato} & \textbf{MLflow Run ID} \\
-\midrule
-\placeholder{Mejor modelo} & \placeholder{best\_model.joblib} & joblib & \placeholder{XXXXXXXX} \\
-\placeholder{Modelo calibrado} & \placeholder{calibrated\_model.joblib} & joblib & \placeholder{XXXXXXXX} \\
-\placeholder{Preprocesador} & \placeholder{preprocessor.joblib} & joblib & \placeholder{XXXXXXXX} \\
-\bottomrule
-\end{tabular}
-\end{table}
+\includegraphics[width=0.85\textwidth]{../complemento_del_informe_final/Comparacion_Escalas_Internacionales/curva_de_aprendizaje_xgboost.png}
+\caption{Curva de aprendizaje del modelo XGBoost. Muestra la evolución del rendimiento (score) en función del tamaño del conjunto de entrenamiento. La convergencia de las curvas de entrenamiento y validación indica un buen balance sin overfitting significativo.}
+\label{fig:learning_curve}
+\end{figure}
+
+

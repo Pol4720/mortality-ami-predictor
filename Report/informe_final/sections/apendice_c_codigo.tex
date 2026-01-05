@@ -9,31 +9,33 @@ Este apéndice proporciona información sobre el código fuente, recursos y herr
 
 \subsection{Estructura del Repositorio}
 
+{\small
 \begin{verbatim}
 mortality-ami-predictor/
-+-- DATA/                       # Datos (no incluidos en repositorio publico)
-|   +-- raw/                    # Datos crudos
-|   +-- processed/              # Datos procesados
-+-- Report/                     # Documentacion e informes
-|   +-- informe_final/          # Este informe
-|   +-- state_of_the_art/       # Estado del arte
-+-- Tools/                      # Herramientas principales
-|   +-- src/                    # Codigo fuente
-|   |   +-- data_load/          # Carga de datos
-|   |   +-- cleaning/           # Limpieza y preprocesamiento
-|   |   +-- eda/                # Analisis exploratorio
-|   |   +-- automl/             # AutoML
-|   |   +-- evaluation/         # Evaluacion de modelos
-|   |   +-- explainability/     # Explicabilidad (SHAP)
-|   +-- dashboard/              # Aplicacion Streamlit
-|   +-- notebooks/              # Jupyter notebooks
-|   +-- models/                 # Modelos entrenados
-|   +-- tests/                  # Tests unitarios
-|   +-- docs/                   # Documentacion tecnica
-+-- requirements.txt            # Dependencias Python
-+-- environment.yml             # Entorno Conda
-+-- README.md                   # Documentacion principal
++-- DATA/              # Datos (no en repo publico)
+|   +-- raw/           # Datos crudos
+|   +-- processed/     # Datos procesados
++-- Report/            # Documentacion e informes
+|   +-- informe_final/ # Este informe
+|   +-- state_of_art/  # Estado del arte
++-- Tools/             # Herramientas principales
+|   +-- src/           # Codigo fuente
+|   |   +-- data_load/ # Carga de datos
+|   |   +-- cleaning/  # Limpieza
+|   |   +-- eda/       # Analisis exploratorio
+|   |   +-- automl/    # AutoML
+|   |   +-- evaluation/# Evaluacion
+|   |   +-- explain/   # SHAP
+|   +-- dashboard/     # Aplicacion Streamlit
+|   +-- notebooks/     # Jupyter notebooks
+|   +-- models/        # Modelos entrenados
+|   +-- tests/         # Tests unitarios
+|   +-- docs/          # Documentacion tecnica
++-- requirements.txt   # Dependencias Python
++-- environment.yml    # Entorno Conda
++-- README.md          # Documentacion principal
 \end{verbatim}
+}
 
 \subsection{Acceso al Código}
 
@@ -45,10 +47,10 @@ mortality-ami-predictor/
 \toprule
 \textbf{Recurso} & \textbf{Enlace} \\
 \midrule
-Repositorio GitHub & \placeholder{https://github.com/usuario/mortality-ami-predictor} \\
-Documentación & \placeholder{https://usuario.github.io/mortality-ami-predictor} \\
-Dashboard (demo) & \placeholder{https://mortality-ami-predictor.streamlit.app} \\
-MLflow experiments & \placeholder{Enlace o ``Local''} \\
+Repositorio GitHub & \url{https://github.com/Pol4720/mortality-ami-predictor} \\
+Documentación & \url{https://pol4720.github.io/mortality-ami-predictor} \\
+Dashboard (demo) & Local (Streamlit) \\
+MLflow experiments & Local \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -212,24 +214,27 @@ mkdocs build  # Para produccion
 \subsection{Licencia}
 
 \begin{placeholderblock}[ESPECIFICAR LICENCIA]
-Este proyecto esta licenciado bajo \placeholder{MIT License / Apache 2.0 / Creative Commons}.
+Este proyecto esta licenciado bajo \placeholder{MIT / Apache 2.0 / CC}.
 
-Ver archivo LICENSE en el repositorio para detalles completos.
+Ver archivo LICENSE en el repositorio para detalles.
 \end{placeholderblock}
 
 \subsection{Citacion}
 
 Si utilizas este codigo o metodologia en tu investigacion, por favor cita:
 
+{\small
 \begin{verbatim}
 @software{mortalityami2025,
   author = {[AUTORES]},
-  title = {Mortality AMI Predictor: Machine Learning para 
-           Prediccion de Mortalidad Intrahospitalaria en IAM},
-  year = {2025},
-  url = {https://github.com/usuario/mortality-ami-predictor}
+  title  = {Mortality AMI Predictor: ML para
+            Mortalidad Intrahospitalaria en IAM},
+  year   = {2025},
+  url    = {https://github.com/usuario/
+            mortality-ami-predictor}
 }
 \end{verbatim}
+}
 
 \subsection{Contacto y Soporte}
 

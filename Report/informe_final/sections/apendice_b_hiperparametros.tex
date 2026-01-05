@@ -34,18 +34,21 @@ n\_jobs & \placeholder{-1 (todos los cores)} \\
 \centering
 \caption{Hiperparámetros -- Regresión Logística}
 \label{tab:hp_lr_apendice}
-\begin{tabular}{@{}llll@{}}
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{2.5cm}p{4cm}p{2cm}p{3cm}@{}}
 \toprule
-\textbf{Hiperparámetro} & \textbf{Espacio de búsqueda} & \textbf{Valor óptimo} & \textbf{Descripción} \\
+\textbf{Hiperpar.} & \textbf{Espacio búsqueda} & \textbf{Óptimo} & \textbf{Descripción} \\
 \midrule
-penalty & [l1, l2, elasticnet] & \placeholder{l2} & Tipo de regularización \\
-C & [0.001, 0.01, 0.1, 1, 10, 100] & \placeholder{1.0} & Inverso de fuerza de regularización \\
-solver & [lbfgs, saga, liblinear] & \placeholder{lbfgs} & Algoritmo de optimización \\
-class\_weight & [None, balanced] & \placeholder{balanced} & Ponderación de clases \\
-max\_iter & [500, 1000, 2000] & \placeholder{1000} & Máximo de iteraciones \\
-l1\_ratio & [0.0, 0.25, 0.5, 0.75, 1.0] & \placeholder{N/A} & Ratio L1/L2 (si elasticnet) \\
+penalty & [l1, l2, elasticnet] & \placeholder{l2} & Tipo regularización \\
+C & [0.001, 0.01, 0.1, 1, 10, 100] & \placeholder{1.0} & Inverso reg. \\
+solver & [lbfgs, saga, liblinear] & \placeholder{lbfgs} & Algoritmo opt. \\
+class\_weight & [None, balanced] & \placeholder{balanced} & Pond. clases \\
+max\_iter & [500, 1000, 2000] & \placeholder{1000} & Máx iteraciones \\
+l1\_ratio & [0.0, 0.25, 0.5, 0.75, 1.0] & \placeholder{N/A} & Ratio L1/L2 \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsection{Random Forest}
@@ -54,20 +57,23 @@ l1\_ratio & [0.0, 0.25, 0.5, 0.75, 1.0] & \placeholder{N/A} & Ratio L1/L2 (si el
 \centering
 \caption{Hiperparámetros -- Random Forest}
 \label{tab:hp_rf_apendice}
-\begin{tabular}{@{}llll@{}}
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{2.5cm}p{4cm}p{2cm}p{3cm}@{}}
 \toprule
-\textbf{Hiperparámetro} & \textbf{Espacio de búsqueda} & \textbf{Valor óptimo} & \textbf{Descripción} \\
+\textbf{Hiperpar.} & \textbf{Espacio búsqueda} & \textbf{Óptimo} & \textbf{Descripción} \\
 \midrule
-n\_estimators & [100, 200, 300, 500, 1000] & \placeholder{500} & Número de árboles \\
-max\_depth & [None, 5, 10, 15, 20, 25] & \placeholder{15} & Profundidad máxima \\
-min\_samples\_split & [2, 5, 10, 20] & \placeholder{5} & Min muestras para split \\
-min\_samples\_leaf & [1, 2, 4, 8] & \placeholder{2} & Min muestras por hoja \\
-max\_features & [sqrt, log2, 0.3, 0.5, 0.7] & \placeholder{sqrt} & Features por split \\
-class\_weight & [balanced, balanced\_subsample] & \placeholder{balanced} & Ponderación de clases \\
-bootstrap & [True, False] & \placeholder{True} & Bootstrap sampling \\
-criterion & [gini, entropy] & \placeholder{gini} & Criterio de split \\
+n\_estimators & [100, 200, 300, 500, 1000] & \placeholder{500} & Núm. árboles \\
+max\_depth & [None, 5, 10, 15, 20, 25] & \placeholder{15} & Prof. máxima \\
+min\_samples\_split & [2, 5, 10, 20] & \placeholder{5} & Min muestras split \\
+min\_samples\_leaf & [1, 2, 4, 8] & \placeholder{2} & Min muestras hoja \\
+max\_features & [sqrt, log2, 0.3, 0.5, 0.7] & \placeholder{sqrt} & Features/split \\
+class\_weight & [balanced, balanced\_sub] & \placeholder{balanced} & Pond. clases \\
+bootstrap & [True, False] & \placeholder{True} & Bootstrap \\
+criterion & [gini, entropy] & \placeholder{gini} & Criterio split \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsection{XGBoost}
@@ -76,25 +82,28 @@ criterion & [gini, entropy] & \placeholder{gini} & Criterio de split \\
 \centering
 \caption{Hiperparámetros -- XGBoost}
 \label{tab:hp_xgb_apendice}
-\begin{tabular}{@{}lp{4cm}ll@{}}
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{2.5cm}p{3.8cm}p{2cm}p{3cm}@{}}
 \toprule
-\textbf{Hiperparámetro} & \textbf{Espacio de búsqueda} & \textbf{Valor óptimo} & \textbf{Descripción} \\
+\textbf{Hiperpar.} & \textbf{Espacio búsqueda} & \textbf{Óptimo} & \textbf{Descripción} \\
 \midrule
-n\_estimators & [100, 200, 300, 500, 1000] & \placeholder{300} & Número de rondas boosting \\
-max\_depth & [3, 4, 5, 6, 7, 8, 10] & \placeholder{5} & Profundidad máxima \\
-learning\_rate (eta) & [0.01, 0.02, 0.05, 0.1, 0.2] & \placeholder{0.05} & Tasa de aprendizaje \\
-subsample & [0.6, 0.7, 0.8, 0.9, 1.0] & \placeholder{0.8} & Fracción de muestras \\
-colsample\_bytree & [0.6, 0.7, 0.8, 0.9, 1.0] & \placeholder{0.8} & Fracción de features \\
-colsample\_bylevel & [0.6, 0.7, 0.8, 0.9, 1.0] & \placeholder{1.0} & Features por nivel \\
-min\_child\_weight & [1, 3, 5, 7, 10] & \placeholder{5} & Min suma de pesos hijos \\
-gamma & [0, 0.1, 0.2, 0.3, 0.5] & \placeholder{0.1} & Min reducción de pérdida \\
-reg\_alpha & [0, 0.001, 0.01, 0.1, 1] & \placeholder{0.01} & Regularización L1 \\
-reg\_lambda & [0, 0.001, 0.01, 0.1, 1] & \placeholder{0.1} & Regularización L2 \\
-scale\_pos\_weight & [1, ratio\_clases] & \placeholder{ratio} & Balance de clases \\
-objective & -- & binary:logistic & Función objetivo \\
-eval\_metric & -- & auc, logloss & Métricas de evaluación \\
+n\_estimators & [100, 200, 300, 500, 1000] & \placeholder{300} & Rondas boosting \\
+max\_depth & [3, 4, 5, 6, 7, 8, 10] & \placeholder{5} & Prof. máxima \\
+learning\_rate & [0.01, 0.02, 0.05, 0.1, 0.2] & \placeholder{0.05} & Tasa aprendizaje \\
+subsample & [0.6, 0.7, 0.8, 0.9, 1.0] & \placeholder{0.8} & Fracc. muestras \\
+colsample\_bytree & [0.6, 0.7, 0.8, 0.9, 1.0] & \placeholder{0.8} & Fracc. features \\
+colsample\_bylevel & [0.6, 0.7, 0.8, 0.9, 1.0] & \placeholder{1.0} & Features/nivel \\
+min\_child\_weight & [1, 3, 5, 7, 10] & \placeholder{5} & Min suma pesos \\
+gamma & [0, 0.1, 0.2, 0.3, 0.5] & \placeholder{0.1} & Min red. pérdida \\
+reg\_alpha & [0, 0.001, 0.01, 0.1, 1] & \placeholder{0.01} & Reg. L1 \\
+reg\_lambda & [0, 0.001, 0.01, 0.1, 1] & \placeholder{0.1} & Reg. L2 \\
+scale\_pos\_weight & [1, ratio\_clases] & \placeholder{ratio} & Balance clases \\
+objective & -- & binary:logistic & Función obj. \\
+eval\_metric & -- & auc, logloss & Métricas eval. \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsection{LightGBM}
@@ -103,24 +112,27 @@ eval\_metric & -- & auc, logloss & Métricas de evaluación \\
 \centering
 \caption{Hiperparámetros -- LightGBM}
 \label{tab:hp_lgbm_apendice}
-\begin{tabular}{@{}lp{4cm}ll@{}}
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{2.5cm}p{3.8cm}p{2cm}p{3cm}@{}}
 \toprule
-\textbf{Hiperparámetro} & \textbf{Espacio de búsqueda} & \textbf{Valor óptimo} & \textbf{Descripción} \\
+\textbf{Hiperpar.} & \textbf{Espacio búsqueda} & \textbf{Óptimo} & \textbf{Descripción} \\
 \midrule
-n\_estimators & [100, 200, 300, 500, 1000] & \placeholder{400} & Número de iteraciones \\
-num\_leaves & [31, 50, 70, 100, 150] & \placeholder{70} & Hojas por árbol \\
-max\_depth & [-1, 5, 10, 15, 20] & \placeholder{10} & Profundidad máxima \\
-learning\_rate & [0.01, 0.02, 0.05, 0.1, 0.2] & \placeholder{0.05} & Tasa de aprendizaje \\
-min\_child\_samples & [5, 10, 20, 50, 100] & \placeholder{20} & Min datos por hoja \\
+n\_estimators & [100, 200, 300, 500, 1000] & \placeholder{400} & Núm. iteraciones \\
+num\_leaves & [31, 50, 70, 100, 150] & \placeholder{70} & Hojas/árbol \\
+max\_depth & [-1, 5, 10, 15, 20] & \placeholder{10} & Prof. máxima \\
+learning\_rate & [0.01, 0.02, 0.05, 0.1, 0.2] & \placeholder{0.05} & Tasa aprendizaje \\
+min\_child\_samples & [5, 10, 20, 50, 100] & \placeholder{20} & Min datos hoja \\
 min\_child\_weight & [0.001, 0.01, 0.1] & \placeholder{0.01} & Min suma hessian \\
-subsample & [0.6, 0.7, 0.8, 0.9, 1.0] & \placeholder{0.8} & Fracción muestras \\
-colsample\_bytree & [0.6, 0.7, 0.8, 0.9, 1.0] & \placeholder{0.8} & Fracción features \\
-reg\_alpha & [0, 0.01, 0.1, 1] & \placeholder{0.1} & Regularización L1 \\
-reg\_lambda & [0, 0.01, 0.1, 1] & \placeholder{0.1} & Regularización L2 \\
-class\_weight & [None, balanced] & \placeholder{balanced} & Ponderación clases \\
-boosting\_type & [gbdt, dart] & \placeholder{gbdt} & Tipo de boosting \\
+subsample & [0.6, 0.7, 0.8, 0.9, 1.0] & \placeholder{0.8} & Fracc. muestras \\
+colsample\_bytree & [0.6, 0.7, 0.8, 0.9, 1.0] & \placeholder{0.8} & Fracc. features \\
+reg\_alpha & [0, 0.01, 0.1, 1] & \placeholder{0.1} & Reg. L1 \\
+reg\_lambda & [0, 0.01, 0.1, 1] & \placeholder{0.1} & Reg. L2 \\
+class\_weight & [None, balanced] & \placeholder{balanced} & Pond. clases \\
+boosting\_type & [gbdt, dart] & \placeholder{gbdt} & Tipo boosting \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsection{Red Neuronal (MLP)}
@@ -129,14 +141,16 @@ boosting\_type & [gbdt, dart] & \placeholder{gbdt} & Tipo de boosting \\
 \centering
 \caption{Hiperparámetros -- Red Neuronal}
 \label{tab:hp_nn_apendice}
-\begin{tabular}{@{}lp{4cm}ll@{}}
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{2.5cm}p{4.5cm}p{2cm}p{2.5cm}@{}}
 \toprule
-\textbf{Hiperparámetro} & \textbf{Espacio de búsqueda} & \textbf{Valor óptimo} & \textbf{Descripción} \\
+\textbf{Hiperpar.} & \textbf{Espacio búsqueda} & \textbf{Óptimo} & \textbf{Descripción} \\
 \midrule
-hidden\_layer\_sizes & [(64,32), (128,64), (128,64,32), (256,128,64)] & \placeholder{(128,64,32)} & Arquitectura \\
-activation & [relu, tanh, selu] & \placeholder{relu} & Función activación \\
+hidden\_layers & [(64,32), (128,64), (128,64,32)] & \placeholder{(128,64,32)} & Arquitectura \\
+activation & [relu, tanh, selu] & \placeholder{relu} & Func. activación \\
 solver & [adam, sgd] & \placeholder{adam} & Optimizador \\
-alpha & [0.0001, 0.001, 0.01, 0.1] & \placeholder{0.001} & Regularización L2 \\
+alpha & [0.0001, 0.001, 0.01, 0.1] & \placeholder{0.001} & Reg. L2 \\
 learning\_rate & [constant, adaptive] & \placeholder{adaptive} & Esquema LR \\
 learning\_rate\_init & [0.001, 0.01, 0.1] & \placeholder{0.001} & LR inicial \\
 batch\_size & [32, 64, 128, 256] & \placeholder{64} & Tamaño batch \\
@@ -145,6 +159,7 @@ early\_stopping & [True] & True & Early stopping \\
 n\_iter\_no\_change & [10, 20, 30] & \placeholder{20} & Paciencia ES \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsection{Configuración de AutoML (si aplica)}

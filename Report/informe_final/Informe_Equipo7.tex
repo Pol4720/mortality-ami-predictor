@@ -19,6 +19,12 @@
 \usepackage{lmodern}
 \usepackage{microtype}
 
+% Configuraciones para manejar overfull boxes
+\setlength{\emergencystretch}{3em}
+\tolerance=2000
+\hbadness=2000
+\sloppy
+
 % Geometría y formato
 \usepackage[
     top=2.5cm,
@@ -39,16 +45,19 @@
     group-minimum-digits = 4
 }
 
+% Colores
+\usepackage[dvipsnames]{xcolor}
+
 % Tablas y figuras
+\usepackage{array}
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage{multirow}
-\usepackage{array}
 \usepackage{tabularx}
 \usepackage{float}
 \usepackage{graphicx}
+\graphicspath{{../complemento_del_informe_final/Comparacion_Escalas_Internacionales/}{../complemento_del_informe_final/Propuesta_de_seleccion_de_variables/}{../complemento_del_informe_final/seccion 5/}{./images/}}
 \usepackage{subcaption}
-\usepackage[table,xcdraw]{xcolor}
 
 % Colores institucionales
 \definecolor{primaryblue}{RGB}{0,51,102}
@@ -92,16 +101,24 @@
 % Listados de código
 \usepackage{listings}
 \lstset{
-    basicstyle=\ttfamily\small,
+    basicstyle=\ttfamily\footnotesize,
     backgroundcolor=\color{lightgray},
     breaklines=true,
+    breakatwhitespace=false,
+    postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
     frame=single,
     numbers=left,
     numberstyle=\tiny\color{gray},
     keywordstyle=\color{primaryblue}\bfseries,
     commentstyle=\color{gray}\itshape,
-    stringstyle=\color{accentgold}
+    stringstyle=\color{accentgold},
+    columns=flexible,
+    keepspaces=true
 }
+
+% Redefinir verbatim para usar fuente más pequeña
+\usepackage{fancyvrb}
+\RecustomVerbatimEnvironment{verbatim}{Verbatim}{fontsize=\footnotesize}
 
 % Algoritmos
 \usepackage{algorithm}
@@ -184,14 +201,17 @@
 
 \author{
     \textbf{Equipo 7}\\[0.3cm]
-    \begin{tabular}{ll}
-    % PLACEHOLDER: Agregar nombres de los integrantes del equipo
-    Integrante 1 & \texttt{email1@universidad.edu}\\
-    Integrante 2 & \texttt{email2@universidad.edu}\\
-    Integrante 3 & \texttt{email3@universidad.edu}\\
+    \begin{tabular}{l}
+    Richard Alejandro Matos Arderí\\
+    Abel Ponce González\\
+    Abraham Romero Imbert\\
+    Eveliz Espinaco Milián\\
+    Michell Viu Ramirez\\
+    Ernesto Abreu Peraza\\
+    Eduardo Brito Labrada\\
     \end{tabular}\\[0.5cm]
     \textit{Curso de Machine Learning}\\
-    \textit{Universidad [NOMBRE]}
+    \textit{Universidad de Ciencias Médicas de La Habana}
 }
 
 \date{\today}
@@ -239,9 +259,6 @@
 % Análisis Exploratorio de Datos
 \input{sections/05_eda}
 
-% Preprocesamiento
-\input{sections/06_preprocesamiento}
-
 % Modelado
 \input{sections/07_modelado}
 
@@ -257,57 +274,13 @@
 % Conclusiones
 \input{sections/11_conclusiones}
 
-% Limitaciones y Trabajo Futuro
-\input{sections/12_limitaciones}
-
 % ============================================================================
 % SECCIONES FINALES
 % ============================================================================
 
-% Declaración de contribuciones
-\section*{Contribuciones de los Autores}
-\addcontentsline{toc}{section}{Contribuciones de los Autores}
-
-\placeholder{COMPLETAR: Contribuciones de cada integrante}
-
-Especificar las contribuciones de cada integrante del equipo según la taxonomía CRediT:
-\begin{itemize}
-    \item \textbf{Integrante 1}: Conceptualización, Metodología, Software
-    \item \textbf{Integrante 2}: Curación de datos, Análisis formal, Visualización
-    \item \textbf{Integrante 3}: Redacción, Revisión, Administración del proyecto
-\end{itemize}
-
-% Conflictos de interés
-\section*{Declaración de Conflictos de Interés}
-\addcontentsline{toc}{section}{Declaración de Conflictos de Interés}
-Los autores declaran no tener conflictos de interés relacionados con este estudio.
-
-% Agradecimientos
-\section*{Agradecimientos}
-\addcontentsline{toc}{section}{Agradecimientos}
-
-\placeholder{COMPLETAR: Agradecimientos}
-
-Agradecer a:
-\begin{itemize}
-    \item Profesores y tutores del curso
-    \item Instituciones que proporcionaron los datos (RECUIMA)
-    \item Colaboradores externos
-\end{itemize}
 
 % Referencias bibliográficas
 \newpage
 \printbibliography[heading=bibintoc,title={Referencias Bibliográficas}]
-
-% Apéndices
-\newpage
-\appendix
-\input{sections/apendice_a_variables}
-\input{sections/apendice_b_hiperparametros}
-\input{sections/apendice_c_codigo}
-
-% Glosario
-\newpage
-\printglossary[type=\acronymtype,title={Lista de Acrónimos}]
 
 \end{document}

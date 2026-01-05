@@ -1,0 +1,22 @@
+﻿Modelo 1,Modelo 2,Test Usado,p-value,Significativo (p<0.05),Diferencia de medias,Effect Size (Cohen's d),Normalidad M1,Normalidad M2
+knn,logreg,Paired t-test,0.0000,✅ SÍ,-0.0533,-1.9079 (Large),✓,✓
+knn,dtree,Paired t-test,0.0000,✅ SÍ,0.0913,2.3257 (Large),✓,✓
+knn,rf,Mann-Whitney U test,0.0000,✅ SÍ,-0.0715,-2.6035 (Large),✓,✗
+knn,xgb,Mann-Whitney U test,0.0000,✅ SÍ,-0.0658,-2.2990 (Large),✓,✗
+knn,xgb_balanced,Mann-Whitney U test,0.0000,✅ SÍ,-0.0661,-2.3145 (Large),✓,✗
+knn,lgbm,Mann-Whitney U test,0.0000,✅ SÍ,-0.0667,-2.3594 (Large),✓,✗
+logreg,dtree,Paired t-test,0.0000,✅ SÍ,0.1446,4.1506 (Large),✓,✓
+logreg,rf,Mann-Whitney U test,0.0000,✅ SÍ,-0.0182,-0.8816 (Large),✓,✗
+logreg,xgb,Mann-Whitney U test,0.0000,✅ SÍ,-0.0125,-0.5652 (Medium),✓,✗
+logreg,xgb_balanced,Mann-Whitney U test,0.0000,✅ SÍ,-0.0128,-0.5809 (Medium),✓,✗
+logreg,lgbm,Mann-Whitney U test,0.0000,✅ SÍ,-0.0135,-0.6195 (Medium),✓,✗
+dtree,rf,Mann-Whitney U test,0.0000,✅ SÍ,-0.1628,-4.7243 (Large),✓,✗
+dtree,xgb,Mann-Whitney U test,0.0000,✅ SÍ,-0.1571,-4.4386 (Large),✓,✗
+dtree,xgb_balanced,Mann-Whitney U test,0.0000,✅ SÍ,-0.1574,-4.4533 (Large),✓,✗
+dtree,lgbm,Mann-Whitney U test,0.0000,✅ SÍ,-0.1581,-4.4995 (Large),✓,✗
+rf,xgb,Mann-Whitney U test,0.0796,❌ NO,0.0057,0.2623 (Small),✗,✗
+rf,xgb_balanced,Mann-Whitney U test,0.0909,❌ NO,0.0054,0.2492 (Small),✗,✗
+rf,lgbm,Mann-Whitney U test,0.1393,❌ NO,0.0047,0.2237 (Small),✗,✗
+xgb,xgb_balanced,Mann-Whitney U test,0.9028,❌ NO,-0.0003,-0.0132 (Negligible),✗,✗
+xgb,lgbm,Mann-Whitney U test,0.8565,❌ NO,-0.0009,-0.0412 (Negligible),✗,✗
+xgb_balanced,lgbm,Mann-Whitney U test,0.8854,❌ NO,-0.0006,-0.0280 (Negligible),✗,✗

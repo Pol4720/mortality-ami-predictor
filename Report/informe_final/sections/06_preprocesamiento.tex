@@ -185,14 +185,17 @@ APP\_DM & No & Sí & \placeholder{n (\%)} \\
 \centering
 \caption{Variables con One-Hot Encoding}
 \label{tab:one_hot}
-\begin{tabular}{@{}lll@{}}
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{2.5cm}p{3.5cm}p{4.5cm}@{}}
 \toprule
-\textbf{Variable original} & \textbf{Categorías} & \textbf{Variables dummy creadas} \\
+\textbf{Variable} & \textbf{Categorías} & \textbf{Dummy} \\
 \midrule
-\placeholder{ECG\_LOCALIZACION} & \placeholder{Anterior, Inferior, Lateral} & \placeholder{LOC\_anterior, LOC\_inferior, LOC\_lateral} \\
-\placeholder{ECG\_RITMO} & \placeholder{Sinusal, FA, Flutter} & \placeholder{RITMO\_sinusal, RITMO\_fa, RITMO\_flutter} \\
+\placeholder{ECG\_LOCAL} & \placeholder{Ant, Inf, Lat} & \placeholder{LOC\_ant, LOC\_inf, LOC\_lat} \\
+\placeholder{ECG\_RITMO} & \placeholder{Sin, FA, Fl} & \placeholder{RITMO\_sin, RITMO\_fa} \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsubsection{Variables Ordinales}
@@ -201,14 +204,17 @@ APP\_DM & No & Sí & \placeholder{n (\%)} \\
 \centering
 \caption{Codificación de variables ordinales}
 \label{tab:codificacion_ordinales}
-\begin{tabular}{@{}llll@{}}
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{2.5cm}p{4.5cm}p{3cm}@{}}
 \toprule
-\textbf{Variable} & \textbf{Categorías (orden)} & \textbf{Valores asignados} \\
+\textbf{Variable} & \textbf{Categorías (orden)} & \textbf{Valores} \\
 \midrule
 KILLIP & I $<$ II $<$ III $<$ IV & 1, 2, 3, 4 \\
-\placeholder{TABAQUISMO} & \placeholder{Nunca $<$ Ex $<$ Activo} & \placeholder{0, 1, 2} \\
+\placeholder{TABAQ.} & \placeholder{Nunca $<$ Ex $<$ Activo} & \placeholder{0, 1, 2} \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsection{Transformaciones de Variables Numéricas}

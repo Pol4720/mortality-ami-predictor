@@ -13,16 +13,19 @@
 \centering
 \caption{Resumen de limitaciones metodológicas}
 \label{tab:limitaciones_metodologicas}
-\begin{tabular}{@{}lp{5cm}p{5cm}@{}}
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{2.2cm}p{4.2cm}p{4.2cm}@{}}
 \toprule
-\textbf{Limitación} & \textbf{Descripción} & \textbf{Impacto potencial} \\
+\textbf{Limitación} & \textbf{Descripción} & \textbf{Impacto} \\
 \midrule
-Diseño retrospectivo & \placeholder{Los datos fueron recolectados retrospectivamente de registros clínicos} & \placeholder{Posible sesgo de selección e información incompleta} \\
-Centro único & \placeholder{Datos de una sola institución/región} & \placeholder{Limitación en generalización externa} \\
-Periodo temporal & \placeholder{Datos de [periodo], prácticas clínicas pueden haber evolucionado} & \placeholder{Posible drift temporal} \\
-Validación interna & \placeholder{Solo validación por división de datos} & \placeholder{Optimismo en estimaciones de rendimiento} \\
+Diseño retrosp. & \placeholder{Registros clínicos} & \placeholder{Sesgo selección} \\
+Centro único & \placeholder{Una institución} & \placeholder{Generalización} \\
+Periodo temp. & \placeholder{Datos [periodo]} & \placeholder{Drift temporal} \\
+Valid. interna & \placeholder{División datos} & \placeholder{Optimismo} \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsubsection{Limitaciones de los Datos}
@@ -116,18 +119,20 @@ Validación interna & \placeholder{Solo validación por división de datos} & \p
 \centering
 \caption{Análisis de sesgos potenciales}
 \label{tab:sesgos}
-\begin{tabular}{@{}llp{6cm}@{}}
+{\footnotesize
+\begin{tabular}{@{}p{2.5cm}p{1.5cm}p{5.5cm}@{}}
 \toprule
 \textbf{Tipo de sesgo} & \textbf{Riesgo} & \textbf{Mitigación aplicada} \\
 \midrule
-Sesgo de selección & \placeholder{Medio/Alto/Bajo} & \placeholder{Descripción de criterios de inclusión claros} \\
-Sesgo de información & \placeholder{Medio/Alto/Bajo} & \placeholder{Uso de variables objetivas (laboratorio)} \\
-Sesgo de confusión & \placeholder{Medio/Alto/Bajo} & \placeholder{Ajuste multivariable, ML captura interacciones} \\
-Sesgo de publicación & N/A & Reporte de todos los modelos evaluados \\
-Overfitting & \placeholder{Medio/Bajo} & \placeholder{CV, regularización, early stopping} \\
-Data leakage & \placeholder{Bajo} & \placeholder{Separación temporal train/test, exclusión de vars post-outcome} \\
+Sesgo de selección & \placeholder{Medio} & \placeholder{Criterios de inclusión claros} \\
+Sesgo de información & \placeholder{Bajo} & \placeholder{Uso de variables objetivas} \\
+Sesgo de confusión & \placeholder{Medio} & \placeholder{Ajuste multivariable, ML} \\
+Sesgo de publicación & N/A & Reporte de todos los modelos \\
+Overfitting & \placeholder{Bajo} & \placeholder{CV, regularización} \\
+Data leakage & \placeholder{Bajo} & \placeholder{Separación temporal} \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \subsection{Trabajo Futuro}
