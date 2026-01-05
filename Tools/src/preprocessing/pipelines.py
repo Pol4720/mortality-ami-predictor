@@ -32,6 +32,13 @@ class PreprocessingConfig:
         selection_estimator: Estimator for feature selection
         drop_fully_missing: Drop fully missing columns
         drop_constant: Drop constant columns
+        
+        # Imbalance handling (added for mortality prediction)
+        imbalance_strategy: Strategy for handling class imbalance
+            Options: 'none', 'smote', 'smote_nc', 'adasyn', 'borderline_smote',
+                    'svm_smote', 'smote_tomek', 'smote_enn', 'class_weight'
+        imbalance_sampling_strategy: Target ratio for resampling ('auto' or float)
+        imbalance_k_neighbors: Number of neighbors for SMOTE variants (default: 5)
     """
     imputer_mode: str = "iterative"
     scale_numeric: bool = True
@@ -40,6 +47,11 @@ class PreprocessingConfig:
     selection_estimator: Optional[object] = None
     drop_fully_missing: bool = True
     drop_constant: bool = True
+    
+    # Imbalance handling options
+    imbalance_strategy: str = "smote"  # Default to SMOTE for medical data
+    imbalance_sampling_strategy: str = "auto"
+    imbalance_k_neighbors: int = 5
 
 
 def build_preprocessing_pipeline(

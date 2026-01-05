@@ -263,6 +263,134 @@ else:
     """)
     st.session_state.automl_enabled = False
 
+# ==================== CLASS IMBALANCE HANDLING ====================
+st.sidebar.markdown("---")
+st.sidebar.header("⚖️ Balanceo de Clases")
+
+# Check imbalanced-learn availability
+try:
+    from src.preprocessing.imbalance import (
+        detect_imbalance,
+        get_recommended_strategy,
+        ImbalanceStrategy,
+        STRATEGY_DESCRIPTIONS,
+        is_imblearn_available,
+    )
+    IMBALANCE_AVAILABLE = is_imblearn_available()
+except ImportError:
+    IMBALANCE_AVAILABLE = False
+
+# Detect class imbalance
+if df is not None and target_col in df.columns:
+    y_target = df[target_col]
+    try:
+        is_imbalanced, imbalance_ratio, class_counts = detect_imbalance(y_target)
+        
+        # Show imbalance info
+        if is_imbalanced:
+            st.sidebar.warning(f"⚠️ **Dataset Desbalanceado**")
+            st.sidebar.markdown(f"Ratio: **{imbalance_ratio:.1f}:1**")
+        else:
+            st.sidebar.success(f"✅ Dataset Balanceado (ratio {imbalance_ratio:.1f}:1)")
+        
+        # Show class distribution bar
+        total = sum(class_counts.values())
+        for cls, count in sorted(class_counts.items()):
+            pct = count / total * 100
+            st.sidebar.progress(pct / 100, text=f"Clase {cls}: {count} ({pct:.1f}%)")
+        
+    except Exception as e:
+        is_imbalanced = True  # Assume imbalanced for safety
+        imbalance_ratio = 1.0
+        st.sidebar.info("ℹ️ No se pudo analizar el desbalance")
+else:
+    is_imbalanced = True
+    imbalance_ratio = 1.0
+
+# Imbalance strategy selector
+if IMBALANCE_AVAILABLE:
+    # Define available strategies with display names
+    strategy_options = {
+        "smote": "🔄 SMOTE (Recomendado)",
+        "adasyn": "📈 ADASYN (Adaptativo)",
+        "borderline_smote": "🎯 Borderline-SMOTE",
+        "smote_tomek": "🔄+🧹 SMOTE + Tomek Links",
+        "smote_enn": "🔄+✂️ SMOTE + ENN",
+        "class_weight": "⚖️ Class Weight (sin resampleo)",
+        "random_oversample": "📊 Random Oversampling",
+        "none": "❌ Sin Balanceo",
+    }
+    
+    # Get recommended strategy
+    try:
+        X_features = df.drop(columns=[target_col]) if target_col in df.columns else df
+        recommended = get_recommended_strategy(y_target, X_features)
+        recommended_key = recommended.value
+    except:
+        recommended_key = "smote"
+    
+    # Default to recommended strategy
+    default_idx = list(strategy_options.keys()).index(recommended_key) if recommended_key in strategy_options else 0
+    
+    imbalance_strategy = st.sidebar.selectbox(
+        "Estrategia de Balanceo",
+        options=list(strategy_options.keys()),
+        format_func=lambda x: strategy_options[x],
+        index=default_idx,
+        help="Técnica para manejar el desbalance de clases"
+    )
+    
+    # Show strategy description
+    try:
+        strategy_enum = ImbalanceStrategy(imbalance_strategy)
+        desc = STRATEGY_DESCRIPTIONS.get(strategy_enum, {})
+        if desc:
+            with st.sidebar.expander("ℹ️ Acerca de esta estrategia"):
+                st.markdown(f"**{desc.get('name', '')}**")
+                st.markdown(desc.get('description', ''))
+                st.markdown(f"✅ **Ventajas:** {desc.get('pros', '')}")
+                st.markdown(f"❌ **Desventajas:** {desc.get('cons', '')}")
+                st.markdown(f"💡 **Recomendado para:** {desc.get('recommended_for', '')}")
+    except:
+        pass
+    
+    # Advanced options for SMOTE variants
+    if imbalance_strategy in ['smote', 'adasyn', 'borderline_smote', 'smote_tomek', 'smote_enn']:
+        with st.sidebar.expander("⚙️ Opciones Avanzadas"):
+            imbalance_k_neighbors = st.slider(
+                "K-Neighbors (SMOTE)",
+                min_value=1,
+                max_value=15,
+                value=5,
+                help="Número de vecinos para generación de datos sintéticos"
+            )
+            
+            imbalance_sampling_strategy = st.selectbox(
+                "Sampling Strategy",
+                ["auto", "minority", "not majority", "all"],
+                index=0,
+                help="'auto' balancea las clases automáticamente"
+            )
+    else:
+        imbalance_k_neighbors = 5
+        imbalance_sampling_strategy = "auto"
+    
+    # Store in session state
+    st.session_state.imbalance_strategy = imbalance_strategy
+    st.session_state.imbalance_k_neighbors = imbalance_k_neighbors
+    st.session_state.imbalance_sampling_strategy = imbalance_sampling_strategy
+    
+else:
+    st.sidebar.warning("⚠️ imbalanced-learn no instalado")
+    st.sidebar.markdown("""
+    Para habilitar SMOTE/ADASYN:
+    ```
+    pip install imbalanced-learn
+    ```
+    """)
+    imbalance_strategy = "none"
+    st.session_state.imbalance_strategy = "none"
+
 # Training settings
 st.sidebar.markdown("---")
 st.sidebar.header("⚙️ Training Configuration")
@@ -707,6 +835,11 @@ else:
                 # Redirect stdout
                 output_buffer = io.StringIO()
                 
+                # Get imbalance settings from session state
+                imb_strategy = st.session_state.get('imbalance_strategy', 'smote')
+                imb_k_neighbors = st.session_state.get('imbalance_k_neighbors', 5)
+                imb_sampling = st.session_state.get('imbalance_sampling_strategy', 'auto')
+                
                 with redirect_stdout(output_buffer):
                     save_paths, experiment_results = train_models_with_progress(
                         data_path=str(training_data_path),  # Use the actual training dataset
@@ -716,6 +849,9 @@ else:
                         selected_models=all_selected_models,
                         custom_model_classes=custom_model_classes if use_custom_models else {},
                         target_column=target_col,  # Pass explicit target column
+                        imbalance_strategy=imb_strategy,
+                        imbalance_k_neighbors=imb_k_neighbors,
+                        imbalance_sampling_strategy=imb_sampling,
                     )
                 
                 # Get the output

@@ -44,13 +44,27 @@ except ImportError:
     AutoMLConfig = None
     AutoMLPreset = None
 
-# Try to import imbalanced-learn for SMOTE support
+# Import imbalanced-learn support from preprocessing module
 try:
     from imblearn.over_sampling import SMOTE  # type: ignore
     from imblearn.pipeline import Pipeline as ImbPipeline  # type: ignore
+    IMBLEARN_AVAILABLE = True
 except ImportError:
     SMOTE = None
     ImbPipeline = None
+    IMBLEARN_AVAILABLE = False
+
+# Import imbalance handling utilities
+from ..preprocessing.imbalance import (
+    ImbalanceStrategy,
+    ImbalanceConfig,
+    create_sampler,
+    detect_imbalance,
+    compute_class_weights,
+    apply_class_weight_to_model,
+    get_recommended_strategy,
+    is_imblearn_available,
+)
 
 
 def run_rigorous_experiment_pipeline(
@@ -292,16 +306,44 @@ def run_rigorous_experiment_pipeline(
     else:
         preprocess = preprocess_pipeline
     
-    # Build full pipeline with SMOTE if available
-    try:
-        from imblearn.pipeline import Pipeline as ImbPipeline
-        from imblearn.over_sampling import SMOTE
+    # Get imbalance handling strategy from config
+    imbalance_strategy_str = getattr(preprocessing_config, 'imbalance_strategy', 'smote') if preprocessing_config else 'smote'
+    use_class_weight = imbalance_strategy_str == 'class_weight'
+    
+    # Apply class weight if that strategy is selected
+    if use_class_weight:
+        class_weights = compute_class_weights(y)
+        best_model = apply_class_weight_to_model(best_model, class_weights)
+        if progress_callback:
+            progress_callback(f"📊 Aplicando class_weight para desbalance: {class_weights}", 0.72)
+    
+    # Get sampler based on preprocessing config (supports SMOTE, ADASYN, etc.)
+    sampler = None
+    if not use_class_weight and imbalance_strategy_str != 'none' and is_imblearn_available():
+        try:
+            strategy = ImbalanceStrategy(imbalance_strategy_str)
+            imb_config = ImbalanceConfig(
+                strategy=strategy,
+                sampling_strategy=getattr(preprocessing_config, 'imbalance_sampling_strategy', 'auto') if preprocessing_config else 'auto',
+                k_neighbors=getattr(preprocessing_config, 'imbalance_k_neighbors', 5) if preprocessing_config else 5,
+                random_state=RANDOM_SEED,
+            )
+            sampler = create_sampler(imb_config)
+            if progress_callback and sampler is not None:
+                progress_callback(f"📊 Usando estrategia de balanceo: {imbalance_strategy_str.upper()}", 0.72)
+        except (ValueError, ImportError) as e:
+            if progress_callback:
+                progress_callback(f"⚠️ Error configurando sampler ({e}), usando SMOTE por defecto", 0.72)
+            sampler = SMOTE(random_state=RANDOM_SEED) if IMBLEARN_AVAILABLE else None
+    
+    # Build full pipeline with resampling if available
+    if sampler is not None and IMBLEARN_AVAILABLE:
         final_pipeline = ImbPipeline([
             ("preprocess", preprocess),
-            ("smote", SMOTE(random_state=RANDOM_SEED)),
+            ("sampler", sampler),
             ("classifier", best_model),
         ])
-    except ImportError:
+    else:
         from sklearn.pipeline import Pipeline
         final_pipeline = Pipeline([
             ("preprocess", preprocess),
@@ -546,16 +588,38 @@ def train_best_classifier(
     else:
         preprocess = preprocess_pipeline
     
-    # Build full pipeline with SMOTE if available
-    try:
-        from imblearn.pipeline import Pipeline as ImbPipeline
-        from imblearn.over_sampling import SMOTE
+    # Get imbalance handling strategy from config
+    imbalance_strategy_str = getattr(preprocessing_config, 'imbalance_strategy', 'smote') if preprocessing_config else 'smote'
+    use_class_weight = imbalance_strategy_str == 'class_weight'
+    
+    # Apply class weight if that strategy is selected
+    if use_class_weight:
+        class_weights = compute_class_weights(y)
+        best_model = apply_class_weight_to_model(best_model, class_weights)
+    
+    # Get sampler based on preprocessing config
+    sampler = None
+    if not use_class_weight and imbalance_strategy_str != 'none' and is_imblearn_available():
+        try:
+            strategy = ImbalanceStrategy(imbalance_strategy_str)
+            imb_config = ImbalanceConfig(
+                strategy=strategy,
+                sampling_strategy=getattr(preprocessing_config, 'imbalance_sampling_strategy', 'auto') if preprocessing_config else 'auto',
+                k_neighbors=getattr(preprocessing_config, 'imbalance_k_neighbors', 5) if preprocessing_config else 5,
+                random_state=RANDOM_SEED,
+            )
+            sampler = create_sampler(imb_config)
+        except (ValueError, ImportError):
+            sampler = SMOTE(random_state=RANDOM_SEED) if IMBLEARN_AVAILABLE else None
+    
+    # Build full pipeline with resampling if available
+    if sampler is not None and IMBLEARN_AVAILABLE:
         pipeline = ImbPipeline([
             ("preprocess", preprocess),
-            ("smote", SMOTE(random_state=RANDOM_SEED)),
+            ("sampler", sampler),
             ("classifier", best_model),
         ])
-    except ImportError:
+    else:
         from sklearn.pipeline import Pipeline
         pipeline = Pipeline([
             ("preprocess", preprocess),

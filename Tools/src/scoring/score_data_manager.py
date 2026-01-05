@@ -78,8 +78,11 @@ ALL_SCORE_VARIABLES = list(set(
 # DEFAULT ORIGINAL DATASET PATH
 # ============================================================================
 
-# Relative path from Tools directory to original dataset
-DEFAULT_ORIGINAL_DATASET_PATH = "../DATA/recuima-020425.xlsx"
+# Get absolute path based on project root (Tools/src/scoring -> Tools -> project root)
+_PROJECT_ROOT = Path(__file__).parents[3]  # src/scoring/file.py -> src -> Tools -> project_root
+
+# Default path to original dataset
+DEFAULT_ORIGINAL_DATASET_PATH = str(_PROJECT_ROOT / "DATA" / "recuima-020425.xlsx")
 
 
 @dataclass

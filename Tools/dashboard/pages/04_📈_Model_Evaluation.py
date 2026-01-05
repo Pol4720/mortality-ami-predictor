@@ -790,17 +790,103 @@ Esta sección realiza una comparación rigurosa estadística entre el modelo ML 
 - **Calibración**: Brier Score y curvas de calibración
 """)
 
+# ================================================================
+# OPCIÓN PARA CARGAR DATASET ORIGINAL CON GRACE SCORE
+# ================================================================
+with st.expander("📂 Cargar Dataset con GRACE Score", expanded=False):
+    st.markdown("""
+    Si tu dataset actual no tiene la columna de GRACE Score, puedes cargar el dataset original aquí.
+    El archivo debe contener una columna con el score GRACE (`escala_grace`, `GRACE`, `grace_score`, etc.)
+    """)
+    
+    # Intentar cargar dataset por defecto
+    try:
+        from src.scoring import load_original_dataset, DEFAULT_ORIGINAL_DATASET_PATH
+        
+        # Mostrar la ruta por defecto
+        st.info(f"📁 Ruta por defecto del dataset: `{DEFAULT_ORIGINAL_DATASET_PATH}`")
+        
+        col_default, col_upload = st.columns(2)
+        
+        with col_default:
+            if st.button("📥 Cargar Dataset Original Automáticamente", key="load_default_grace"):
+                try:
+                    original_df = load_original_dataset()
+                    st.session_state['grace_original_dataset'] = original_df
+                    st.success(f"✅ Dataset cargado: {len(original_df)} registros")
+                    st.rerun()
+                except FileNotFoundError as e:
+                    st.error(f"❌ Dataset no encontrado: {e}")
+                except Exception as e:
+                    st.error(f"❌ Error al cargar: {e}")
+        
+        with col_upload:
+            grace_uploaded_file = st.file_uploader(
+                "O sube un archivo CSV/Excel",
+                type=['csv', 'xlsx', 'xls'],
+                key="grace_dataset_uploader",
+                help="Archivo con columna GRACE score"
+            )
+            
+            if grace_uploaded_file is not None:
+                try:
+                    if grace_uploaded_file.name.endswith('.csv'):
+                        content_sample = grace_uploaded_file.read(2048).decode('utf-8')
+                        grace_uploaded_file.seek(0)
+                        sep = ';' if content_sample.count(';') > content_sample.count(',') else ','
+                        grace_custom_df = pd.read_csv(grace_uploaded_file, sep=sep, low_memory=False)
+                    else:
+                        grace_custom_df = pd.read_excel(grace_uploaded_file)
+                    
+                    st.session_state['grace_original_dataset'] = grace_custom_df
+                    st.success(f"✅ Dataset cargado: {len(grace_custom_df)} registros")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al cargar archivo: {e}")
+    
+    except ImportError:
+        grace_uploaded_file = st.file_uploader(
+            "Cargar dataset con GRACE score (CSV/Excel)",
+            type=['csv', 'xlsx', 'xls'],
+            key="grace_dataset_uploader_fallback"
+        )
+        
+        if grace_uploaded_file is not None:
+            try:
+                if grace_uploaded_file.name.endswith('.csv'):
+                    grace_custom_df = pd.read_csv(grace_uploaded_file)
+                else:
+                    grace_custom_df = pd.read_excel(grace_uploaded_file)
+                st.session_state['grace_original_dataset'] = grace_custom_df
+                st.success(f"✅ Dataset cargado: {len(grace_custom_df)} registros")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error al cargar archivo: {e}")
+    
+    # Botón para limpiar dataset personalizado
+    if 'grace_original_dataset' in st.session_state:
+        st.success(f"📊 **Dataset GRACE cargado**: {len(st.session_state['grace_original_dataset'])} registros")
+        if st.button("🗑️ Eliminar dataset GRACE personalizado", key="clear_grace_custom"):
+            del st.session_state['grace_original_dataset']
+            st.rerun()
+
+# Determinar qué dataset usar para buscar GRACE
+df_for_grace = st.session_state.get('grace_original_dataset', df)
+
 # Verificar si existe la columna de GRACE en el dataset
 grace_column_candidates = ['escala_grace', 'GRACE', 'grace_score', 'grace', 'GRACE_score']
 grace_column = None
 
 for candidate in grace_column_candidates:
-    if candidate in df.columns:
+    if candidate in df_for_grace.columns:
         grace_column = candidate
         break
 
 if grace_column is not None:
-    st.success(f"✅ Columna GRACE encontrada: `{grace_column}`")
+    if 'grace_original_dataset' in st.session_state:
+        st.success(f"✅ Columna GRACE encontrada en dataset cargado: `{grace_column}`")
+    else:
+        st.success(f"✅ Columna GRACE encontrada: `{grace_column}`")
     
     # Verificar que tenemos un modelo evaluado y test set
     if can_generate_plots and st.session_state.get('is_evaluated', False):
@@ -812,7 +898,7 @@ if grace_column is not None:
                 
                 with col1:
                     # Verificar si GRACE ya está en formato de probabilidad
-                    grace_values = df[grace_column].dropna()
+                    grace_values = df_for_grace[grace_column].dropna()
                     grace_min = grace_values.min()
                     grace_max = grace_values.max()
                     
@@ -865,12 +951,30 @@ if grace_column is not None:
                                 
                                 y_prob = model.predict_proba(X_test)[:, 1]
                             
-                            # Obtener valores de GRACE del test set
-                            # Necesitamos hacer match con los índices del test set
+                            # Obtener valores de GRACE del test set o dataset cargado
+                            grace_scores = None
+                            
+                            # Primero intentar desde el test_df
                             if grace_column in test_df.columns:
                                 grace_scores = test_df[grace_column].values
-                            else:
-                                st.error(f"❌ La columna `{grace_column}` no está en el test set")
+                                st.info(f"📊 Usando GRACE scores del test set ({len(grace_scores)} valores)")
+                            
+                            # Si no está en test_df, intentar desde el dataset GRACE cargado
+                            elif 'grace_original_dataset' in st.session_state:
+                                grace_df = st.session_state['grace_original_dataset']
+                                if grace_column in grace_df.columns:
+                                    # Intentar hacer match por índice o usar los primeros N registros
+                                    if len(grace_df) >= len(test_df):
+                                        # Usar los primeros len(test_df) registros
+                                        grace_scores = grace_df[grace_column].iloc[:len(test_df)].values
+                                        st.warning(f"⚠️ Usando primeros {len(test_df)} valores de GRACE del dataset cargado")
+                                    else:
+                                        st.error(f"❌ El dataset GRACE tiene {len(grace_df)} registros pero el test set tiene {len(test_df)}")
+                                        st.stop()
+                            
+                            if grace_scores is None:
+                                st.error(f"❌ La columna `{grace_column}` no está disponible en ningún dataset")
+                                st.info("💡 Carga un dataset con la columna GRACE en la sección anterior")
                                 st.stop()
                             
                             # Normalizar GRACE si es necesario

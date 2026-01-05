@@ -12,14 +12,53 @@ from sklearn.base import clone
 
 from ..config import RANDOM_SEED
 from ..preprocessing import build_preprocessing_pipeline, PreprocessingConfig
+from ..preprocessing.imbalance import (
+    ImbalanceStrategy,
+    ImbalanceConfig,
+    create_sampler,
+    detect_imbalance,
+    compute_class_weights,
+    apply_class_weight_to_model,
+)
 from ..models.custom_base import BaseCustomModel
 
 try:
     from imblearn.over_sampling import SMOTE
     from imblearn.pipeline import Pipeline as ImbPipeline
+    IMBLEARN_AVAILABLE = True
 except ImportError:
     SMOTE = None
     ImbPipeline = None
+    IMBLEARN_AVAILABLE = False
+
+
+def _get_sampler_from_config(preprocessing_config: Optional[PreprocessingConfig]) -> Optional[object]:
+    """Get the appropriate sampler based on preprocessing config."""
+    if not IMBLEARN_AVAILABLE:
+        return None
+    
+    if preprocessing_config is None:
+        # Default to SMOTE
+        return SMOTE(random_state=RANDOM_SEED)
+    
+    strategy_str = getattr(preprocessing_config, 'imbalance_strategy', 'smote')
+    
+    # Handle 'none' and 'class_weight' - no sampler needed
+    if strategy_str in ('none', 'class_weight'):
+        return None
+    
+    try:
+        strategy = ImbalanceStrategy(strategy_str)
+        config = ImbalanceConfig(
+            strategy=strategy,
+            sampling_strategy=getattr(preprocessing_config, 'imbalance_sampling_strategy', 'auto'),
+            k_neighbors=getattr(preprocessing_config, 'imbalance_k_neighbors', 5),
+            random_state=RANDOM_SEED,
+        )
+        return create_sampler(config)
+    except (ValueError, ImportError):
+        # Fallback to basic SMOTE
+        return SMOTE(random_state=RANDOM_SEED)
 
 
 def _contains_custom_model(estimator) -> bool:
@@ -85,19 +124,32 @@ def nested_cross_validation(
             else:
                 preprocess = preprocess_pipeline
             
-            # Build full pipeline with SMOTE if available
-            try:
-                from imblearn.pipeline import Pipeline as ImbPipeline
-                from imblearn.over_sampling import SMOTE
+            # Get sampler based on preprocessing config (supports SMOTE, ADASYN, etc.)
+            sampler = _get_sampler_from_config(preprocessing_config)
+            
+            # Check if using class_weight strategy instead of resampling
+            use_class_weight = (
+                preprocessing_config is not None and 
+                getattr(preprocessing_config, 'imbalance_strategy', 'smote') == 'class_weight'
+            )
+            
+            # Apply class weight to model if needed
+            model_instance = clone(model)
+            if use_class_weight:
+                class_weights = compute_class_weights(y_train)
+                model_instance = apply_class_weight_to_model(model_instance, class_weights)
+            
+            # Build full pipeline with resampling if available
+            if sampler is not None and IMBLEARN_AVAILABLE:
                 pipeline = ImbPipeline([
                     ("preprocess", preprocess),
-                    ("smote", SMOTE(random_state=RANDOM_SEED)),
-                    ("classifier", model),
+                    ("sampler", sampler),
+                    ("classifier", model_instance),
                 ])
-            except ImportError:
+            else:
                 pipeline = Pipeline([
                     ("preprocess", preprocess),
-                    ("classifier", model),
+                    ("classifier", model_instance),
                 ])
             
             # Inner CV for hyperparameter tuning
@@ -223,19 +275,32 @@ def rigorous_repeated_cv(
             else:
                 preprocess = preprocess_pipeline
             
-            # Build full pipeline with SMOTE if available
-            try:
-                from imblearn.pipeline import Pipeline as ImbPipeline
-                from imblearn.over_sampling import SMOTE
+            # Get sampler based on preprocessing config (supports SMOTE, ADASYN, etc.)
+            sampler = _get_sampler_from_config(preprocessing_config)
+            
+            # Check if using class_weight strategy instead of resampling
+            use_class_weight = (
+                preprocessing_config is not None and 
+                getattr(preprocessing_config, 'imbalance_strategy', 'smote') == 'class_weight'
+            )
+            
+            # Clone and configure model
+            model_instance = clone(base_model)
+            if use_class_weight:
+                class_weights = compute_class_weights(y_train)
+                model_instance = apply_class_weight_to_model(model_instance, class_weights)
+            
+            # Build full pipeline with resampling if available
+            if sampler is not None and IMBLEARN_AVAILABLE:
                 pipeline = ImbPipeline([
                     ("preprocess", preprocess),
-                    ("smote", SMOTE(random_state=RANDOM_SEED)),
-                    ("classifier", clone(base_model)),
+                    ("sampler", sampler),
+                    ("classifier", model_instance),
                 ])
-            except ImportError:
+            else:
                 pipeline = Pipeline([
                     ("preprocess", preprocess),
-                    ("classifier", clone(base_model)),
+                    ("classifier", model_instance),
                 ])
             
             # Note: param_grid contains lists of values for search, not single values

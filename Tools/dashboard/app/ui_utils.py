@@ -187,6 +187,9 @@ def train_models_with_progress(
     selected_models: list[str],
     custom_model_classes: dict = None,
     target_column: str = None,
+    imbalance_strategy: str = "smote",
+    imbalance_k_neighbors: int = 5,
+    imbalance_sampling_strategy: str = "auto",
 ) -> dict[str, str]:
     """Train selected models using the rigorous experiment pipeline.
     
@@ -194,6 +197,7 @@ def train_models_with_progress(
     - 30+ repeated CV runs for model selection (FASE 1)
     - Learning curves for diagnostics
     - Statistical comparison (Shapiro-Wilk, t-test/Mann-Whitney) (FASE 3)
+    - Configurable class imbalance handling (SMOTE, ADASYN, etc.)
     
     NOTE: Bootstrap and Jackknife evaluation (FASE 2) is done in the 
     EVALUATION module, not here.
@@ -206,6 +210,9 @@ def train_models_with_progress(
         selected_models: List of model names to train (includes custom models)
         custom_model_classes: Dictionary mapping custom model names to their classes
         target_column: Explicit target column name. If None, uses CONFIG defaults based on task.
+        imbalance_strategy: Strategy for handling class imbalance ('smote', 'adasyn', 'class_weight', etc.)
+        imbalance_k_neighbors: Number of neighbors for SMOTE variants
+        imbalance_sampling_strategy: Sampling strategy for resampling ('auto', 'minority', etc.)
         
     Returns:
         Dictionary mapping model names to saved file paths
@@ -296,62 +303,6 @@ def train_models_with_progress(
         st.success(f"✅ Test set guardado: {len(test_df)} muestras en {test_path.name}")
         st.info(f"ℹ️ Train set guardado: {len(train_df)} muestras en {train_path.name}")
         
-        # ============================================================
-        # SAVE ORIGINAL DATA FOR CLINICAL SCORES (GRACE, RECUIMA)
-        # ============================================================
-        # For mortality prediction task, preserve original variables 
-        # needed for clinical score calculations
-        if task == "mortality":
-            try:
-                from src.scoring import (
-                    load_original_dataset,
-                    save_testset_score_data,
-                    DEFAULT_ORIGINAL_DATASET_PATH,
-                )
-                
-                # Get base directory for original dataset
-                tools_dir = Path(__file__).parents[1]  # dashboard/app -> dashboard -> Tools
-                
-                # Try to load original dataset
-                try:
-                    original_df = load_original_dataset(
-                        DEFAULT_ORIGINAL_DATASET_PATH,
-                        base_dir=tools_dir
-                    )
-                    
-                    # Save original data for test set indices
-                    score_data_path = save_testset_score_data(
-                        original_df=original_df,
-                        test_indices=test_indices,
-                        output_dir=TESTSETS_DIR,
-                        task=task,
-                        timestamp=timestamp,
-                    )
-                    
-                    st.success(f"✅ Datos originales para scores clínicos guardados: {score_data_path.name}")
-                    st.info("""
-                    📊 **Variables preservadas para comparación con GRACE/RECUIMA:**
-                    - Variables numéricas originales (edad, TAS, filtrado glomerular, etc.)
-                    - Variables categóricas sin codificar (complicaciones, killip, etc.)
-                    - Derivaciones ECG individuales para conteo
-                    """)
-                    
-                except FileNotFoundError as e:
-                    st.warning(f"""
-                    ⚠️ **Dataset original no encontrado para scores clínicos**
-                    
-                    No se encontró: `{DEFAULT_ORIGINAL_DATASET_PATH}`
-                    
-                    La comparación con GRACE/RECUIMA requerirá cargar el dataset original manualmente 
-                    en la página de Evaluación.
-                    """)
-                except Exception as e:
-                    st.warning(f"⚠️ No se pudieron guardar datos para scores clínicos: {e}")
-                    
-            except ImportError as ie:
-                # Module not available, skip silently
-                pass
-        
     except Exception as e:
         st.error(f"❌ Error guardando train/test sets: {e}")
         raise
@@ -405,9 +356,20 @@ def train_models_with_progress(
             with metrics_container.container():
                 st.metric("Progreso", f"{frac*100:.1f}%")
     
-    # Create preprocessing config
+    # Create preprocessing config with imbalance handling
     preprocessing_config = PreprocessingConfig()
     preprocessing_config.imputer_mode = imputer_mode
+    preprocessing_config.imbalance_strategy = imbalance_strategy
+    preprocessing_config.imbalance_k_neighbors = imbalance_k_neighbors
+    preprocessing_config.imbalance_sampling_strategy = imbalance_sampling_strategy
+    
+    # Log imbalance configuration
+    st.info(f"""
+    ⚖️ **Configuración de Balanceo de Clases:**
+    - Estrategia: **{imbalance_strategy.upper()}**
+    - K-Neighbors: {imbalance_k_neighbors}
+    - Sampling: {imbalance_sampling_strategy}
+    """)
     
     # Get selected models
     from src.models import make_classifiers
