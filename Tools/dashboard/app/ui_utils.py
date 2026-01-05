@@ -18,6 +18,7 @@ from src.data_load import (
     cleanup_old_testsets,
     get_latest_model,
     get_latest_testset,
+    get_timestamp,
 )
 from src.features import safe_feature_columns
 from src.preprocessing import PreprocessingConfig
@@ -185,6 +186,7 @@ def train_models_with_progress(
     imputer_mode: str,
     selected_models: list[str],
     custom_model_classes: dict = None,
+    target_column: str = None,
 ) -> dict[str, str]:
     """Train selected models using the rigorous experiment pipeline.
     
@@ -198,11 +200,12 @@ def train_models_with_progress(
     
     Args:
         data_path: Path to dataset
-        task: Task name (mortality/arrhythmia)
+        task: Task name (for organizing saved models, e.g., 'mortality', 'arrhythmia', 'custom')
         quick: Whether to use quick mode (fewer CV splits)
         imputer_mode: Imputation strategy
         selected_models: List of model names to train (includes custom models)
         custom_model_classes: Dictionary mapping custom model names to their classes
+        target_column: Explicit target column name. If None, uses CONFIG defaults based on task.
         
     Returns:
         Dictionary mapping model names to saved file paths
@@ -213,14 +216,35 @@ def train_models_with_progress(
     # Load data
     df = load_dataset(data_path)
     
-    # Determine target
-    if task == "mortality":
+    # Determine target column
+    # Priority: 1) explicit target_column, 2) CONFIG based on task, 3) fallback search
+    if target_column and target_column in df.columns:
+        target = target_column
+    elif task == "mortality":
         target = CONFIG.target_column
-    else:
+    elif task == "arrhythmia":
         target = CONFIG.arrhythmia_column
+    else:
+        # For custom tasks, use target_column or task name directly
+        if target_column:
+            target = target_column
+        else:
+            target = task
+    
+    # Verify target exists in dataframe
+    if target not in df.columns:
+        # Try case-insensitive match
+        matches = [c for c in df.columns if c.lower() == target.lower()]
+        if matches:
+            target = matches[0]
+        else:
+            raise ValueError(f"Target column '{target}' not found in dataset. Available: {list(df.columns[:20])}")
     
     # Split data (80% train, 20% test) with STRATIFICATION
-    train_df, test_df = train_test_split(df, stratify_column=target, test_size=0.2, random_state=42)
+    # Also get indices to preserve original data for clinical scores
+    train_df, test_df, train_indices, test_indices = train_test_split(
+        df, stratify_column=target, test_size=0.2, random_state=42, return_indices=True
+    )
     
     # Display split information with class distribution
     st.info(f"""
@@ -253,6 +277,8 @@ def train_models_with_progress(
     # Save test set and train set immediately after split to new location
     # Model type will be determined later, for now save with task name
     # This will be updated when individual models are trained
+    timestamp = get_timestamp()
+    
     try:
         # Save both train and test sets with timestamp
         test_path = save_dataset_with_timestamp(
@@ -269,6 +295,63 @@ def train_models_with_progress(
         )
         st.success(f"✅ Test set guardado: {len(test_df)} muestras en {test_path.name}")
         st.info(f"ℹ️ Train set guardado: {len(train_df)} muestras en {train_path.name}")
+        
+        # ============================================================
+        # SAVE ORIGINAL DATA FOR CLINICAL SCORES (GRACE, RECUIMA)
+        # ============================================================
+        # For mortality prediction task, preserve original variables 
+        # needed for clinical score calculations
+        if task == "mortality":
+            try:
+                from src.scoring import (
+                    load_original_dataset,
+                    save_testset_score_data,
+                    DEFAULT_ORIGINAL_DATASET_PATH,
+                )
+                
+                # Get base directory for original dataset
+                tools_dir = Path(__file__).parents[1]  # dashboard/app -> dashboard -> Tools
+                
+                # Try to load original dataset
+                try:
+                    original_df = load_original_dataset(
+                        DEFAULT_ORIGINAL_DATASET_PATH,
+                        base_dir=tools_dir
+                    )
+                    
+                    # Save original data for test set indices
+                    score_data_path = save_testset_score_data(
+                        original_df=original_df,
+                        test_indices=test_indices,
+                        output_dir=TESTSETS_DIR,
+                        task=task,
+                        timestamp=timestamp,
+                    )
+                    
+                    st.success(f"✅ Datos originales para scores clínicos guardados: {score_data_path.name}")
+                    st.info("""
+                    📊 **Variables preservadas para comparación con GRACE/RECUIMA:**
+                    - Variables numéricas originales (edad, TAS, filtrado glomerular, etc.)
+                    - Variables categóricas sin codificar (complicaciones, killip, etc.)
+                    - Derivaciones ECG individuales para conteo
+                    """)
+                    
+                except FileNotFoundError as e:
+                    st.warning(f"""
+                    ⚠️ **Dataset original no encontrado para scores clínicos**
+                    
+                    No se encontró: `{DEFAULT_ORIGINAL_DATASET_PATH}`
+                    
+                    La comparación con GRACE/RECUIMA requerirá cargar el dataset original manualmente 
+                    en la página de Evaluación.
+                    """)
+                except Exception as e:
+                    st.warning(f"⚠️ No se pudieron guardar datos para scores clínicos: {e}")
+                    
+            except ImportError as ie:
+                # Module not available, skip silently
+                pass
+        
     except Exception as e:
         st.error(f"❌ Error guardando train/test sets: {e}")
         raise

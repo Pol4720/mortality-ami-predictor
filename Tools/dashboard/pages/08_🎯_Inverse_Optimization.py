@@ -68,15 +68,32 @@ else:
     st.warning("⚠️ No data loaded. Please load a dataset in **🧹 Data Cleaning and EDA** first.")
     st.stop()
 
-# Get task from session state
-task = st.session_state.get('target_column', 'mortality')
-if task == 'exitus':
-    task = 'mortality'
+# Get target column from session state (now stores actual column name)
+target_col_name = st.session_state.get('target_column_name', None)
+
+# Determine task for model folder organization
+if target_col_name:
+    if target_col_name == CONFIG.target_column or target_col_name in ['mortality', 'mortality_inhospital', 'exitus']:
+        task = 'mortality'
+    elif target_col_name == CONFIG.arrhythmia_column or target_col_name in ['arrhythmia', 'ventricular_arrhythmia']:
+        task = 'arrhythmia'
+    else:
+        task = target_col_name.lower().replace(' ', '_')[:20]
+else:
+    # Fallback to old behavior
+    task = st.session_state.get('target_column', 'mortality')
+    if task == 'exitus':
+        task = 'mortality'
 
 # ==================== SIDEBAR: Model Selection ====================
 st.sidebar.header("🎯 Model Selection")
 
 saved_models = list_saved_models(task)
+
+# If no models found for custom task, also check 'mortality' folder
+if not saved_models and task not in ['mortality', 'arrhythmia']:
+    st.info(f"ℹ️ No models found for task '{task}', checking 'mortality' folder...")
+    saved_models = list_saved_models('mortality')
 
 if not saved_models:
     st.error(f"❌ No trained models found for task '{task}'. Please train models first.")
@@ -99,8 +116,14 @@ except Exception as e:
     st.stop()
 
 # Get feature columns
-target_col = CONFIG.target_column if task == "mortality" else CONFIG.arrhythmia_column
-feature_cols = [c for c in df.columns if c not in {CONFIG.target_column, CONFIG.arrhythmia_column}]
+# Use the actual target column name from session state
+target_col = target_col_name if target_col_name else (CONFIG.target_column if task == "mortality" else CONFIG.arrhythmia_column)
+
+# Exclude all potential target columns from features
+excluded_cols = {CONFIG.target_column, CONFIG.arrhythmia_column}
+if target_col:
+    excluded_cols.add(target_col)
+feature_cols = [c for c in df.columns if c not in excluded_cols]
 
 # Check if classifier
 is_classifier = hasattr(model, 'predict_proba')

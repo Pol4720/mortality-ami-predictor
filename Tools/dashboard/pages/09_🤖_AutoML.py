@@ -62,15 +62,19 @@ else:
     st.warning("⚠️ No hay datos cargados. Por favor, carga un dataset en **🧹 Data Cleaning and EDA** primero.")
     st.stop()
 
-# Get target column
-target_col = st.session_state.get('target_column', 'mortality_inhospital')
+# Get target column - prefer target_column_name (actual column name) over target_column (task name)
+target_col = st.session_state.get('target_column_name', None)
+if not target_col:
+    target_col = st.session_state.get('target_column', 'mortality_inhospital')
+
 if target_col not in df.columns:
     # Try to find it
     possible_targets = [c for c in df.columns if 'mortal' in c.lower() or 'exitus' in c.lower() or 'target' in c.lower()]
     if possible_targets:
         target_col = possible_targets[0]
     else:
-        st.error(f"❌ No se encontró la columna target. Columnas disponibles: {list(df.columns[:10])}")
+        st.error(f"❌ No se encontró la columna target '{target_col}'. Columnas disponibles: {list(df.columns[:10])}")
+        st.stop()
         st.stop()
 
 # Import AutoML components

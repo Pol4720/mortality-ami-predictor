@@ -20,7 +20,8 @@ def train_test_split(
     time_column: Optional[str] = None,
     stratify_column: Optional[str] = None,
     random_state: int = RANDOM_SEED,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    return_indices: bool = False,
+) -> Tuple[pd.DataFrame, pd.DataFrame] | Tuple[pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray]:
     """Split dataset into train and test sets with multiple strategies.
     
     Supports:
@@ -36,17 +37,25 @@ def train_test_split(
         stratify_column: Column name for stratification. Ensures balanced
                         class distribution in train/test splits
         random_state: Random seed for reproducibility
+        return_indices: If True, also return original DataFrame indices.
+                       Useful for preserving original data for clinical scores.
         
     Returns:
-        Tuple of (train_df, test_df)
+        If return_indices=False: Tuple of (train_df, test_df)
+        If return_indices=True: Tuple of (train_df, test_df, train_indices, test_indices)
     """
     # Temporal split takes precedence
     if time_column and time_column in df.columns:
-        return create_temporal_split(df, time_column, test_size)
+        train_df, test_df = create_temporal_split(df, time_column, test_size)
+        if return_indices:
+            return train_df, test_df, train_df.index.values, test_df.index.values
+        return train_df, test_df
     
     # Stratified split
     if stratify_column and stratify_column in df.columns:
-        return create_stratified_split(df, stratify_column, test_size, random_state)
+        return create_stratified_split(
+            df, stratify_column, test_size, random_state, return_indices=return_indices
+        )
     
     # Default random split
     train_df, test_df = sk_split(
@@ -55,6 +64,9 @@ def train_test_split(
         random_state=random_state,
         shuffle=True,
     )
+    
+    if return_indices:
+        return train_df, test_df, train_df.index.values, test_df.index.values
     
     return train_df, test_df
 
@@ -98,7 +110,8 @@ def create_stratified_split(
     stratify_column: str,
     test_size: float = 0.2,
     random_state: int = RANDOM_SEED,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    return_indices: bool = False,
+) -> Tuple[pd.DataFrame, pd.DataFrame] | Tuple[pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray]:
     """Split dataset with stratification on specified column.
     
     Ensures balanced distribution of stratify_column values in both
@@ -109,12 +122,17 @@ def create_stratified_split(
         stratify_column: Column name to stratify on
         test_size: Fraction of data to use for testing
         random_state: Random seed for reproducibility
+        return_indices: If True, also return original DataFrame indices
         
     Returns:
-        Tuple of (train_df, test_df)
+        If return_indices=False: Tuple of (train_df, test_df)
+        If return_indices=True: Tuple of (train_df, test_df, train_indices, test_indices)
     """
     if stratify_column not in df.columns:
         raise KeyError(f"Stratify column '{stratify_column}' not found in DataFrame")
+    
+    # Store original indices before split
+    original_indices = df.index.values
     
     train_df, test_df = sk_split(
         df,
@@ -123,5 +141,8 @@ def create_stratified_split(
         stratify=df[stratify_column],
         shuffle=True,
     )
+    
+    if return_indices:
+        return train_df, test_df, train_df.index.values, test_df.index.values
     
     return train_df, test_df

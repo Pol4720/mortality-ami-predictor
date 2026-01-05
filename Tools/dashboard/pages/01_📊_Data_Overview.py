@@ -58,8 +58,10 @@ with tab1:
     display_dataset_preview(df, n_rows=n_rows)
 
 with tab2:
-    # Determine target column from session state
-    target = st.session_state.get('target_column', CONFIG.target_column)
+    # Determine target column from session state - prefer target_column_name (actual column)
+    target = st.session_state.get('target_column_name', None)
+    if not target:
+        target = st.session_state.get('target_column', CONFIG.target_column)
     
     # Get feature columns
     if target and target in df.columns:

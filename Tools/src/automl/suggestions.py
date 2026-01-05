@@ -62,6 +62,7 @@ class DatasetAnalysis:
     low_variance_features: List[str] = field(default_factory=list)
     skewed_features: List[str] = field(default_factory=list)
     outlier_features: List[str] = field(default_factory=list)
+    high_cardinality_features: List[str] = field(default_factory=list)
     
     # Data types
     has_categorical: bool = False

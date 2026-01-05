@@ -43,16 +43,35 @@ else:
     st.warning("⚠️ No hay datos cargados. Por favor, carga un dataset en la página **🧹 Data Cleaning and EDA** primero.")
     st.stop()
 
-# Get task from session state
-task = st.session_state.get('target_column', 'mortality')
-if task == 'exitus':
-    task = 'mortality'
+# Get target column from session state (now stores actual column name)
+target_col_name = st.session_state.get('target_column_name', None)
+
+# Determine task for model folder organization
+# This maps the target column to the folder where models are saved
+if target_col_name:
+    if target_col_name == CONFIG.target_column or target_col_name in ['mortality', 'mortality_inhospital', 'exitus']:
+        task = 'mortality'
+    elif target_col_name == CONFIG.arrhythmia_column or target_col_name in ['arrhythmia', 'ventricular_arrhythmia']:
+        task = 'arrhythmia'
+    else:
+        task = target_col_name.lower().replace(' ', '_')[:20]
+else:
+    # Fallback to old behavior
+    task = st.session_state.get('target_column', 'mortality')
+    if task == 'exitus':
+        task = 'mortality'
 
 # Model selection
 st.sidebar.markdown("---")
 st.sidebar.header("🎯 Model Selection")
 
+# Try to load models from task folder, fallback to 'mortality' if empty
 saved_models = list_saved_models(task)
+
+# If no models found for custom task, also check 'mortality' folder
+if not saved_models and task not in ['mortality', 'arrhythmia']:
+    st.info(f"ℹ️ No models found for task '{task}', checking 'mortality' folder...")
+    saved_models = list_saved_models('mortality')
 
 if not saved_models:
     st.error(f"❌ No trained models found for task '{task}'. Please train models first.")

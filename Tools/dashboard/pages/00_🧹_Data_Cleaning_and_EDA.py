@@ -1709,12 +1709,24 @@ def data_cleaning_page():
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
     
     with col1:
+        # Usar valor guardado en session_state si existe
+        saved_target = st.session_state.get('target_column_name', '')
+        default_idx = 0
+        if saved_target and saved_target in df.columns.tolist():
+            default_idx = df.columns.tolist().index(saved_target) + 1  # +1 por el "" inicial
+        
         target_column = st.selectbox(
             "Columna objetivo (no se modifica)",
             [""] + df.columns.tolist(),
-            help="Selecciona la variable objetivo si existe"
+            index=default_idx,
+            help="Selecciona la variable objetivo si existe. Esta será la variable a predecir."
         )
         target_column = target_column if target_column else None
+        
+        # Guardar en session_state para usar en otras páginas
+        if target_column:
+            st.session_state.target_column_name = target_column
+            st.session_state.target_column = target_column  # Para compatibilidad
     
     with col2:
         if st.button("🚀 Aplicar Limpieza", type="primary", use_container_width=True):

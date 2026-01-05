@@ -260,7 +260,10 @@ def evaluate_main(argv: Optional[list] = None) -> None:
     """
     parser = argparse.ArgumentParser(description="Evaluate saved best model on hold-out test set.")
     parser.add_argument("--data", type=str, default=os.environ.get("DATASET_PATH"))
-    parser.add_argument("--task", type=str, choices=["mortality", "arrhythmia"], default="mortality")
+    parser.add_argument("--task", type=str, default="mortality",
+                        help="Task name (folder name for models). Common: 'mortality', 'arrhythmia', or custom task name.")
+    parser.add_argument("--target", type=str, default=None,
+                        help="Target column name. If not provided, inferred from task or CONFIG.")
     args = parser.parse_args(argv)
 
     if not args.data:
@@ -327,7 +330,28 @@ def evaluate_main(argv: Optional[list] = None) -> None:
     print(f"  Test set shape: {test_df.shape}")
     print(f"  Test set columns (first 10): {test_df.columns.tolist()[:10]}")
 
-    target = CONFIG.target_column if args.task == "mortality" else CONFIG.arrhythmia_column
+    # Determine target column - priority: CLI arg > CONFIG based on task > search in columns
+    if args.target:
+        target = args.target
+    elif args.task == "mortality":
+        target = CONFIG.target_column
+    elif args.task == "arrhythmia":
+        target = CONFIG.arrhythmia_column
+    else:
+        # Custom task - try task name as column, or search for common patterns
+        if args.task in test_df.columns:
+            target = args.task
+        else:
+            # Try case-insensitive match
+            matches = [c for c in test_df.columns if c.lower() == args.task.lower()]
+            if matches:
+                target = matches[0]
+            else:
+                raise KeyError(
+                    f"Could not determine target column for task '{args.task}'. "
+                    f"Use --target to specify the target column explicitly."
+                )
+    
     if target not in test_df.columns:
         raise KeyError(f"Target column '{target}' not found in test set.")
     

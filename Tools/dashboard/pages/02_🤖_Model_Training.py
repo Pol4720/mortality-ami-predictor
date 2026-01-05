@@ -65,29 +65,64 @@ if not data_path or not Path(data_path).exists():
     st.session_state.data_path = str(data_path)
     st.success(f"✅ Dataset guardado en: {data_path}")
 
-# Get task from session state
-task = st.session_state.get('target_column', 'mortality')
-if task == 'exitus':
+# ==================== TARGET VARIABLE SELECTION ====================
+st.sidebar.markdown("---")
+st.sidebar.header("🎯 Variable Objetivo")
+
+# Get available columns for target selection (binary/numeric columns)
+potential_targets = []
+for col in df.columns:
+    # Check if column could be a valid target (binary or numeric with few unique values)
+    if df[col].nunique() <= 10:  # Categorical or binary
+        potential_targets.append(col)
+    elif pd.api.types.is_numeric_dtype(df[col]):
+        potential_targets.append(col)
+
+# Determine default target from session_state or CONFIG
+saved_target = st.session_state.get('target_column_name', None)
+default_target = None
+
+# Priority: 1) saved from Data Cleaning, 2) CONFIG.target_column, 3) first potential target
+if saved_target and saved_target in potential_targets:
+    default_target = saved_target
+elif CONFIG.target_column in potential_targets:
+    default_target = CONFIG.target_column
+elif potential_targets:
+    default_target = potential_targets[0]
+
+# Create target selector
+default_idx = potential_targets.index(default_target) if default_target in potential_targets else 0
+
+target_col = st.sidebar.selectbox(
+    "Variable a Predecir",
+    potential_targets,
+    index=default_idx,
+    help="Selecciona la variable objetivo para el entrenamiento. Se recomienda seleccionarla primero en Data Cleaning."
+)
+
+# Save selection to session_state
+st.session_state.target_column_name = target_col
+st.session_state.target_column = target_col
+
+# Determine task name for model organization (used for saving models in folders)
+# If it's a known target, use the standard name; otherwise use 'custom'
+if target_col == CONFIG.target_column or target_col in ['mortality', 'mortality_inhospital', 'exitus']:
     task = 'mortality'
+elif target_col == CONFIG.arrhythmia_column or target_col in ['arrhythmia', 'ventricular_arrhythmia']:
+    task = 'arrhythmia'
+else:
+    # Custom target - use a sanitized version of the column name
+    task = target_col.lower().replace(' ', '_')[:20]  # Limit length for folder names
 
-# Map logical task name to actual dataframe column name from config
-target_col = CONFIG.target_column if task == "mortality" else CONFIG.arrhythmia_column
+# Show target info
+target_info = df[target_col].value_counts()
+st.sidebar.markdown(f"**Distribución:**")
+for val, count in target_info.head(5).items():
+    pct = count / len(df) * 100
+    st.sidebar.markdown(f"- `{val}`: {count} ({pct:.1f}%)")
 
-# If configured target column is not present in the dataframe, try sensible fallbacks
-if target_col not in df.columns:
-    # If the logical task name exists as a column, prefer it
-    if task in df.columns:
-        target_col = task
-    else:
-        # Case-insensitive or short-start match
-        matches = [c for c in df.columns if c.lower() == (task or '').lower() or c.lower().startswith((task or '').lower())]
-        if matches:
-            target_col = matches[0]
-        else:
-            st.error(
-                f"❌ Target column '{target_col}' not found in dataset. Available columns: {list(df.columns[:20])}"
-            )
-            st.stop()
+if df[target_col].nunique() > 5:
+    st.sidebar.caption(f"... y {df[target_col].nunique() - 5} valores más")
 
 # Custom models section
 st.sidebar.markdown("---")
@@ -680,6 +715,7 @@ else:
                         imputer_mode=imputer_mode,
                         selected_models=all_selected_models,
                         custom_model_classes=custom_model_classes if use_custom_models else {},
+                        target_column=target_col,  # Pass explicit target column
                     )
                 
                 # Get the output
@@ -786,56 +822,95 @@ else:
                     except Exception:
                         pass
             
-            # Display learning curves if available
-            if hasattr(st.session_state, 'learning_curve_paths') and st.session_state.learning_curve_paths:
+            # Display learning curves if available (INTERACTIVAS con Plotly)
+            if hasattr(st.session_state, 'learning_curve_results') and st.session_state.learning_curve_results:
                 st.markdown("---")
                 st.subheader("📈 Curvas de Aprendizaje")
-                st.info("Las curvas de aprendizaje muestran cómo el rendimiento del modelo mejora con más datos de entrenamiento.")
                 
-                lc_paths = st.session_state.learning_curve_paths
-                lc_results = st.session_state.get('learning_curve_results', {})
+                with st.expander("ℹ️ ¿Cómo interpretar las curvas de aprendizaje?", expanded=False):
+                    st.markdown("""
+                    **Curvas de aprendizaje** muestran el rendimiento del modelo vs tamaño de entrenamiento:
+                    
+                    | Patrón | Diagnóstico | Solución |
+                    |--------|-------------|----------|
+                    | Train alto, Val bajo, Gap grande | **Overfitting** | Más datos, regularización, modelo más simple |
+                    | Train bajo, Val bajo, Gap pequeño | **Underfitting** | Modelo más complejo, más features |
+                    | Train≈Val, ambos altos, Gap pequeño | **Buen ajuste** | ✅ Modelo adecuado |
+                    | Curvas no convergen | **No convergido** | Más datos o epochs |
+                    """)
+                
+                lc_results = st.session_state.learning_curve_results
+                
+                # Import diagnosis function
+                from src.training.learning_curves import plot_learning_curve, diagnose_learning_curve
                 
                 # Create tabs for each model
-                if len(lc_paths) > 0:
-                    tabs = st.tabs([f"📊 {model}" for model in lc_paths.keys()])
+                if len(lc_results) > 0:
+                    tabs = st.tabs([f"📊 {model}" for model in lc_results.keys()])
                     
-                    for tab, (model_name, img_path) in zip(tabs, lc_paths.items()):
+                    for tab, (model_name, lc_res) in zip(tabs, lc_results.items()):
                         with tab:
-                            # Display image if PNG exists
-                            if Path(img_path).exists():
-                                st.image(img_path, use_container_width=True)
-                            else:
-                                # Try HTML version
-                                html_path = img_path.replace('.png', '.html')
-                                if Path(html_path).exists():
-                                    with open(html_path, 'r', encoding='utf-8') as f:
-                                        html_content = f.read()
-                                    st.components.v1.html(html_content, height=650, scrolling=True)
+                            # Generate interactive Plotly figure
+                            try:
+                                fig = plot_learning_curve(lc_res, title=f"Learning Curve: {model_name}")
+                                st.plotly_chart(fig, use_container_width=True, key=f"lc_{model_name}")
+                            except Exception as e:
+                                st.warning(f"No se pudo generar gráfico interactivo: {e}")
+                                # Fallback to static image
+                                lc_paths = st.session_state.get('learning_curve_paths', {})
+                                if model_name in lc_paths and Path(lc_paths[model_name]).exists():
+                                    st.image(lc_paths[model_name], use_container_width=True)
                             
-                            # Display statistics
-                            if model_name in lc_results:
-                                lc_res = lc_results[model_name]
-                                col1, col2, col3 = st.columns(3)
-                                
-                                with col1:
-                                    final_train = lc_res.train_scores_mean[-1]
-                                    st.metric("Score Final (Train)", f"{final_train:.4f}")
-                                
-                                with col2:
-                                    final_val = lc_res.val_scores_mean[-1]
-                                    st.metric("Score Final (Val)", f"{final_val:.4f}")
-                                
-                                with col3:
-                                    gap = abs(final_train - final_val)
-                                    st.metric("Gap Train-Val", f"{gap:.4f}")
-                                
-                                # Interpretation
-                                if gap < 0.05:
-                                    st.success("✅ **Buen ajuste**: Gap pequeño entre train y validación")
-                                elif gap < 0.10:
-                                    st.warning("⚠️ **Ligero sobreajuste**: Gap moderado")
-                                else:
-                                    st.error("🔴 **Sobreajuste significativo**: Gap grande, considerar regularización")
+                            # Display metrics
+                            col1, col2, col3 = st.columns(3)
+                            
+                            final_train = lc_res.train_scores_mean[-1]
+                            final_val = lc_res.val_scores_mean[-1]
+                            gap = abs(final_train - final_val)
+                            
+                            with col1:
+                                st.metric("Score Final (Train)", f"{final_train:.4f}")
+                            
+                            with col2:
+                                st.metric("Score Final (Val)", f"{final_val:.4f}")
+                            
+                            with col3:
+                                delta_color = "normal" if gap < 0.05 else ("off" if gap < 0.10 else "inverse")
+                                st.metric("Gap Train-Val", f"{gap:.4f}", delta=None)
+                            
+                            # Diagnosis de underfitting/overfitting
+                            st.markdown("##### 🔍 Diagnóstico Automático")
+                            diagnosis = diagnose_learning_curve(lc_res)
+                            
+                            # Show issues
+                            if diagnosis['issues']:
+                                for issue in diagnosis['issues']:
+                                    if 'Good fit' in issue:
+                                        st.success(f"✅ {issue}")
+                                    elif 'underfitting' in issue.lower() or 'High bias' in issue:
+                                        st.error(f"🔴 **{issue}**: El modelo es demasiado simple para capturar los patrones")
+                                    elif 'overfitting' in issue.lower() or 'High variance' in issue:
+                                        st.warning(f"⚠️ **{issue}**: El modelo memoriza datos en lugar de generalizar")
+                                    elif 'not converged' in issue.lower():
+                                        st.info(f"ℹ️ **{issue}**: El modelo podría mejorar con más datos")
+                                    else:
+                                        st.info(f"ℹ️ {issue}")
+                            
+                            # Show recommendations
+                            if diagnosis['recommendations'] and 'performing well' not in ' '.join(diagnosis['recommendations']):
+                                with st.expander("💡 Recomendaciones"):
+                                    for rec in diagnosis['recommendations']:
+                                        st.markdown(f"- {rec}")
+                            
+                            # Additional stats
+                            with st.expander("📊 Estadísticas detalladas"):
+                                st.markdown(f"""
+                                - **Train mejorando**: {'Sí ✅' if diagnosis['train_improving'] else 'No ❌'}
+                                - **Validación mejorando**: {'Sí ✅' if diagnosis['val_improving'] else 'No ❌'}
+                                - **Convergido**: {'Sí ✅' if diagnosis['converged'] else 'No (posiblemente necesita más datos)'}
+                                - **Score inicial (Train)**: {lc_res.train_scores_mean[0]:.4f}
+                                - **Score inicial (Val)**: {lc_res.val_scores_mean[0]:.4f}
+                                """)
             
             # 🎉 Success! Show balloons
             st.balloons()
@@ -875,15 +950,18 @@ else:
                 # Create dataframe with results
                 comparison_data = []
                 for (m1, m2), res in stat_results.items():
+                    # Calculate mean difference from model means
+                    mean_diff = res.model1_mean - res.model2_mean
                     comparison_data.append({
                         "Modelo 1": m1,
                         "Modelo 2": m2,
                         "Test Usado": res.test_used,
                         "p-value": f"{res.p_value:.4f}",
                         "Significativo (p<0.05)": "✅ SÍ" if res.significant else "❌ NO",
-                        "Diferencia de medias": f"{res.mean_diff:.4f}",
-                        "Normalidad M1": "✓" if res.normality_p1 > 0.05 else "✗",
-                        "Normalidad M2": "✓" if res.normality_p2 > 0.05 else "✗"
+                        "Diferencia de medias": f"{mean_diff:.4f}",
+                        "Effect Size (Cohen's d)": f"{res.effect_size:.4f} ({res.effect_size_interpretation})",
+                        "Normalidad M1": "✓" if res.model1_is_normal else "✗",
+                        "Normalidad M2": "✓" if res.model2_is_normal else "✗"
                     })
                 
                 if comparison_data:
@@ -917,24 +995,36 @@ else:
 
 st.markdown("---")
 
-# Display learning curves from previous training if available
-if not get_state("is_trained") and hasattr(st.session_state, 'learning_curve_paths'):
-    if st.session_state.learning_curve_paths:
+# Display learning curves from previous training if available (INTERACTIVO)
+if not get_state("is_trained") and hasattr(st.session_state, 'learning_curve_results'):
+    lc_results = st.session_state.learning_curve_results
+    if lc_results:
         st.subheader("📈 Curvas de Aprendizaje (del último entrenamiento)")
         
-        lc_paths = st.session_state.learning_curve_paths
-        tabs = st.tabs([f"📊 {model}" for model in lc_paths.keys()])
+        from src.training.learning_curves import plot_learning_curve, diagnose_learning_curve
         
-        for tab, (model_name, img_path) in zip(tabs, lc_paths.items()):
+        tabs = st.tabs([f"📊 {model}" for model in lc_results.keys()])
+        
+        for tab, (model_name, lc_res) in zip(tabs, lc_results.items()):
             with tab:
-                if Path(img_path).exists():
-                    st.image(img_path, use_container_width=True)
-                else:
-                    html_path = img_path.replace('.png', '.html')
-                    if Path(html_path).exists():
-                        with open(html_path, 'r', encoding='utf-8') as f:
-                            html_content = f.read()
-                        st.components.v1.html(html_content, height=650, scrolling=True)
+                try:
+                    fig = plot_learning_curve(lc_res, title=f"Learning Curve: {model_name}")
+                    st.plotly_chart(fig, use_container_width=True, key=f"lc_prev_{model_name}")
+                    
+                    # Quick diagnosis
+                    diagnosis = diagnose_learning_curve(lc_res)
+                    for issue in diagnosis['issues']:
+                        if 'Good fit' in issue:
+                            st.success(f"✅ {issue}")
+                        elif 'underfitting' in issue.lower():
+                            st.error(f"🔴 {issue}")
+                        elif 'overfitting' in issue.lower():
+                            st.warning(f"⚠️ {issue}")
+                except Exception:
+                    # Fallback to static
+                    lc_paths = st.session_state.get('learning_curve_paths', {})
+                    if model_name in lc_paths and Path(lc_paths[model_name]).exists():
+                        st.image(lc_paths[model_name], use_container_width=True)
         
         st.markdown("---")
 

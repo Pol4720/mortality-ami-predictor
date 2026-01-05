@@ -66,25 +66,28 @@ def run_rigorous_experiment_pipeline(
     progress_callback: Optional[Callable[[str, float], None]] = None,
 ) -> Dict:
     """
-    Orchestrate rigorous experiment pipeline following academic standards:
+    Orchestrate rigorous experiment pipeline following academic standards.
     
-    FASE 1: TRAIN + VALIDATION
+    THIS FUNCTION HANDLES TRAINING PHASES (1 & 3):
+    
+    FASE 1: TRAIN + VALIDATION (done here)
     1. Repeated stratified k-fold CV for all models (≥30 runs)
        → Estimate μ (mean) and σ (std) for each model
-    2. Learning curves for model selection
+    2. Learning curves for diagnostics (detect underfitting/overfitting)
     3. Select best model based on validation performance
     
-    FASE 2: TEST (Final Estimate on Hold-out Set)
-    4. Bootstrap resampling (with replacement) on test set
-    5. Jackknife resampling (leave-one-out) on test set
-       → Obtain final performance estimates with confidence intervals
-    
-    FASE 3: STATISTICAL COMPARISON
-    6. Compare all models pairwise:
+    FASE 3: STATISTICAL COMPARISON (done here)
+    4. Compare all models pairwise:
        - Shapiro-Wilk normality test
        - If normal: Paired t-test (parametric)
        - If not normal: Mann-Whitney U test (non-parametric)
        → Determine if differences are statistically significant
+    
+    FASE 2: TEST - EVALUATION (done in evaluation module)
+    This phase is executed in the Model Evaluation module (04_📈_Model_Evaluation.py):
+    - Bootstrap resampling (1000 iterations with replacement)
+    - Jackknife resampling (leave-one-out)
+    → Obtain final performance estimates with 95% confidence intervals
     
     Args:
         X: Training features
@@ -264,10 +267,11 @@ def run_rigorous_experiment_pipeline(
             fig_matrix.write_html(html_path)
     
     # =========================================================================
-    # FASE 2: TEST (Estimado final con Bootstrap y Jackknife)
+    # SAVE BEST MODEL (Test evaluation done in Evaluation module)
     # =========================================================================
-    # NOTA: La evaluación en el test set se hará en el módulo de EVALUACIÓN,
-    # no aquí. Aquí solo entrenamos y guardamos el mejor modelo.
+    # NOTE: Bootstrap and Jackknife evaluation (FASE 2) is done in the
+    # EVALUATION module (04_📈_Model_Evaluation.py), not here.
+    # Here we only train the best model and save it along with the test set.
     
     # Fit best model on full training data and save
     if progress_callback:
@@ -352,15 +356,20 @@ def run_rigorous_experiment_pipeline(
     models_dir = Path(output_dir)
     testsets_dir = models_dir / "testsets"
     
+    # Get task name from target variable (e.g., "mortality", "arrhythmia")
+    # This is used for naming testsets/trainsets consistently by TASK, not by model
+    task_name = y.name if hasattr(y, 'name') and y.name else 'unknown'
+    
     if test_set is not None:
         X_test, y_test = test_set
         test_df = pd.concat([X_test, y_test], axis=1)
         
-        # Save testset and trainset with timestamp
+        # Save testset and trainset with timestamp using TASK name (not model type)
+        # This ensures all models share the same test/train split for fair comparison
         test_path = save_dataset_with_timestamp(
             test_df,
             testsets_dir,
-            prefix=f"testset_{model_type}",
+            prefix=f"testset_{task_name}",
             format="parquet"
         )
         results['test_set_path'] = str(test_path)
@@ -370,13 +379,13 @@ def run_rigorous_experiment_pipeline(
         train_path = save_dataset_with_timestamp(
             train_df,
             testsets_dir,
-            prefix=f"trainset_{model_type}",
+            prefix=f"trainset_{task_name}",
             format="parquet"
         )
         results['train_set_path'] = str(train_path)
         
-        # Clean up old testsets/trainsets (keep only latest)
-        cleanup_old_testsets(model_type, testsets_dir, keep_n_latest=1)
+        # Clean up old testsets/trainsets by TASK (keep only latest per task)
+        cleanup_old_testsets(task_name, testsets_dir, keep_n_latest=1)
         
         if progress_callback:
             progress_callback(f"Test/Train sets guardados en: {testsets_dir}", 0.92)

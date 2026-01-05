@@ -74,10 +74,22 @@ if not data_path or not Path(data_path).exists():
     df.to_csv(data_path, index=False)
     st.session_state.data_path = str(data_path)
 
-# Get task from session state
-task = st.session_state.get('target_column', 'mortality')
-if task == 'exitus':
-    task = 'mortality'
+# Get target column from session state (now stores actual column name)
+target_col_name = st.session_state.get('target_column_name', None)
+
+# Determine task for model folder organization
+if target_col_name:
+    if target_col_name == CONFIG.target_column or target_col_name in ['mortality', 'mortality_inhospital', 'exitus']:
+        task = 'mortality'
+    elif target_col_name == CONFIG.arrhythmia_column or target_col_name in ['arrhythmia', 'ventricular_arrhythmia']:
+        task = 'arrhythmia'
+    else:
+        task = target_col_name.lower().replace(' ', '_')[:20]
+else:
+    # Fallback to old behavior
+    task = st.session_state.get('target_column', 'mortality')
+    if task == 'exitus':
+        task = 'mortality'
 
 # Model selection for evaluation
 st.sidebar.markdown("---")
@@ -92,6 +104,11 @@ model_source = st.sidebar.radio(
 
 if model_source == "Standard Models":
     saved_models = list_saved_models(task)
+    
+    # If no models found for custom task, also check 'mortality' folder
+    if not saved_models and task not in ['mortality', 'arrhythmia']:
+        st.info(f"ℹ️ No models found for task '{task}', checking 'mortality' folder...")
+        saved_models = list_saved_models('mortality')
 
     if not saved_models:
         st.error(f"❌ No trained models found for task '{task}'. Please train models first.")
@@ -1191,12 +1208,43 @@ try:
         generate_comparison_report_recuima,
         get_recuima_info,
     )
+    from src.scoring import (
+        load_testset_score_data,
+        check_score_data_availability,
+    )
     
-    # Check requirements
-    can_compute_recuima, recuima_columns, missing_recuima = check_recuima_requirements(df)
+    # ================================================================
+    # FIRST: Try to load preserved original score data from training
+    # ================================================================
+    score_data_available = False
+    preserved_score_data = None
+    
+    try:
+        score_availability = check_score_data_availability(TESTSETS_DIR, task)
+        if score_availability['available'] and score_availability['recuima_ready']:
+            preserved_score_data = load_testset_score_data(TESTSETS_DIR, task)
+            if preserved_score_data is not None and len(preserved_score_data) > 0:
+                score_data_available = True
+                st.success(f"""
+                ✅ **Datos originales para RECUIMA encontrados** ({len(preserved_score_data)} muestras del test set)
+                
+                Usando variables preservadas durante el entrenamiento con valores originales sin codificar.
+                """)
+    except Exception as e:
+        # Silently continue if score data not available
+        pass
+    
+    # Determine which dataset to use for RECUIMA check
+    df_for_recuima_check = preserved_score_data if score_data_available else df
+    
+    # Check requirements on appropriate dataset
+    can_compute_recuima, recuima_columns, missing_recuima = check_recuima_requirements(df_for_recuima_check)
     
     if can_compute_recuima:
-        st.success(f"✅ Variables RECUIMA encontradas en el dataset")
+        if score_data_available:
+            st.success(f"✅ Variables RECUIMA disponibles desde datos originales preservados")
+        else:
+            st.success(f"✅ Variables RECUIMA encontradas en el dataset cargado")
         
         with st.expander("📋 Variables detectadas", expanded=False):
             for var_type, col_name in recuima_columns.items():
@@ -1292,36 +1340,52 @@ detectar correctamente las complicaciones (FV, TV, BAV).
                                 
                                 y_prob = model.predict_proba(X_test)[:, 1]
                             
-                            # Usar el dataset cargado en la app (df) 
-                            # o el dataset RECUIMA personalizado si el usuario lo cargó
-                            df_recuima = st.session_state.get('recuima_custom_dataset', df)
+                            # ============================================================
+                            # PRIORITY ORDER FOR RECUIMA DATA:
+                            # 1. Preserved original score data (from training)
+                            # 2. User-uploaded custom dataset
+                            # 3. Current loaded dataset (may be encoded)
+                            # ============================================================
+                            if score_data_available and preserved_score_data is not None:
+                                df_recuima = preserved_score_data
+                                st.info("📊 Usando datos originales preservados durante el entrenamiento")
+                            elif 'recuima_custom_dataset' in st.session_state:
+                                df_recuima = st.session_state['recuima_custom_dataset']
+                                st.info("📊 Usando dataset personalizado cargado por el usuario")
+                            else:
+                                df_recuima = df
+                                st.info("📊 Usando dataset cargado en la aplicación")
                             
                             # Verificar si las columnas están en formato correcto para RECUIMA
                             # El dataset limpiado puede tener columnas codificadas numéricamente
                             recuima_format_valid = True
                             format_issues = []
                             
-                            # Verificar complicaciones (debe ser texto, no números)
-                            if 'complicaciones' in df_recuima.columns:
-                                sample_val = df_recuima['complicaciones'].dropna().iloc[0] if len(df_recuima['complicaciones'].dropna()) > 0 else None
-                                if sample_val is not None and isinstance(sample_val, (int, float)):
-                                    recuima_format_valid = False
-                                    format_issues.append("complicaciones (codificado numéricamente, necesita texto)")
-                            
-                            # Verificar indice_killip (debe ser 'IV' o 4, no 0-3)
-                            if 'indice_killip' in df_recuima.columns:
-                                killip_vals = df_recuima['indice_killip'].dropna().unique()
-                                # Si los valores son 0,1,2,3 y no hay 4 ni 'IV', probablemente está mal codificado
-                                if set(killip_vals).issubset({0, 1, 2, 3}):
-                                    recuima_format_valid = False
-                                    format_issues.append("indice_killip (codificado 0-3, necesita I-IV o 1-4)")
+                            # Skip validation if using preserved score data (already validated)
+                            if not score_data_available:
+                                # Verificar complicaciones (debe ser texto, no números)
+                                if 'complicaciones' in df_recuima.columns:
+                                    sample_val = df_recuima['complicaciones'].dropna().iloc[0] if len(df_recuima['complicaciones'].dropna()) > 0 else None
+                                    if sample_val is not None and isinstance(sample_val, (int, float)):
+                                        recuima_format_valid = False
+                                        format_issues.append("complicaciones (codificado numéricamente, necesita texto)")
+                                
+                                # Verificar indice_killip (debe ser 'IV' o 4, no 0-3)
+                                if 'indice_killip' in df_recuima.columns:
+                                    killip_vals = df_recuima['indice_killip'].dropna().unique()
+                                    # Si los valores son 0,1,2,3 y no hay 4 ni 'IV', probablemente está mal codificado
+                                    if set(killip_vals).issubset({0, 1, 2, 3}):
+                                        recuima_format_valid = False
+                                        format_issues.append("indice_killip (codificado 0-3, necesita I-IV o 1-4)")
                             
                             if not recuima_format_valid:
                                 st.warning(f"""⚠️ **El dataset cargado tiene columnas codificadas que impiden calcular RECUIMA correctamente:**
                                 
 {chr(10).join(['• ' + issue for issue in format_issues])}
 
-Por favor, carga el dataset original con las columnas en formato texto usando el cargador de arriba.""")
+**Opciones:**
+1. Re-entrenar el modelo para generar datos originales automáticamente
+2. Cargar el dataset original usando el cargador de arriba""")
                                 st.session_state.recuima_needs_original = True
                                 st.stop()
                             
@@ -1367,14 +1431,19 @@ Por favor, carga el dataset original con las columnas en formato texto usando el
                                     components_info.append(f"  - {comp_name}: {non_zero} pacientes con puntos")
                                 st.code("\n".join(components_info))
                             
-                            # Para la comparación ML vs RECUIMA, usamos RECUIMA en todo el dataset
-                            # ya que el testset preprocesado no tiene las variables originales
-                            st.info("""ℹ️ **Nota metodológica:** La comparación usa RECUIMA calculado sobre 
-                            todo el dataset original, mientras que las predicciones ML corresponden al test set. 
-                            Para una comparación más rigurosa, considere reentrenar preservando las variables originales.""")
+                            # Nota metodológica dependiendo de la fuente de datos
+                            if score_data_available:
+                                st.success("""✅ **Comparación Metodológicamente Rigurosa:** 
+                                Los scores RECUIMA se calculan sobre el **mismo test set** usado para evaluar el modelo ML, 
+                                usando las variables originales preservadas durante el entrenamiento.""")
+                            else:
+                                st.info("""ℹ️ **Nota metodológica:** La comparación usa RECUIMA calculado sobre 
+                                el dataset disponible. Para una comparación completamente alineada con el test set,
+                                re-entrene el modelo para que se preserven automáticamente las variables originales.""")
                             
                             # Mostrar distribución de scores
-                            st.markdown("#### 📊 Distribución de Scores RECUIMA en Dataset Completo")
+                            data_source = "Test Set Original" if score_data_available else "Dataset Completo"
+                            st.markdown(f"#### 📊 Distribución de Scores RECUIMA en {data_source}")
                             
                             col_s1, col_s2, col_s3, col_s4 = st.columns(4)
                             col_s1.metric("Score Medio", f"{np.mean(recuima_scores):.2f}")
@@ -1382,8 +1451,7 @@ Por favor, carga el dataset original con las columnas en formato texto usando el
                             col_s3.metric("Bajo Riesgo (≤3)", f"{np.sum(recuima_scores <= 3)} ({100*np.mean(recuima_scores <= 3):.1f}%)")
                             col_s4.metric("Alto Riesgo (≥4)", f"{np.sum(recuima_scores >= 4)} ({100*np.mean(recuima_scores >= 4):.1f}%)")
                             
-                            # Calcular métricas RECUIMA usando dataset completo
-                            # (ya que el testset preprocesado no tiene variables originales)
+                            # Calcular métricas RECUIMA
                             from sklearn.metrics import roc_auc_score, confusion_matrix as cm_sklearn
                             
                             # Filtrar valores válidos
