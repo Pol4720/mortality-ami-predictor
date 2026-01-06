@@ -330,7 +330,6 @@ def create_sampler(
     if config.strategy == ImbalanceStrategy.SMOTE:
         return SMOTE(
             k_neighbors=config.k_neighbors,
-            n_jobs=config.n_jobs,
             **common_params,
         )
     
@@ -340,14 +339,12 @@ def create_sampler(
         return SMOTENC(
             categorical_features=config.categorical_features,
             k_neighbors=config.k_neighbors,
-            n_jobs=config.n_jobs,
             **common_params,
         )
     
     elif config.strategy == ImbalanceStrategy.ADASYN:
         return ADASYN(
             n_neighbors=config.k_neighbors,
-            n_jobs=config.n_jobs,
             **common_params,
         )
     
@@ -355,7 +352,6 @@ def create_sampler(
         return BorderlineSMOTE(
             k_neighbors=config.k_neighbors,
             kind=config.borderline_kind,
-            n_jobs=config.n_jobs,
             **common_params,
         )
     
@@ -363,7 +359,6 @@ def create_sampler(
         return SVMSMOTE(
             k_neighbors=config.k_neighbors,
             svm_estimator=config.svm_estimator,
-            n_jobs=config.n_jobs,
             **common_params,
         )
     
@@ -380,7 +375,6 @@ def create_sampler(
         return SMOTETomek(
             smote=SMOTE(
                 k_neighbors=config.k_neighbors,
-                n_jobs=config.n_jobs,
                 **common_params,
             ),
             n_jobs=config.n_jobs,
@@ -391,7 +385,6 @@ def create_sampler(
         return SMOTEENN(
             smote=SMOTE(
                 k_neighbors=config.k_neighbors,
-                n_jobs=config.n_jobs,
                 **common_params,
             ),
             n_jobs=config.n_jobs,
