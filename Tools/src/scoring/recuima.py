@@ -7,19 +7,63 @@ desarrollada por el Dr. Maikel Santos Medina.
 Based on: Tesis Doctoral - Universidad de Ciencias Médicas de Santiago de Cuba
 Hospital General Docente "Dr. Ernesto Guevara de la Serna" Las Tunas
 
-Variables:
-- Edad > 70 años
-- TAS < 100 mmHg
-- Filtrado glomerular < 60 ml/min/1.73m²
-- Más de 7 derivaciones afectadas en ECG
-- Killip Kimball IV (choque cardiogénico)
-- Fibrilación ventricular/Taquicardia ventricular
-- Bloqueo auriculoventricular de alto grado
+Variables (máximo 10 puntos):
+- Edad > 70 años (1 pt)
+- TAS < 100 mmHg (1 pt)
+- Filtrado glomerular < 60 ml/min/1.73m² (3 pts) ⭐
+- Más de 7 derivaciones afectadas en ECG (1 pt)
+- Killip Kimball IV (choque cardiogénico) (1 pt)
+- Fibrilación ventricular/Taquicardia ventricular (2 pts)
+- Bloqueo auriculoventricular de alto grado (1 pt)
+
+Categorías de riesgo:
+- Bajo: ≤3 puntos
+- Alto: ≥4 puntos
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Dict, Tuple, Optional
+
+import pandas as pd
+
+
+# =============================================================================
+# COMPLICACIONES PARSING DEFINITIONS
+# =============================================================================
+
+# Tokens indicating Ventricular Fibrillation
+FV_TOKENS = {'fv', 'pcr-fv'}
+
+# Tokens indicating Ventricular Tachycardia  
+TV_TOKENS = {'tv'}
+
+# Tokens indicating High-Grade AV Block (2nd Mobitz II, 3rd degree, 2:1)
+BAV_ALTO_GRADO_TOKENS = {'bav3', 'bav2:1', 'bav2', 'bav', 'pcr-bav-pericar'}
+
+
+def parse_complicaciones(text: str) -> Tuple[bool, bool]:
+    """
+    Parse complicaciones text to extract FV/TV and BAV alto grado.
+    
+    Args:
+        text: The complicaciones text field (e.g., "tv;bav3;shock")
+        
+    Returns:
+        Tuple of (has_fv_tv, has_bav_alto_grado)
+    """
+    if pd.isna(text) or not str(text).strip():
+        return False, False
+    
+    text_lower = str(text).lower().strip()
+    tokens = set(re.split(r'[;,/|]+', text_lower))
+    tokens = {t.strip() for t in tokens if t.strip()}
+    
+    has_fv_tv = bool(tokens & FV_TOKENS) or bool(tokens & TV_TOKENS)
+    has_bav_alto_grado = bool(tokens & BAV_ALTO_GRADO_TOKENS)
+    
+    return has_fv_tv, has_bav_alto_grado
 
 
 @dataclass
@@ -148,8 +192,8 @@ class RECUIMAScorer:
             components["high_grade_avb"] = 0
         
         # Determine risk category (binary: low vs high)
-        # Based on thesis: two risk categories
-        risk_category = "high" if score >= 3 else "low"
+        # Based on thesis: Bajo riesgo ≤3, Alto riesgo ≥4
+        risk_category = "high" if score >= 4 else "low"
         
         # Estimate probability based on score (0-10 with thesis weights)
         # These are approximate values based on thesis validation data
@@ -157,8 +201,8 @@ class RECUIMAScorer:
             0: 0.02,
             1: 0.05,
             2: 0.10,
-            3: 0.20,  # Low/High risk threshold
-            4: 0.35,
+            3: 0.20,
+            4: 0.35,  # High risk threshold (≥4)
             5: 0.50,
             6: 0.65,
             7: 0.78,
@@ -174,6 +218,58 @@ class RECUIMAScorer:
             probability=probability,
             components=components,
         ).to_dict()
+    
+    def compute_batch(
+        self,
+        age: "np.ndarray",
+        systolic_bp: "np.ndarray",
+        gfr: "np.ndarray",
+        ecg_leads_affected: "np.ndarray",
+        killip_class: "np.ndarray",
+        vf_vt: "np.ndarray",
+        high_grade_avb: "np.ndarray",
+    ) -> "np.ndarray":
+        """
+        Calculate RECUIMA scores for multiple patients.
+        
+        Parameters
+        ----------
+        age : np.ndarray
+            Array of patient ages
+        systolic_bp : np.ndarray
+            Array of systolic blood pressures
+        gfr : np.ndarray
+            Array of GFR values
+        ecg_leads_affected : np.ndarray
+            Array of ECG leads affected counts
+        killip_class : np.ndarray
+            Array of Killip classes (1-4)
+        vf_vt : np.ndarray
+            Array of VF/VT indicators (bool or 0/1)
+        high_grade_avb : np.ndarray
+            Array of high-grade AVB indicators (bool or 0/1)
+        
+        Returns
+        -------
+        np.ndarray
+            Array of RECUIMA scores
+        """
+        import numpy as np
+        
+        scores = []
+        for i in range(len(age)):
+            result = self.compute(
+                age=float(age[i]),
+                systolic_bp=float(systolic_bp[i]),
+                gfr=float(gfr[i]),
+                ecg_leads_affected=int(ecg_leads_affected[i]),
+                killip_class=int(killip_class[i]),
+                vf_vt=bool(vf_vt[i]),
+                high_grade_avb=bool(high_grade_avb[i]),
+            )
+            scores.append(result["score"])
+        
+        return np.array(scores)
     
     def get_info(self) -> dict[str, Any]:
         """Get score information."""
@@ -197,4 +293,95 @@ class RECUIMAScorer:
             ],
             "risk_categories": ["low", "high"],
             "max_score": 10,  # With thesis weights: 1+1+3+1+1+2+1 = 10
+            "risk_threshold": 4,  # Score ≥4 = Alto riesgo
         }
+
+
+def compute_recuima_from_dataframe(
+    df: pd.DataFrame,
+    age_col: str = "edad",
+    sbp_col: str = "presion_arterial_sistolica",
+    gfr_col: str = "filtrado_glomerular",
+    killip_col: str = "indice_killip",
+    complicaciones_col: str = "complicaciones",
+    ecg_lead_cols: Optional[list] = None,
+    comp_fv_tv_col: Optional[str] = None,
+    comp_bav_col: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Compute RECUIMA scores from a DataFrame.
+    
+    This function handles parsing of 'complicaciones' column if needed,
+    and computes RECUIMA scores for all rows.
+    
+    Args:
+        df: Input DataFrame
+        age_col: Column name for age
+        sbp_col: Column name for systolic BP
+        gfr_col: Column name for GFR
+        killip_col: Column name for Killip class
+        complicaciones_col: Column for raw complicaciones text
+        ecg_lead_cols: List of ECG lead columns (to count affected leads)
+        comp_fv_tv_col: Pre-parsed FV/TV column (if available)
+        comp_bav_col: Pre-parsed BAV alto grado column (if available)
+    
+    Returns:
+        DataFrame with added columns:
+        - recuima_score: The computed score (0-10)
+        - recuima_risk: Risk category ("low" or "high")
+    """
+    import numpy as np
+    
+    result_df = df.copy()
+    n = len(df)
+    
+    # Initialize score array
+    scores = np.zeros(n, dtype=int)
+    
+    # 1. Age > 70 (1 pt)
+    if age_col in df.columns:
+        scores += (df[age_col] > 70).astype(int)
+    
+    # 2. SBP < 100 (1 pt)
+    if sbp_col in df.columns:
+        scores += (df[sbp_col] < 100).astype(int)
+    
+    # 3. GFR < 60 (3 pts) - Most important factor
+    if gfr_col in df.columns:
+        scores += (df[gfr_col] < 60).astype(int) * 3
+    
+    # 4. ECG leads > 7 (1 pt)
+    if ecg_lead_cols:
+        available_leads = [c for c in ecg_lead_cols if c in df.columns]
+        if available_leads:
+            leads_count = df[available_leads].notna().sum(axis=1)
+            scores += (leads_count > 7).astype(int)
+    
+    # 5. Killip IV (1 pt)
+    if killip_col in df.columns:
+        killip_iv = df[killip_col].apply(
+            lambda x: 1 if (str(x).upper().strip() in ('IV', '4')) else 0
+        )
+        scores += killip_iv
+    
+    # 6 & 7. FV/TV (2 pts) and BAV alto grado (1 pt)
+    if comp_fv_tv_col and comp_fv_tv_col in df.columns:
+        scores += df[comp_fv_tv_col].astype(int) * 2
+    elif complicaciones_col in df.columns:
+        parsed = df[complicaciones_col].apply(parse_complicaciones)
+        fv_tv = parsed.apply(lambda x: x[0]).astype(int)
+        scores += fv_tv * 2
+    
+    if comp_bav_col and comp_bav_col in df.columns:
+        scores += df[comp_bav_col].astype(int)
+    elif complicaciones_col in df.columns:
+        if 'parsed' not in dir():
+            parsed = df[complicaciones_col].apply(parse_complicaciones)
+        bav = parsed.apply(lambda x: x[1]).astype(int)
+        scores += bav
+    
+    # Store results
+    result_df['recuima_score'] = scores
+    result_df['recuima_risk'] = np.where(scores >= 4, 'high', 'low')
+    
+    return result_df

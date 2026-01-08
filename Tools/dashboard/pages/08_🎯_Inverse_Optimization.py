@@ -111,6 +111,10 @@ model_path = saved_models[selected_model_name]
 try:
     model = joblib.load(model_path)
     st.sidebar.success(f"✅ Model loaded")
+except EOFError:
+    st.error(f"❌ El archivo del modelo '{selected_model_name}' está corrupto (EOFError). Por favor, elimine el archivo y vuelva a entrenar el modelo.")
+    st.info(f"📁 Ruta del archivo: `{model_path}`")
+    st.stop()
 except Exception as e:
     st.error(f"❌ Error loading model: {e}")
     st.stop()

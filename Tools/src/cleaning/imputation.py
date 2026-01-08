@@ -17,6 +17,9 @@ from sklearn.impute import KNNImputer, SimpleImputer
 class ImputationStrategy(str, Enum):
     """Available imputation strategies."""
     
+    # No imputation (preserve original data)
+    NONE = "none"
+    
     # Numerical strategies
     MEAN = "mean"
     MEDIAN = "median"
@@ -48,6 +51,10 @@ def impute_numeric_column(
         Series with imputed values
     """
     if series.isna().sum() == 0:
+        return series
+    
+    # NONE strategy: return original series without any imputation
+    if strategy == ImputationStrategy.NONE:
         return series
     
     result = series.copy()
@@ -103,6 +110,10 @@ def impute_categorical_column(
         Series with imputed values
     """
     if series.isna().sum() == 0:
+        return series
+    
+    # NONE strategy: return original series without any imputation
+    if strategy == ImputationStrategy.NONE:
         return series
     
     result = series.copy()

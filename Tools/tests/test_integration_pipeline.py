@@ -21,7 +21,7 @@ import tempfile
 import joblib
 
 from src.data_load import load_dataset
-from src.cleaning import DataCleaner, quick_clean
+from src.cleaning import DataCleaner, CleaningConfig, quick_clean
 from src.preprocessing import build_preprocess_pipelines
 from src.features import safe_feature_columns
 from src.models import make_classifiers
@@ -71,9 +71,16 @@ def clean_dataset(synthetic_dataset):
     data = synthetic_dataset.copy()
     
     # Use quick_clean for a simple cleaning
+    # Specify median imputation since default is now 'none'
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore')
-        cleaner = DataCleaner()
+        config = CleaningConfig(
+            numeric_imputation='median',
+            categorical_imputation='mode',
+            outlier_method='none',
+            outlier_treatment='none'
+        )
+        cleaner = DataCleaner(config)
         cleaned = cleaner.fit_transform(data, target_column='mortality')
     
     return cleaned

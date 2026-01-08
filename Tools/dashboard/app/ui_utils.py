@@ -223,6 +223,27 @@ def train_models_with_progress(
     # Load data
     df = load_dataset(data_path)
     
+    # Define clinical score columns to preserve (these are needed for GRACE/RECUIMA comparison)
+    # They will be saved in testset but NOT used as features for training
+    # Important: These are preserved in their ORIGINAL form (before encoding/transformation)
+    CLINICAL_SCORE_COLUMNS = [
+        # GRACE score columns
+        'escala_grace', 'GRACE', 'grace_score',
+        # RECUIMA required variables (need original values, not encoded)
+        'complicaciones',      # Text field with FV/TV, BAV info
+        'indice_killip',       # Original 1-4 or I-IV (before 0-3 encoding)
+        'edad',                # Age in years
+        'presion_arterial_sistolica',  # SBP in mmHg
+        'filtrado_glomerular', # GFR in ml/min/1.73m²
+        # Pre-computed scores
+        'recuima', 'score_recuima',
+    ]
+    
+    # Find which clinical score columns exist in the data
+    preserved_score_columns = [col for col in CLINICAL_SCORE_COLUMNS if col in df.columns]
+    if preserved_score_columns:
+        st.info(f"ℹ️ Columnas de scores clínicos detectadas: {preserved_score_columns}")
+    
     # Determine target column
     # Priority: 1) explicit target_column, 2) CONFIG based on task, 3) fallback search
     if target_column and target_column in df.columns:
@@ -287,21 +308,42 @@ def train_models_with_progress(
     timestamp = get_timestamp()
     
     try:
-        # Save both train and test sets with timestamp
+        # Add original indices to test_df and train_df for later matching with clinical scores
+        # This allows proper alignment with original data for GRACE/RECUIMA comparisons
+        test_df_with_metadata = test_df.copy()
+        train_df_with_metadata = train_df.copy()
+        
+        # Add original indices
+        test_df_with_metadata['_original_index'] = test_indices
+        train_df_with_metadata['_original_index'] = train_indices
+        
+        # Preserve clinical score columns with _ prefix (so they're not used as features)
+        # These are essential for GRACE/RECUIMA comparison in evaluation
+        if preserved_score_columns:
+            for col in preserved_score_columns:
+                if col in df.columns:
+                    # Get values using the split indices
+                    test_df_with_metadata[f'_score_{col}'] = df.iloc[test_indices][col].values
+                    train_df_with_metadata[f'_score_{col}'] = df.iloc[train_indices][col].values
+            st.success(f"✅ Columnas de scores clínicos preservadas: {preserved_score_columns}")
+        
+        # Save both train and test sets with timestamp (including indices and scores)
         test_path = save_dataset_with_timestamp(
-            test_df, 
+            test_df_with_metadata, 
             TESTSETS_DIR, 
             prefix=f"testset_{task}",
             format="parquet"
         )
         train_path = save_dataset_with_timestamp(
-            train_df,
+            train_df_with_metadata,
             TESTSETS_DIR,
             prefix=f"trainset_{task}",
             format="parquet"
         )
         st.success(f"✅ Test set guardado: {len(test_df)} muestras en {test_path.name}")
         st.info(f"ℹ️ Train set guardado: {len(train_df)} muestras en {train_path.name}")
+        if preserved_score_columns:
+            st.info(f"ℹ️ Scores clínicos incluidos para comparación: {preserved_score_columns}")
         
     except Exception as e:
         st.error(f"❌ Error guardando train/test sets: {e}")

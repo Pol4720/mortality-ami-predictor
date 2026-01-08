@@ -298,8 +298,13 @@ st.markdown("---")
 # Display evaluation results
 st.subheader("Evaluation Results")
 
-reports_dir = Path(root_dir) / "reports"
-figures_dir = reports_dir / "figures"
+# IMPORTANT: Use the correct paths where evaluation saves its outputs
+# The evaluation module saves to: processed/plots/evaluation/
+reports_dir = Path(root_dir) / "processed" / "plots" / "evaluation"
+figures_dir = reports_dir  # Figures are in the same directory
+
+# Create directory if it doesn't exist
+reports_dir.mkdir(parents=True, exist_ok=True)
 
 # Metrics table
 st.subheader("📊 Performance Metrics")
@@ -540,11 +545,16 @@ if not st.session_state.get('is_evaluated', False):
     st.stop()
 
 # Check if we can generate interactive plots from testset
-testset_path = get_latest_testset(selected_model if 'selected_model' in locals() else 'dtree', TESTSETS_DIR)
+# Use 'task' (e.g., "mortality") for finding testsets, not 'selected_model'
+testset_path = get_latest_testset(task, TESTSETS_DIR)
 if not testset_path:
     testset_path = TESTSETS_DIR / f"testset_{task}.parquet"
-    
-model_path = MODELS_DIR / f"best_classifier_{task}.joblib"
+
+# Use the actual selected model path, not the generic one
+if 'selected_model_path' in locals() and selected_model_path.exists():
+    model_path = selected_model_path
+else:
+    model_path = MODELS_DIR / f"best_classifier_{task}.joblib"
 
 can_generate_plots = testset_path and testset_path.exists() and model_path.exists()
 
@@ -555,6 +565,17 @@ if can_generate_plots:
         test_df = pd.read_parquet(testset_path)
         
         target = CONFIG.target_column if task == "mortality" else CONFIG.arrhythmia_column
+        
+        # Check if target column exists in test dataframe
+        if target not in test_df.columns:
+            # Try to find a suitable target column
+            possible_targets = [c for c in test_df.columns if 'mortality' in c.lower() or 'exitus' in c.lower()]
+            if possible_targets:
+                target = possible_targets[0]
+                st.info(f"ℹ️ Using '{target}' as target column")
+            else:
+                raise ValueError(f"Target column '{target}' not found in testset. Available columns: {list(test_df.columns)}")
+        
         X_test = test_df.drop(columns=[target])
         y_test = test_df[target].values
         
@@ -661,7 +682,15 @@ if can_generate_plots:
                     pass
         
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         st.error(f"❌ Error loading model/data for interactive plots: {e}")
+        with st.expander("🔍 Error Details"):
+            st.code(error_details)
+            st.write(f"**Model path**: {model_path}")
+            st.write(f"**Model exists**: {model_path.exists() if model_path else False}")
+            st.write(f"**Testset path**: {testset_path}")
+            st.write(f"**Testset exists**: {testset_path.exists() if testset_path else False}")
         st.info("ℹ️ Falling back to static images...")
         can_generate_plots = False
 
@@ -874,16 +903,30 @@ with st.expander("📂 Cargar Dataset con GRACE Score", expanded=False):
 df_for_grace = st.session_state.get('grace_original_dataset', df)
 
 # Verificar si existe la columna de GRACE en el dataset
+# Buscar primero columnas preservadas con prefijo _score_, luego columnas directas
 grace_column_candidates = ['escala_grace', 'GRACE', 'grace_score', 'grace', 'GRACE_score']
 grace_column = None
+using_preserved = False
 
+# Primero buscar columnas preservadas con prefijo _score_
 for candidate in grace_column_candidates:
-    if candidate in df_for_grace.columns:
-        grace_column = candidate
+    preserved_col = f'_score_{candidate}'
+    if preserved_col in df_for_grace.columns:
+        grace_column = preserved_col
+        using_preserved = True
         break
 
+# Si no se encontró preservada, buscar directa
+if grace_column is None:
+    for candidate in grace_column_candidates:
+        if candidate in df_for_grace.columns:
+            grace_column = candidate
+            break
+
 if grace_column is not None:
-    if 'grace_original_dataset' in st.session_state:
+    if using_preserved:
+        st.success(f"✅ Columna GRACE preservada encontrada: `{grace_column}`")
+    elif 'grace_original_dataset' in st.session_state:
         st.success(f"✅ Columna GRACE encontrada en dataset cargado: `{grace_column}`")
     else:
         st.success(f"✅ Columna GRACE encontrada: `{grace_column}`")
@@ -946,36 +989,114 @@ if grace_column is not None:
                                 test_df = pd.read_parquet(testset_path)
                                 
                                 target = CONFIG.target_column if task == "mortality" else CONFIG.arrhythmia_column
-                                X_test = test_df.drop(columns=[target])
+                                
+                                # Check for target column
+                                if target not in test_df.columns:
+                                    possible = [c for c in test_df.columns if 'mortality' in c.lower()]
+                                    target = possible[0] if possible else target
+                                
+                                # Exclude metadata columns from features
+                                feature_cols = [c for c in test_df.columns if c != target and not c.startswith('_')]
+                                X_test = test_df[feature_cols]
                                 y_test = test_df[target].values
                                 
                                 y_prob = model.predict_proba(X_test)[:, 1]
                             
-                            # Obtener valores de GRACE del test set o dataset cargado
+                            # Obtener valores de GRACE alineados con el test set
                             grace_scores = None
+                            alignment_method = None
                             
-                            # Primero intentar desde el test_df
-                            if grace_column in test_df.columns:
+                            # MÉTODO 1: Buscar en columnas preservadas con prefijo _score_
+                            # Estas columnas se guardan durante el entrenamiento con los scores originales
+                            preserved_grace_col = f'_score_{grace_column}'
+                            if preserved_grace_col in test_df.columns:
+                                grace_scores = test_df[preserved_grace_col].values
+                                alignment_method = "preserved"
+                                st.success(f"✅ Usando GRACE scores preservados en testset ({len(grace_scores)} valores)")
+                            else:
+                                # Buscar cualquier columna _score_* que contenga 'grace'
+                                grace_preserved_cols = [c for c in test_df.columns if c.startswith('_score_') and 'grace' in c.lower()]
+                                if grace_preserved_cols:
+                                    preserved_grace_col = grace_preserved_cols[0]
+                                    grace_scores = test_df[preserved_grace_col].values
+                                    alignment_method = "preserved"
+                                    st.success(f"✅ Usando columna preservada '{preserved_grace_col}' ({len(grace_scores)} valores)")
+                            
+                            # MÉTODO 2: Buscar columna directa en test_df
+                            if grace_scores is None and grace_column in test_df.columns:
                                 grace_scores = test_df[grace_column].values
-                                st.info(f"📊 Usando GRACE scores del test set ({len(grace_scores)} valores)")
+                                alignment_method = "direct"
+                                st.success(f"✅ Usando GRACE scores del test set ({len(grace_scores)} valores)")
                             
-                            # Si no está en test_df, intentar desde el dataset GRACE cargado
-                            elif 'grace_original_dataset' in st.session_state:
+                            # MÉTODO 3: Si no está en test_df, intentar alinear usando _original_index
+                            if grace_scores is None and 'grace_original_dataset' in st.session_state:
                                 grace_df = st.session_state['grace_original_dataset']
+                                
                                 if grace_column in grace_df.columns:
-                                    # Intentar hacer match por índice o usar los primeros N registros
-                                    if len(grace_df) >= len(test_df):
-                                        # Usar los primeros len(test_df) registros
-                                        grace_scores = grace_df[grace_column].iloc[:len(test_df)].values
-                                        st.warning(f"⚠️ Usando primeros {len(test_df)} valores de GRACE del dataset cargado")
+                                    # Check if test_df has original indices for proper alignment
+                                    if '_original_index' in test_df.columns:
+                                        # Use original indices for proper alignment
+                                        original_indices = test_df['_original_index'].values
+                                        
+                                        # Check if indices are within range
+                                        max_idx = int(original_indices.max())
+                                        if max_idx < len(grace_df):
+                                            grace_scores = grace_df[grace_column].iloc[original_indices].values
+                                            alignment_method = "indexed"
+                                            st.success(f"✅ GRACE scores alineados usando índices originales ({len(grace_scores)} valores)")
+                                        else:
+                                            st.error(f"❌ Índices del test set (máx: {max_idx}) exceden el dataset GRACE ({len(grace_df)} filas)")
+                                            st.warning("""
+                                            ⚠️ **Los índices no coinciden con el dataset cargado.**
+                                            
+                                            Esto ocurre porque el dataset cargado tiene menos filas que el dataset 
+                                            usado originalmente para limpiar y entrenar.
+                                            
+                                            **Solución:** Cargue el dataset ORIGINAL (antes de limpieza) que contiene 
+                                            todas las filas, incluyendo las que fueron eliminadas durante la limpieza.
+                                            """)
+                                            st.stop()
                                     else:
-                                        st.error(f"❌ El dataset GRACE tiene {len(grace_df)} registros pero el test set tiene {len(test_df)}")
+                                        # Fallback: warn that alignment is not guaranteed
+                                        st.error("❌ **Problema de alineación de datos**")
+                                        st.warning("""
+                                        ⚠️ El test set no contiene índices originales para alinear con GRACE.
+                                        
+                                        **Esto puede ocurrir porque:**
+                                        - El modelo fue entrenado con una versión anterior del sistema
+                                        - El test set fue modificado manualmente
+                                        
+                                        **Solución recomendada:**
+                                        1. Vuelva a la página **Data Cleaning and EDA**
+                                        2. Cargue el dataset ORIGINAL (con escala_grace)
+                                        3. **Importante:** NO elimine la columna escala_grace durante la selección de variables
+                                        4. Limpie el dataset y entrene nuevamente
+                                        5. El sistema preservará automáticamente escala_grace en el testset
+                                        """)
                                         st.stop()
                             
                             if grace_scores is None:
-                                st.error(f"❌ La columna `{grace_column}` no está disponible en ningún dataset")
+                                st.error(f"❌ La columna `{grace_column}` no está disponible")
                                 st.info("💡 Carga un dataset con la columna GRACE en la sección anterior")
                                 st.stop()
+                            
+                            # Handle NaN values in GRACE scores
+                            nan_mask = np.isnan(grace_scores) if isinstance(grace_scores, np.ndarray) else pd.isna(grace_scores)
+                            n_nan = nan_mask.sum()
+                            
+                            if n_nan > 0:
+                                st.warning(f"⚠️ Se encontraron {n_nan} valores NaN en GRACE ({n_nan/len(grace_scores)*100:.1f}%)")
+                                
+                                # Remove NaN values from all arrays (must be synchronized)
+                                valid_mask = ~nan_mask
+                                grace_scores = grace_scores[valid_mask]
+                                y_test_filtered = y_test[valid_mask]
+                                y_prob_filtered = y_prob[valid_mask]
+                                
+                                st.info(f"📊 Análisis con {len(grace_scores)} muestras válidas (excluidas {n_nan} con NaN)")
+                            else:
+                                y_test_filtered = y_test
+                                y_prob_filtered = y_prob
                             
                             # Normalizar GRACE si es necesario
                             if needs_normalization:
@@ -1000,10 +1121,10 @@ if grace_column is not None:
                             else:
                                 grace_probs = grace_scores
                             
-                            # Ejecutar comparación completa
+                            # Ejecutar comparación completa (using filtered data if NaN were present)
                             comparison_result = compare_with_grace(
-                                y_true=y_test,
-                                y_pred_model=y_prob,
+                                y_true=y_test_filtered,
+                                y_pred_model=y_prob_filtered,
                                 y_pred_grace=grace_probs,
                                 model_name=selected_model if 'selected_model' in locals() else "ML Model",
                                 threshold=comparison_threshold,
@@ -1464,23 +1585,46 @@ detectar correctamente las complicaciones (FV, TV, BAV).
                             # El dataset limpiado puede tener columnas codificadas numéricamente
                             recuima_format_valid = True
                             format_issues = []
+                            applied_fixes = []
                             
                             # Skip validation if using preserved score data (already validated)
                             if not score_data_available:
-                                # Verificar complicaciones (debe ser texto, no números)
-                                if 'complicaciones' in df_recuima.columns:
-                                    sample_val = df_recuima['complicaciones'].dropna().iloc[0] if len(df_recuima['complicaciones'].dropna()) > 0 else None
+                                # Verificar complicaciones - buscar también en _score_complicaciones
+                                complicaciones_col = None
+                                if '_score_complicaciones' in df_recuima.columns:
+                                    complicaciones_col = '_score_complicaciones'
+                                elif 'complicaciones' in df_recuima.columns:
+                                    complicaciones_col = 'complicaciones'
+                                
+                                if complicaciones_col:
+                                    sample_val = df_recuima[complicaciones_col].dropna().iloc[0] if len(df_recuima[complicaciones_col].dropna()) > 0 else None
                                     if sample_val is not None and isinstance(sample_val, (int, float)):
                                         recuima_format_valid = False
                                         format_issues.append("complicaciones (codificado numéricamente, necesita texto)")
+                                    elif complicaciones_col == '_score_complicaciones':
+                                        # Renombrar para que RECUIMA lo encuentre
+                                        df_recuima['complicaciones'] = df_recuima['_score_complicaciones']
+                                        applied_fixes.append("Usando _score_complicaciones como complicaciones")
                                 
-                                # Verificar indice_killip (debe ser 'IV' o 4, no 0-3)
-                                if 'indice_killip' in df_recuima.columns:
-                                    killip_vals = df_recuima['indice_killip'].dropna().unique()
-                                    # Si los valores son 0,1,2,3 y no hay 4 ni 'IV', probablemente está mal codificado
+                                # Verificar indice_killip - buscar también en _score_indice_killip
+                                killip_col = None
+                                if '_score_indice_killip' in df_recuima.columns:
+                                    killip_col = '_score_indice_killip'
+                                elif 'indice_killip' in df_recuima.columns:
+                                    killip_col = 'indice_killip'
+                                
+                                if killip_col:
+                                    killip_vals = df_recuima[killip_col].dropna().unique()
+                                    # Si los valores son 0,1,2,3, convertir a 1,2,3,4
                                     if set(killip_vals).issubset({0, 1, 2, 3}):
-                                        recuima_format_valid = False
-                                        format_issues.append("indice_killip (codificado 0-3, necesita I-IV o 1-4)")
+                                        df_recuima['indice_killip'] = df_recuima[killip_col] + 1
+                                        applied_fixes.append(f"Convertido {killip_col} de 0-3 a 1-4")
+                                    elif killip_col == '_score_indice_killip':
+                                        df_recuima['indice_killip'] = df_recuima['_score_indice_killip']
+                                        applied_fixes.append("Usando _score_indice_killip como indice_killip")
+                            
+                            if applied_fixes:
+                                st.info(f"🔧 Correcciones automáticas aplicadas: {', '.join(applied_fixes)}")
                             
                             if not recuima_format_valid:
                                 st.warning(f"""⚠️ **El dataset cargado tiene columnas codificadas que impiden calcular RECUIMA correctamente:**

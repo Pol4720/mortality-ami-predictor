@@ -93,9 +93,11 @@ class TestCleaningConfig:
         """Test de configuración por defecto."""
         config = CleaningConfig()
         
-        assert config.numeric_imputation == 'median'
-        assert config.categorical_imputation == 'mode'
-        assert config.outlier_method == 'iqr'
+        # Defaults changed to 'none' to preserve data relationships
+        assert config.numeric_imputation == 'none'
+        assert config.categorical_imputation == 'none'
+        assert config.outlier_method == 'none'
+        assert config.outlier_treatment == 'none'
         assert config.drop_duplicates is True
     
     def test_custom_config(self):

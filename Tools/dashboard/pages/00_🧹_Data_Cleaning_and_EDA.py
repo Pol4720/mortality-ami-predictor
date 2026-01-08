@@ -274,6 +274,11 @@ def variable_selection_page():
                     if valid_vars:
                         st.session_state.variables_to_keep = valid_vars
                         st.session_state.variables_to_drop = available_vars - valid_vars
+                        
+                        # Sincronizar directamente el valor del multiselect widget
+                        # Esto es necesario porque Streamlit usa la key como fuente de verdad
+                        st.session_state.multiselect_vars = sorted(list(valid_vars))
+                        
                         st.success(f"✅ Selección cargada: {len(valid_vars)} variables")
                         
                         if len(vars_to_keep - available_vars) > 0:
@@ -331,11 +336,22 @@ def variable_selection_page():
         with col1:
             st.markdown("**Selecciona las variables a mantener:**")
             
+            # Calcular el valor por defecto del multiselect
+            # Usar directamente variables_to_keep, filtrando solo las que existen en df
+            current_selection = sorted([
+                v for v in st.session_state.variables_to_keep 
+                if v in df.columns
+            ])
+            
             # Multiselect con todas las variables
+            # Sincronizar con session_state si la key existe
+            if 'multiselect_vars' not in st.session_state:
+                st.session_state.multiselect_vars = current_selection
+            
             selected_vars = st.multiselect(
                 "Variables disponibles",
                 options=sorted(df.columns.tolist()),
-                default=sorted(list(st.session_state.variables_to_keep)),
+                default=current_selection,
                 help="Selecciona múltiples variables usando Ctrl/Cmd + Click",
                 key="multiselect_vars"
             )
@@ -351,19 +367,23 @@ def variable_selection_page():
             st.markdown("**Acciones rápidas:**")
             
             if st.button("✅ Seleccionar todas", key="select_all", use_container_width=True):
-                st.session_state.variables_to_keep = set(df.columns.tolist())
+                all_vars = sorted(df.columns.tolist())
+                st.session_state.variables_to_keep = set(all_vars)
                 st.session_state.variables_to_drop = set()
+                st.session_state.multiselect_vars = all_vars
                 st.rerun()
             
             if st.button("❌ Deseleccionar todas", key="deselect_all", use_container_width=True):
                 st.session_state.variables_to_keep = set()
                 st.session_state.variables_to_drop = set(df.columns.tolist())
+                st.session_state.multiselect_vars = []
                 st.rerun()
             
             if st.button("🔄 Invertir selección", key="invert_selection", use_container_width=True):
                 old_keep = st.session_state.variables_to_keep.copy()
                 st.session_state.variables_to_keep = st.session_state.variables_to_drop.copy()
                 st.session_state.variables_to_drop = old_keep
+                st.session_state.multiselect_vars = sorted(list(st.session_state.variables_to_keep))
                 st.rerun()
     
     # Tab 2: Búsqueda y filtrado
@@ -391,6 +411,7 @@ def variable_selection_page():
                         if st.button("✅ Seleccionar coincidencias", key="select_matching"):
                             st.session_state.variables_to_keep.update(matching_vars)
                             st.session_state.variables_to_drop -= set(matching_vars)
+                            st.session_state.multiselect_vars = sorted(list(st.session_state.variables_to_keep))
                             st.success(f"✅ {len(matching_vars)} variables añadidas a la selección")
                             st.rerun()
                     
@@ -398,6 +419,7 @@ def variable_selection_page():
                         if st.button("❌ Descartar coincidencias", key="drop_matching"):
                             st.session_state.variables_to_drop.update(matching_vars)
                             st.session_state.variables_to_keep -= set(matching_vars)
+                            st.session_state.multiselect_vars = sorted(list(st.session_state.variables_to_keep))
                             st.warning(f"🗑️ {len(matching_vars)} variables marcadas para descarte")
                             st.rerun()
                     
@@ -436,11 +458,13 @@ def variable_selection_page():
                 if st.button("✅ Seleccionar por tipo", key="select_by_type", use_container_width=True):
                     st.session_state.variables_to_keep.update(filtered_vars)
                     st.session_state.variables_to_drop -= set(filtered_vars)
+                    st.session_state.multiselect_vars = sorted(list(st.session_state.variables_to_keep))
                     st.rerun()
                 
                 if st.button("❌ Descartar por tipo", key="drop_by_type", use_container_width=True):
                     st.session_state.variables_to_drop.update(filtered_vars)
                     st.session_state.variables_to_keep -= set(filtered_vars)
+                    st.session_state.multiselect_vars = sorted(list(st.session_state.variables_to_keep))
                     st.rerun()
     
     # Tab 3: Análisis de calidad
@@ -529,6 +553,7 @@ def variable_selection_page():
             
             st.session_state.variables_to_keep = set(vars_filtered)
             st.session_state.variables_to_drop = set(df.columns) - set(vars_filtered)
+            st.session_state.multiselect_vars = sorted(vars_filtered)
             
             st.success(f"✅ Filtros aplicados: {len(vars_filtered)} variables seleccionadas")
             st.rerun()
@@ -609,8 +634,32 @@ def variable_selection_page():
                 if len(st.session_state.variables_to_keep) == 0:
                     st.error("❌ Debes seleccionar al menos una variable")
                 else:
+                    # ================================================================
+                    # IMPORTANTE: Preservar columnas de scores clínicos automáticamente
+                    # Estas columnas son necesarias para comparación con GRACE/RECUIMA
+                    # Se guardan con prefijo '_score_' para no usarse como features
+                    # ================================================================
+                    CLINICAL_SCORE_COLUMNS = [
+                        'escala_grace', 'GRACE', 'grace_score',  # GRACE
+                        'complicaciones',  # RECUIMA (FV/TV, BAV)
+                        'indice_killip',   # RECUIMA (original, no codificado)
+                    ]
+                    
+                    # Encontrar qué columnas de scores existen en el dataframe original
+                    preserved_scores = {}
+                    for col in CLINICAL_SCORE_COLUMNS:
+                        if col in df.columns and col not in st.session_state.variables_to_keep:
+                            preserved_scores[f'_score_{col}'] = df[col].copy()
+                    
                     # Aplicar los cambios al dataframe
                     df_filtered = df[sorted(st.session_state.variables_to_keep)].copy()
+                    
+                    # Añadir columnas de scores preservadas con prefijo _score_
+                    for score_col, score_values in preserved_scores.items():
+                        df_filtered[score_col] = score_values.values
+                    
+                    if preserved_scores:
+                        st.info(f"ℹ️ Columnas de scores clínicos preservadas automáticamente: {list(preserved_scores.keys())}")
                     
                     # Actualizar el session_state correcto según el origen de datos
                     if data_key == "raw_data":
@@ -1732,8 +1781,32 @@ def data_cleaning_page():
         if st.button("🚀 Aplicar Limpieza", type="primary", use_container_width=True):
             with st.spinner("Limpiando datos..."):
                 try:
+                    # ================================================================
+                    # PRESERVAR columnas de scores clínicos ANTES de la limpieza
+                    # Estas columnas son necesarias para comparación con GRACE/RECUIMA
+                    # ================================================================
+                    CLINICAL_SCORE_COLUMNS = [
+                        'escala_grace', 'GRACE', 'grace_score',  # GRACE
+                        'complicaciones',  # RECUIMA (FV/TV, BAV)
+                    ]
+                    
+                    # Guardar valores originales de scores antes de cualquier transformación
+                    preserved_scores = {}
+                    for col in CLINICAL_SCORE_COLUMNS:
+                        if col in df.columns:
+                            preserved_scores[f'_score_{col}'] = df[col].copy()
+                    
                     cleaner = DataCleaner(config)
                     df_clean = cleaner.fit_transform(df, target_column=target_column)
+                    
+                    # Restaurar columnas de scores preservadas
+                    # Usar el índice del df_clean para alinear correctamente
+                    for score_col, original_values in preserved_scores.items():
+                        # Obtener valores alineados con las filas que quedaron después de limpieza
+                        df_clean[score_col] = original_values.loc[df_clean.index].values
+                    
+                    if preserved_scores:
+                        st.info(f"ℹ️ Columnas de scores clínicos preservadas: {list(preserved_scores.keys())}")
                     
                     st.session_state.cleaned_data = df_clean
                     st.session_state.cleaner = cleaner

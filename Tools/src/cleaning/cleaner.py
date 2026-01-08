@@ -70,9 +70,9 @@ class CleaningConfig:
         drop_constant: Whether to drop constant columns
         constant_threshold: Threshold for considering column constant
     """
-    # Imputation
-    numeric_imputation: str = "median"
-    categorical_imputation: str = "mode"
+    # Imputation - Default to 'none' to preserve original data relationships
+    numeric_imputation: str = "none"
+    categorical_imputation: str = "none"
     knn_neighbors: int = 5
     constant_fill_numeric: float = 0.0
     constant_fill_categorical: str = "missing"
@@ -80,8 +80,8 @@ class CleaningConfig:
     custom_constant_values: Dict[str, Any] = field(default_factory=dict)
     columns_to_drop: List[str] = field(default_factory=list)  # Columns to drop due to high missing rate
     
-    # Outliers
-    outlier_method: str = "iqr"
+    # Outliers - Default to 'none' to preserve original data relationships
+    outlier_method: str = "none"
     iqr_multiplier: float = 1.5
     zscore_threshold: float = 3.0
     modified_zscore_threshold: float = 3.5  # For Modified Z-score (MAD)
@@ -89,7 +89,7 @@ class CleaningConfig:
     lower_percentile: float = 1.0  # For percentile method
     upper_percentile: float = 99.0  # For percentile method
     lof_neighbors: int = 20  # For LOF method
-    outlier_treatment: str = "cap"
+    outlier_treatment: str = "none"
     # Per-variable outlier configuration
     custom_outlier_methods: Dict[str, str] = field(default_factory=dict)  # Per-variable detection method
     custom_outlier_treatments: Dict[str, str] = field(default_factory=dict)  # Per-variable treatment

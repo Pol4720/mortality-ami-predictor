@@ -109,6 +109,10 @@ n_samples = st.sidebar.slider(
 try:
     model = joblib.load(model_path)
     st.success(f"✅ Model loaded: {selected_model_name}")
+except EOFError:
+    st.error(f"❌ El archivo del modelo '{selected_model_name}' está corrupto (EOFError). Por favor, elimine el archivo y vuelva a entrenar el modelo.")
+    st.info(f"📁 Ruta del archivo: `{model_path}`")
+    st.stop()
 except Exception as e:
     st.error(f"❌ Error loading model: {e}")
     st.stop()
@@ -322,7 +326,8 @@ if "shap_values" in st.session_state and st.session_state.shap_values is not Non
     st.markdown("---")
     st.subheader("📄 Exportar Reporte de Explicabilidad")
     
-    if st.session_state.get('shap_values') and st.session_state.get('selected_model_obj'):
+    # Check if SHAP values are available (shap_values is already checked above)
+    if st.session_state.get('shap_values') is not None:
         try:
             importance_df = get_feature_importance(st.session_state.shap_values)
             top_features = importance_df.head(10).index.tolist()

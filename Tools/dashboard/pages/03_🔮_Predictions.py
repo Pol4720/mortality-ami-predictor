@@ -90,6 +90,14 @@ st.sidebar.success(f"✅ Using: {selected_model_name}")
 try:
     model = joblib.load(model_path)
     st.success(f"✅ Model loaded: {selected_model_name}")
+except EOFError:
+    st.error(f"❌ El archivo del modelo '{selected_model_name}' está corrupto (EOFError). Por favor, elimine el archivo y vuelva a entrenar el modelo.")
+    st.info(f"📁 Ruta del archivo: `{model_path}`")
+    st.stop()
+except Exception as e:
+    st.error(f"❌ Error loading model: {e}")
+    st.exception(e)
+    st.stop()
     
     # Load model metadata if available
     metadata_path = Path(str(model_path).replace('.joblib', '.metadata.json'))
@@ -412,6 +420,8 @@ with tab1:
             # Make prediction with (possibly transformed) data
             if hasattr(model, "predict_proba"):
                 prob = model.predict_proba(X_to_predict)[:, 1][0]
+                # Convert to Python float (st.progress requires float, not numpy.float32)
+                prob = float(prob)
                 
                 col1, col2 = st.columns(2)
                 with col1:

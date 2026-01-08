@@ -1,0 +1,536 @@
+{
+  "timestamp": "20260108_113819",
+  "dataset": "C:\\Users\\HP\\Desktop\\ML\\Proyecto\\mortality-ami-predictor\\DATA\\recuima-020425-parsed.xlsx",
+  "target": "mortality_inhospital",
+  "n_samples": 3112,
+  "mortality_rate": 0.08804627249357326,
+  "best_auroc": 0.9165306626515546,
+  "best_model": "RF",
+  "best_n_features": 6,
+  "best_features": [
+    "fraccion_eyeccion",
+    "filtrado_glomerular",
+    "betabloqueadores",
+    "colesterol",
+    "escala_grace",
+    "frecuencia_cardiaca"
+  ],
+  "all_significant_features": [
+    "escala_grace",
+    "filtrado_glomerular",
+    "fraccion_eyeccion",
+    "edad",
+    "glicemia",
+    "presion_arterial_diastolica",
+    "creatinina",
+    "presion_arterial_sistolica",
+    "diabetes_mellitus",
+    "frecuencia_cardiaca",
+    "betabloqueadores",
+    "angina24h",
+    "insuficiencia_renal_cronica",
+    "avf",
+    "v3r",
+    "d3",
+    "v3",
+    "d2",
+    "enfermedad_arterias_coronarias",
+    "ada",
+    "v4r",
+    "infradesnivel",
+    "acd",
+    "v1",
+    "supradesnivel",
+    "v2",
+    "v4",
+    "leuco",
+    "d1",
+    "v6",
+    "avl",
+    "hipertension_arterial",
+    "estao",
+    "v5",
+    "cabg",
+    "tabaquismo",
+    "talla",
+    "fibrilacion_auricular",
+    "acx",
+    "colesterol",
+    "depresion_ondat",
+    "peso",
+    "insao"
+  ],
+  "importance_ranking": [
+    {
+      "feature": "escala_grace",
+      "correlation": 0.27530241538923395,
+      "corr_signed": 0.27530241538923395,
+      "pvalue": 7.805404396548617e-53,
+      "missing_rate": 0.04498714652956293,
+      "n_valid": 2972
+    },
+    {
+      "feature": "filtrado_glomerular",
+      "correlation": 0.2697923375034677,
+      "corr_signed": -0.2697923375034677,
+      "pvalue": 9.853700279619421e-51,
+      "missing_rate": 0.04498714652956293,
+      "n_valid": 2972
+    },
+    {
+      "feature": "fraccion_eyeccion",
+      "correlation": 0.2484599616990192,
+      "corr_signed": -0.2484599616990192,
+      "pvalue": 5.442717344353696e-39,
+      "missing_rate": 0.13881748071979438,
+      "n_valid": 2680
+    },
+    {
+      "feature": "edad",
+      "correlation": 0.23494753351708583,
+      "corr_signed": 0.23494753351708583,
+      "pvalue": 2.7256648935123685e-40,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "glicemia",
+      "correlation": 0.2110119759126622,
+      "corr_signed": 0.2110119759126622,
+      "pvalue": 3.184042824430268e-31,
+      "missing_rate": 0.046272493573264795,
+      "n_valid": 2968
+    },
+    {
+      "feature": "presion_arterial_diastolica",
+      "correlation": 0.19900224604285244,
+      "corr_signed": -0.19900224604285244,
+      "pvalue": 3.673751000740245e-29,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "creatinina",
+      "correlation": 0.1947355055028734,
+      "corr_signed": 0.1947355055028734,
+      "pvalue": 8.705136832122608e-27,
+      "missing_rate": 0.04498714652956293,
+      "n_valid": 2972
+    },
+    {
+      "feature": "presion_arterial_sistolica",
+      "correlation": 0.18795408070253375,
+      "corr_signed": -0.18795408070253375,
+      "pvalue": 3.8816713391593465e-26,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "idresultado",
+      "correlation": 0.15742639286747354,
+      "corr_signed": 0.15742639286747354,
+      "pvalue": 0.01838950456054313,
+      "missing_rate": 0.9280205655526992,
+      "n_valid": 224
+    },
+    {
+      "feature": "dsvi",
+      "correlation": 0.15303488905559542,
+      "corr_signed": 0.15303488905559542,
+      "pvalue": 5.090224552073007e-08,
+      "missing_rate": 0.5967223650385605,
+      "n_valid": 1255
+    },
+    {
+      "feature": "annos_fumando",
+      "correlation": 0.12567241886894084,
+      "corr_signed": 0.12567241886894084,
+      "pvalue": 3.886328033617337e-07,
+      "missing_rate": 0.4794344473007712,
+      "n_valid": 1620
+    },
+    {
+      "feature": "diabetes_mellitus",
+      "correlation": 0.11425678363068709,
+      "corr_signed": 0.11425678363068709,
+      "pvalue": 1.6348247501267954e-10,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "frecuencia_cardiaca",
+      "correlation": 0.10984840529007624,
+      "corr_signed": 0.10984840529007624,
+      "pvalue": 8.043567908801411e-10,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "betabloqueadores",
+      "correlation": 0.10750744687297771,
+      "corr_signed": -0.10750744687297771,
+      "pvalue": 1.2810791713790182e-07,
+      "missing_rate": 0.22814910025706936,
+      "n_valid": 2402
+    },
+    {
+      "feature": "estenosis",
+      "correlation": 0.10166657910076354,
+      "corr_signed": 0.10166657910076354,
+      "pvalue": 0.12926001419284927,
+      "missing_rate": 0.9280205655526992,
+      "n_valid": 224
+    },
+    {
+      "feature": "ck",
+      "correlation": 0.10013470886968893,
+      "corr_signed": 0.10013470886968893,
+      "pvalue": 0.00013744113682631997,
+      "missing_rate": 0.5356683804627249,
+      "n_valid": 1445
+    },
+    {
+      "feature": "angina24h",
+      "correlation": 0.0987592760226649,
+      "corr_signed": 0.0987592760226649,
+      "pvalue": 3.3783871478720994e-08,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "insuficiencia_renal_cronica",
+      "correlation": 0.09165205107020333,
+      "corr_signed": 0.09165205107020333,
+      "pvalue": 3.0300940240963865e-07,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "avf",
+      "correlation": 0.08603017019300033,
+      "corr_signed": -0.08603017019300033,
+      "pvalue": 1.9025569229853242e-06,
+      "missing_rate": 0.017673521850899765,
+      "n_valid": 3057
+    },
+    {
+      "feature": "v3r",
+      "correlation": 0.08580178898663357,
+      "corr_signed": 0.08580178898663357,
+      "pvalue": 2.025974417076004e-06,
+      "missing_rate": 0.017673521850899765,
+      "n_valid": 3057
+    },
+    {
+      "feature": "ingresos_anteriores",
+      "correlation": 0.08456800766904371,
+      "corr_signed": 0.08456800766904371,
+      "pvalue": 0.027215672018562256,
+      "missing_rate": 0.7808483290488432,
+      "n_valid": 682
+    },
+    {
+      "feature": "d3",
+      "correlation": 0.0830224989699828,
+      "corr_signed": -0.0830224989699828,
+      "pvalue": 4.2988365937373205e-06,
+      "missing_rate": 0.017673521850899765,
+      "n_valid": 3057
+    },
+    {
+      "feature": "v3",
+      "correlation": 0.08081397647167388,
+      "corr_signed": 0.08081397647167388,
+      "pvalue": 7.687489001972716e-06,
+      "missing_rate": 0.017673521850899765,
+      "n_valid": 3057
+    },
+    {
+      "feature": "d2",
+      "correlation": 0.0805162234922883,
+      "corr_signed": -0.0805162234922883,
+      "pvalue": 8.304849833283842e-06,
+      "missing_rate": 0.017673521850899765,
+      "n_valid": 3057
+    },
+    {
+      "feature": "fs",
+      "correlation": 0.0804466604729756,
+      "corr_signed": -0.0804466604729756,
+      "pvalue": 0.05120738269792051,
+      "missing_rate": 0.8110539845758354,
+      "n_valid": 588
+    },
+    {
+      "feature": "enfermedad_arterias_coronarias",
+      "correlation": 0.0803763706065453,
+      "corr_signed": 0.0803763706065453,
+      "pvalue": 7.146319905201997e-06,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "ada",
+      "correlation": 0.0780172128041756,
+      "corr_signed": 0.0780172128041756,
+      "pvalue": 1.3179259216240636e-05,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "v4r",
+      "correlation": 0.07675542273061549,
+      "corr_signed": 0.07675542273061549,
+      "pvalue": 2.1534991772823217e-05,
+      "missing_rate": 0.017673521850899765,
+      "n_valid": 3057
+    },
+    {
+      "feature": "infradesnivel",
+      "correlation": 0.07595306378413613,
+      "corr_signed": 0.07595306378413613,
+      "pvalue": 0.00014891898501967645,
+      "missing_rate": 0.20019280205655532,
+      "n_valid": 2489
+    },
+    {
+      "feature": "acd",
+      "correlation": 0.07580351102265856,
+      "corr_signed": -0.07580351102265856,
+      "pvalue": 2.304772117646532e-05,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    }
+  ],
+  "selection_history": [
+    {
+      "step": 1,
+      "feature_added": "fraccion_eyeccion",
+      "auroc": 0.7957243968863686,
+      "features": [
+        "fraccion_eyeccion"
+      ]
+    },
+    {
+      "step": 2,
+      "feature_added": "filtrado_glomerular",
+      "auroc": 0.8606439873810766,
+      "features": [
+        "fraccion_eyeccion",
+        "filtrado_glomerular"
+      ]
+    },
+    {
+      "step": 3,
+      "feature_added": "betabloqueadores",
+      "auroc": 0.8873217673041616,
+      "features": [
+        "fraccion_eyeccion",
+        "filtrado_glomerular",
+        "betabloqueadores"
+      ]
+    },
+    {
+      "step": 4,
+      "feature_added": "colesterol",
+      "auroc": 0.8994662334275011,
+      "features": [
+        "fraccion_eyeccion",
+        "filtrado_glomerular",
+        "betabloqueadores",
+        "colesterol"
+      ]
+    },
+    {
+      "step": 5,
+      "feature_added": "escala_grace",
+      "auroc": 0.9058694930525917,
+      "features": [
+        "fraccion_eyeccion",
+        "filtrado_glomerular",
+        "betabloqueadores",
+        "colesterol",
+        "escala_grace"
+      ]
+    },
+    {
+      "step": 6,
+      "feature_added": "frecuencia_cardiaca",
+      "auroc": 0.9112924968441402,
+      "features": [
+        "fraccion_eyeccion",
+        "filtrado_glomerular",
+        "betabloqueadores",
+        "colesterol",
+        "escala_grace",
+        "frecuencia_cardiaca"
+      ]
+    },
+    {
+      "step": 7,
+      "feature_added": "acd",
+      "auroc": 0.9147974886355167,
+      "features": [
+        "fraccion_eyeccion",
+        "filtrado_glomerular",
+        "betabloqueadores",
+        "colesterol",
+        "escala_grace",
+        "frecuencia_cardiaca",
+        "acd"
+      ]
+    }
+  ],
+  "combination_results": [
+    {
+      "n_features": 5,
+      "features": [
+        "fraccion_eyeccion",
+        "filtrado_glomerular",
+        "betabloqueadores",
+        "colesterol",
+        "escala_grace"
+      ],
+      "auroc": 0.9079106965022458,
+      "best_model": "RF",
+      "details": {
+        "LogReg": {
+          "mean": 0.8154847547687922,
+          "std": 0.02175481399134814,
+          "scores": [
+            0.8522407170294494,
+            0.805921895006402,
+            0.8199986958789776,
+            0.8137886804553471,
+            0.7854737854737854
+          ]
+        },
+        "RF": {
+          "mean": 0.9079106965022458,
+          "std": 0.01793169210150575,
+          "scores": [
+            0.9172215108834827,
+            0.9296734955185658,
+            0.9192097026604069,
+            0.8900432900432902,
+            0.8834054834054833
+          ]
+        },
+        "GBM": {
+          "mean": 0.892633813543438,
+          "std": 0.020084969682138264,
+          "scores": [
+            0.9137644046094751,
+            0.9117157490396927,
+            0.9002510432968179,
+            0.8672118005451339,
+            0.8702260702260702
+          ]
+        },
+        "best_model": "RF",
+        "best_auroc": 0.9079106965022458
+      }
+    },
+    {
+      "n_features": 6,
+      "features": [
+        "fraccion_eyeccion",
+        "filtrado_glomerular",
+        "betabloqueadores",
+        "colesterol",
+        "escala_grace",
+        "frecuencia_cardiaca"
+      ],
+      "auroc": 0.9165306626515546,
+      "best_model": "RF",
+      "details": {
+        "LogReg": {
+          "mean": 0.818536795972242,
+          "std": 0.022252642778054967,
+          "scores": [
+            0.8546734955185661,
+            0.8092189500640204,
+            0.8272202660406885,
+            0.8145262145262145,
+            0.7870450537117204
+          ]
+        },
+        "RF": {
+          "mean": 0.9165306626515546,
+          "std": 0.016871724737217274,
+          "scores": [
+            0.9339308578745197,
+            0.9261203585147247,
+            0.9285504694835681,
+            0.9048741382074715,
+            0.8891774891774891
+          ]
+        },
+        "GBM": {
+          "mean": 0.902845609007581,
+          "std": 0.016356796611256285,
+          "scores": [
+            0.92202304737516,
+            0.912083866837388,
+            0.9134063641105895,
+            0.8807599807599809,
+            0.885954785954786
+          ]
+        },
+        "best_model": "RF",
+        "best_auroc": 0.9165306626515546
+      }
+    },
+    {
+      "n_features": 7,
+      "features": [
+        "fraccion_eyeccion",
+        "filtrado_glomerular",
+        "betabloqueadores",
+        "colesterol",
+        "escala_grace",
+        "frecuencia_cardiaca",
+        "acd"
+      ],
+      "auroc": 0.9155000005645546,
+      "best_model": "RF",
+      "details": {
+        "LogReg": {
+          "mean": 0.8191125287075991,
+          "std": 0.022292675506767834,
+          "scores": [
+            0.8532330345710627,
+            0.8028489116517284,
+            0.8317846896191967,
+            0.8185024851691518,
+            0.7891935225268559
+          ]
+        },
+        "RF": {
+          "mean": 0.9155000005645546,
+          "std": 0.015558093258598924,
+          "scores": [
+            0.9291293213828425,
+            0.9291293213828425,
+            0.926007433489828,
+            0.8993746993746993,
+            0.8938592271925606
+          ]
+        },
+        "GBM": {
+          "mean": 0.9048362735334565,
+          "std": 0.019687259072262292,
+          "scores": [
+            0.9283610755441741,
+            0.9183098591549296,
+            0.9145474700052164,
+            0.8784992784992784,
+            0.8844636844636844
+          ]
+        },
+        "best_model": "RF",
+        "best_auroc": 0.9155000005645546
+      }
+    }
+  ]
+}

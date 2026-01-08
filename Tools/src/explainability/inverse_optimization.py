@@ -135,12 +135,17 @@ class InverseOptimizer:
             # Reshape for prediction
             x_full = x_full.reshape(1, -1)
             
+            # Convert to DataFrame if model expects it (e.g., pipelines with ColumnTransformer)
+            # This is needed because ColumnTransformer requires column names
+            import pandas as pd
+            x_df = pd.DataFrame(x_full, columns=self.feature_names)
+            
             # Get prediction
             if self.is_classifier:
                 # For binary classifier, get probability of positive class
-                pred = self.model.predict_proba(x_full)[0, 1]
+                pred = self.model.predict_proba(x_df)[0, 1]
             else:
-                pred = self.model.predict(x_full)[0]
+                pred = self.model.predict(x_df)[0]
             
             # Compute objective
             if maximize:

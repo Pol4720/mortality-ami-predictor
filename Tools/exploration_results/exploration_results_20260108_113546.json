@@ -1,0 +1,908 @@
+{
+  "timestamp": "20260108_113546",
+  "dataset": "C:\\Users\\HP\\Desktop\\ML\\Proyecto\\mortality-ami-predictor\\DATA\\recuima-020425-parsed.xlsx",
+  "target": "mortality_inhospital",
+  "n_samples": 3112,
+  "mortality_rate": 0.08804627249357326,
+  "best_auroc": 0.9850492178661193,
+  "best_model": "RF",
+  "best_n_features": 12,
+  "best_features": [
+    "estadia_intrahospitalaria",
+    "comp_pcr",
+    "escala_grace",
+    "comp_shock",
+    "leuco",
+    "comp_mecanicas",
+    "depresion_ondat",
+    "fraccion_eyeccion",
+    "supradesnivel",
+    "v3r",
+    "ada",
+    "presion_arterial_sistolica"
+  ],
+  "all_significant_features": [
+    "comp_pcr",
+    "comp_shock",
+    "comp_fv",
+    "comp_fv_tv",
+    "comp_mecanicas",
+    "comp_tv",
+    "escala_grace",
+    "filtrado_glomerular",
+    "fraccion_eyeccion",
+    "edad",
+    "glicemia",
+    "presion_arterial_diastolica",
+    "creatinina",
+    "presion_arterial_sistolica",
+    "shock",
+    "comp_bav_alto_grado",
+    "diabetes_mellitus",
+    "estadia_intrahospitalaria",
+    "frecuencia_cardiaca",
+    "betabloqueadores",
+    "angina24h",
+    "insuficiencia_renal_cronica",
+    "avf",
+    "v3r",
+    "d3",
+    "v3",
+    "d2",
+    "enfermedad_arterias_coronarias",
+    "ada",
+    "v4r",
+    "infradesnivel",
+    "acd",
+    "v1",
+    "supradesnivel",
+    "v2",
+    "v4",
+    "leuco",
+    "d1",
+    "v6",
+    "avl",
+    "hipertension_arterial",
+    "estao",
+    "v5",
+    "comp_otras_arritmias",
+    "cabg",
+    "tabaquismo",
+    "talla",
+    "fibrilacion_auricular",
+    "comp_ic",
+    "acx",
+    "colesterol",
+    "depresion_ondat",
+    "peso",
+    "insao"
+  ],
+  "importance_ranking": [
+    {
+      "feature": "comp_pcr",
+      "correlation": 0.6150750300900715,
+      "corr_signed": 0.6150750300900715,
+      "pvalue": 2e-323,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "comp_shock",
+      "correlation": 0.4770359543029931,
+      "corr_signed": 0.4770359543029931,
+      "pvalue": 1.2685544508064681e-176,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "comp_fv",
+      "correlation": 0.4030257550211833,
+      "corr_signed": 0.4030257550211833,
+      "pvalue": 7.038838963306121e-122,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "comp_fv_tv",
+      "correlation": 0.39134788092952355,
+      "corr_signed": 0.39134788092952355,
+      "pvalue": 1.9895985998638202e-114,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "comp_mecanicas",
+      "correlation": 0.32792603883968785,
+      "corr_signed": 0.32792603883968785,
+      "pvalue": 6.420007959553843e-79,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "comp_tv",
+      "correlation": 0.3108020344104293,
+      "corr_signed": 0.3108020344104293,
+      "pvalue": 1.1398457787694936e-70,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "escala_grace",
+      "correlation": 0.27530241538923395,
+      "corr_signed": 0.27530241538923395,
+      "pvalue": 7.805404396548617e-53,
+      "missing_rate": 0.04498714652956293,
+      "n_valid": 2972
+    },
+    {
+      "feature": "filtrado_glomerular",
+      "correlation": 0.2697923375034677,
+      "corr_signed": -0.2697923375034677,
+      "pvalue": 9.853700279619421e-51,
+      "missing_rate": 0.04498714652956293,
+      "n_valid": 2972
+    },
+    {
+      "feature": "fraccion_eyeccion",
+      "correlation": 0.2484599616990192,
+      "corr_signed": -0.2484599616990192,
+      "pvalue": 5.442717344353696e-39,
+      "missing_rate": 0.13881748071979438,
+      "n_valid": 2680
+    },
+    {
+      "feature": "edad",
+      "correlation": 0.23494753351708583,
+      "corr_signed": 0.23494753351708583,
+      "pvalue": 2.7256648935123685e-40,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "glicemia",
+      "correlation": 0.2110119759126622,
+      "corr_signed": 0.2110119759126622,
+      "pvalue": 3.184042824430268e-31,
+      "missing_rate": 0.046272493573264795,
+      "n_valid": 2968
+    },
+    {
+      "feature": "presion_arterial_diastolica",
+      "correlation": 0.19900224604285244,
+      "corr_signed": -0.19900224604285244,
+      "pvalue": 3.673751000740245e-29,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "creatinina",
+      "correlation": 0.1947355055028734,
+      "corr_signed": 0.1947355055028734,
+      "pvalue": 8.705136832122608e-27,
+      "missing_rate": 0.04498714652956293,
+      "n_valid": 2972
+    },
+    {
+      "feature": "presion_arterial_sistolica",
+      "correlation": 0.18795408070253375,
+      "corr_signed": -0.18795408070253375,
+      "pvalue": 3.8816713391593465e-26,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "idresultado",
+      "correlation": 0.15742639286747354,
+      "corr_signed": 0.15742639286747354,
+      "pvalue": 0.01838950456054313,
+      "missing_rate": 0.9280205655526992,
+      "n_valid": 224
+    },
+    {
+      "feature": "dsvi",
+      "correlation": 0.15303488905559542,
+      "corr_signed": 0.15303488905559542,
+      "pvalue": 5.090224552073007e-08,
+      "missing_rate": 0.5967223650385605,
+      "n_valid": 1255
+    },
+    {
+      "feature": "shock",
+      "correlation": 0.147484745233387,
+      "corr_signed": 0.147484745233387,
+      "pvalue": 1.345960611209563e-16,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "annos_fumando",
+      "correlation": 0.12567241886894084,
+      "corr_signed": 0.12567241886894084,
+      "pvalue": 3.886328033617337e-07,
+      "missing_rate": 0.4794344473007712,
+      "n_valid": 1620
+    },
+    {
+      "feature": "comp_bav_alto_grado",
+      "correlation": 0.12173236968780618,
+      "corr_signed": 0.12173236968780618,
+      "pvalue": 9.525138327914263e-12,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "diabetes_mellitus",
+      "correlation": 0.11425678363068709,
+      "corr_signed": 0.11425678363068709,
+      "pvalue": 1.6348247501267954e-10,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "estadia_intrahospitalaria",
+      "correlation": 0.11192129870480166,
+      "corr_signed": -0.11192129870480166,
+      "pvalue": 3.831698077426289e-10,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "frecuencia_cardiaca",
+      "correlation": 0.10984840529007624,
+      "corr_signed": 0.10984840529007624,
+      "pvalue": 8.043567908801411e-10,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "betabloqueadores",
+      "correlation": 0.10750744687297771,
+      "corr_signed": -0.10750744687297771,
+      "pvalue": 1.2810791713790182e-07,
+      "missing_rate": 0.22814910025706936,
+      "n_valid": 2402
+    },
+    {
+      "feature": "estenosis",
+      "correlation": 0.10166657910076354,
+      "corr_signed": 0.10166657910076354,
+      "pvalue": 0.12926001419284927,
+      "missing_rate": 0.9280205655526992,
+      "n_valid": 224
+    },
+    {
+      "feature": "ck",
+      "correlation": 0.10013470886968893,
+      "corr_signed": 0.10013470886968893,
+      "pvalue": 0.00013744113682631997,
+      "missing_rate": 0.5356683804627249,
+      "n_valid": 1445
+    },
+    {
+      "feature": "angina24h",
+      "correlation": 0.0987592760226649,
+      "corr_signed": 0.0987592760226649,
+      "pvalue": 3.3783871478720994e-08,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "insuficiencia_renal_cronica",
+      "correlation": 0.09165205107020333,
+      "corr_signed": 0.09165205107020333,
+      "pvalue": 3.0300940240963865e-07,
+      "missing_rate": 0.0,
+      "n_valid": 3112
+    },
+    {
+      "feature": "avf",
+      "correlation": 0.08603017019300033,
+      "corr_signed": -0.08603017019300033,
+      "pvalue": 1.9025569229853242e-06,
+      "missing_rate": 0.017673521850899765,
+      "n_valid": 3057
+    },
+    {
+      "feature": "v3r",
+      "correlation": 0.08580178898663357,
+      "corr_signed": 0.08580178898663357,
+      "pvalue": 2.025974417076004e-06,
+      "missing_rate": 0.017673521850899765,
+      "n_valid": 3057
+    },
+    {
+      "feature": "ingresos_anteriores",
+      "correlation": 0.08456800766904371,
+      "corr_signed": 0.08456800766904371,
+      "pvalue": 0.027215672018562256,
+      "missing_rate": 0.7808483290488432,
+      "n_valid": 682
+    }
+  ],
+  "selection_history": [
+    {
+      "step": 1,
+      "feature_added": "estadia_intrahospitalaria",
+      "auroc": 0.8640606687261616,
+      "features": [
+        "estadia_intrahospitalaria"
+      ]
+    },
+    {
+      "step": 2,
+      "feature_added": "comp_pcr",
+      "auroc": 0.9391023328523328,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr"
+      ]
+    },
+    {
+      "step": 3,
+      "feature_added": "escala_grace",
+      "auroc": 0.948008847134434,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace"
+      ]
+    },
+    {
+      "step": 4,
+      "feature_added": "comp_shock",
+      "auroc": 0.9674888246425806,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock"
+      ]
+    },
+    {
+      "step": 5,
+      "feature_added": "leuco",
+      "auroc": 0.9752745090069034,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco"
+      ]
+    },
+    {
+      "step": 6,
+      "feature_added": "comp_mecanicas",
+      "auroc": 0.9813796753585485,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas"
+      ]
+    },
+    {
+      "step": 7,
+      "feature_added": "depresion_ondat",
+      "auroc": 0.9834586136346701,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas",
+        "depresion_ondat"
+      ]
+    },
+    {
+      "step": 8,
+      "feature_added": "fraccion_eyeccion",
+      "auroc": 0.9846297143128128,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas",
+        "depresion_ondat",
+        "fraccion_eyeccion"
+      ]
+    },
+    {
+      "step": 9,
+      "feature_added": "supradesnivel",
+      "auroc": 0.9864251220002395,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas",
+        "depresion_ondat",
+        "fraccion_eyeccion",
+        "supradesnivel"
+      ]
+    },
+    {
+      "step": 10,
+      "feature_added": "v3r",
+      "auroc": 0.9867221849616217,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas",
+        "depresion_ondat",
+        "fraccion_eyeccion",
+        "supradesnivel",
+        "v3r"
+      ]
+    },
+    {
+      "step": 11,
+      "feature_added": "ada",
+      "auroc": 0.9873769440436106,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas",
+        "depresion_ondat",
+        "fraccion_eyeccion",
+        "supradesnivel",
+        "v3r",
+        "ada"
+      ]
+    },
+    {
+      "step": 12,
+      "feature_added": "presion_arterial_sistolica",
+      "auroc": 0.9875095522630734,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas",
+        "depresion_ondat",
+        "fraccion_eyeccion",
+        "supradesnivel",
+        "v3r",
+        "ada",
+        "presion_arterial_sistolica"
+      ]
+    }
+  ],
+  "combination_results": [
+    {
+      "n_features": 5,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco"
+      ],
+      "auroc": 0.9741866406068285,
+      "best_model": "RF",
+      "details": {
+        "LogReg": {
+          "mean": 0.9509200602040977,
+          "std": 0.012454167623320467,
+          "scores": [
+            0.9539852752880922,
+            0.9621638924455826,
+            0.9621804903495044,
+            0.9284912618245951,
+            0.9477793811127144
+          ]
+        },
+        "RF": {
+          "mean": 0.9741866406068285,
+          "std": 0.009784953395387094,
+          "scores": [
+            0.9823463508322663,
+            0.9717829705505762,
+            0.9883607198748044,
+            0.9660734327400994,
+            0.9623697290363957
+          ]
+        },
+        "GBM": {
+          "mean": 0.9680159125346919,
+          "std": 0.011692091702266363,
+          "scores": [
+            0.9798335467349553,
+            0.9585947503201023,
+            0.9785472091810119,
+            0.972967772967773,
+            0.9501362834696168
+          ]
+        },
+        "best_model": "RF",
+        "best_auroc": 0.9741866406068285
+      }
+    },
+    {
+      "n_features": 6,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas"
+      ],
+      "auroc": 0.981028725664876,
+      "best_model": "RF",
+      "details": {
+        "LogReg": {
+          "mean": 0.9597951062152941,
+          "std": 0.0070385421500890446,
+          "scores": [
+            0.954689500640205,
+            0.9681177976952625,
+            0.9664840897235263,
+            0.9494308160974827,
+            0.9602533269199935
+          ]
+        },
+        "RF": {
+          "mean": 0.981028725664876,
+          "std": 0.006077543811890643,
+          "scores": [
+            0.9855153649167734,
+            0.9744078104993599,
+            0.9906429316640585,
+            0.9776815776815777,
+            0.9768959435626101
+          ]
+        },
+        "GBM": {
+          "mean": 0.9761024197937344,
+          "std": 0.0070288122610913314,
+          "scores": [
+            0.9810019206145967,
+            0.9701664532650448,
+            0.9865186489306208,
+            0.9756132756132755,
+            0.9672118005451338
+          ]
+        },
+        "best_model": "RF",
+        "best_auroc": 0.981028725664876
+      }
+    },
+    {
+      "n_features": 7,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas",
+        "depresion_ondat"
+      ],
+      "auroc": 0.9811561851467955,
+      "best_model": "RF",
+      "details": {
+        "LogReg": {
+          "mean": 0.9601294805872271,
+          "std": 0.006987840784670715,
+          "scores": [
+            0.9541133162612035,
+            0.9686299615877081,
+            0.9667449139280125,
+            0.9505531505531507,
+            0.9606060606060606
+          ]
+        },
+        "RF": {
+          "mean": 0.9811561851467955,
+          "std": 0.006131900880938454,
+          "scores": [
+            0.9846510883482715,
+            0.9763764404609475,
+            0.9914906103286385,
+            0.9782427449094115,
+            0.9750200416867083
+          ]
+        },
+        "GBM": {
+          "mean": 0.9767646874513071,
+          "std": 0.00669055098337678,
+          "scores": [
+            0.9792733674775929,
+            0.9719590268886045,
+            0.9870402973395932,
+            0.9781144781144782,
+            0.9674362674362674
+          ]
+        },
+        "best_model": "RF",
+        "best_auroc": 0.9811561851467955
+      }
+    },
+    {
+      "n_features": 8,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas",
+        "depresion_ondat",
+        "fraccion_eyeccion"
+      ],
+      "auroc": 0.9843972928479972,
+      "best_model": "RF",
+      "details": {
+        "LogReg": {
+          "mean": 0.9604856749927173,
+          "std": 0.0064867269421646995,
+          "scores": [
+            0.9548335467349551,
+            0.9665492957746479,
+            0.9657016171100677,
+            0.9506493506493507,
+            0.9646945646945647
+          ]
+        },
+        "RF": {
+          "mean": 0.9843972928479972,
+          "std": 0.006214409828433384,
+          "scores": [
+            0.9901728553137004,
+            0.9796094750320103,
+            0.9921752738654147,
+            0.9756613756613757,
+            0.9843674843674843
+          ]
+        },
+        "GBM": {
+          "mean": 0.9803778337815897,
+          "std": 0.006498136792884291,
+          "scores": [
+            0.9870998719590269,
+            0.9753201024327784,
+            0.9889801773604591,
+            0.9778579445246113,
+            0.9726310726310726
+          ]
+        },
+        "best_model": "RF",
+        "best_auroc": 0.9843972928479972
+      }
+    },
+    {
+      "n_features": 9,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas",
+        "depresion_ondat",
+        "fraccion_eyeccion",
+        "supradesnivel"
+      ],
+      "auroc": 0.9829552850210128,
+      "best_model": "RF",
+      "details": {
+        "LogReg": {
+          "mean": 0.9598436014515827,
+          "std": 0.007421267532791723,
+          "scores": [
+            0.9547055057618438,
+            0.9666453265044815,
+            0.9654733959311423,
+            0.9476992143658811,
+            0.9646945646945646
+          ]
+        },
+        "RF": {
+          "mean": 0.9829552850210128,
+          "std": 0.00668796216947007,
+          "scores": [
+            0.9899807938540333,
+            0.9769846350832266,
+            0.9921752738654147,
+            0.9771685105018437,
+            0.9784672118005451
+          ]
+        },
+        "GBM": {
+          "mean": 0.9812773159721516,
+          "std": 0.003388289040901823,
+          "scores": [
+            0.9837868117797696,
+            0.976696542893726,
+            0.9863393322900365,
+            0.9796697130030463,
+            0.9798941798941798
+          ]
+        },
+        "best_model": "RF",
+        "best_auroc": 0.9829552850210128
+      }
+    },
+    {
+      "n_features": 10,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas",
+        "depresion_ondat",
+        "fraccion_eyeccion",
+        "supradesnivel",
+        "v3r"
+      ],
+      "auroc": 0.9829179397371887,
+      "best_model": "RF",
+      "details": {
+        "LogReg": {
+          "mean": 0.959227920835902,
+          "std": 0.008479960223160173,
+          "scores": [
+            0.9547375160051215,
+            0.9666133162612035,
+            0.9654733959311423,
+            0.9445566778900113,
+            0.9647586980920313
+          ]
+        },
+        "RF": {
+          "mean": 0.9829179397371887,
+          "std": 0.006538308115521633,
+          "scores": [
+            0.9897887323943662,
+            0.9772727272727273,
+            0.9915558163797601,
+            0.975597242263909,
+            0.9803751803751802
+          ]
+        },
+        "GBM": {
+          "mean": 0.9797169718648592,
+          "std": 0.005267301071149979,
+          "scores": [
+            0.9865877080665814,
+            0.9743918053777209,
+            0.984839593114241,
+            0.9790925124258457,
+            0.973673240339907
+          ]
+        },
+        "best_model": "RF",
+        "best_auroc": 0.9829179397371887
+      }
+    },
+    {
+      "n_features": 11,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas",
+        "depresion_ondat",
+        "fraccion_eyeccion",
+        "supradesnivel",
+        "v3r",
+        "ada"
+      ],
+      "auroc": 0.9848175246766795,
+      "best_model": "RF",
+      "details": {
+        "LogReg": {
+          "mean": 0.9590640588762656,
+          "std": 0.009256558105982306,
+          "scores": [
+            0.9540653008962867,
+            0.966709346991037,
+            0.9662884715701617,
+            0.9430816097482765,
+            0.9651755651755651
+          ]
+        },
+        "RF": {
+          "mean": 0.9848175246766795,
+          "std": 0.00619243877413619,
+          "scores": [
+            0.9918053777208706,
+            0.9811779769526248,
+            0.992566510172144,
+            0.9772647105980438,
+            0.9812730479397146
+          ]
+        },
+        "GBM": {
+          "mean": 0.9819653442540768,
+          "std": 0.0033954821306882285,
+          "scores": [
+            0.9856914212548015,
+            0.977560819462228,
+            0.9862089201877935,
+            0.9801827801827803,
+            0.98018278018278
+          ]
+        },
+        "best_model": "RF",
+        "best_auroc": 0.9848175246766795
+      }
+    },
+    {
+      "n_features": 12,
+      "features": [
+        "estadia_intrahospitalaria",
+        "comp_pcr",
+        "escala_grace",
+        "comp_shock",
+        "leuco",
+        "comp_mecanicas",
+        "depresion_ondat",
+        "fraccion_eyeccion",
+        "supradesnivel",
+        "v3r",
+        "ada",
+        "presion_arterial_sistolica"
+      ],
+      "auroc": 0.9850492178661193,
+      "best_model": "RF",
+      "details": {
+        "LogReg": {
+          "mean": 0.9593033679066544,
+          "std": 0.008882234608676036,
+          "scores": [
+            0.9530729833546736,
+            0.9665492957746479,
+            0.9667775169535732,
+            0.9447811447811448,
+            0.965335898669232
+          ]
+        },
+        "RF": {
+          "mean": 0.9850492178661193,
+          "std": 0.004379706714472005,
+          "scores": [
+            0.9885403329065301,
+            0.983898847631242,
+            0.9908059467918623,
+            0.9781305114638449,
+            0.9838704505371172
+          ]
+        },
+        "GBM": {
+          "mean": 0.980931452915021,
+          "std": 0.005480641224206245,
+          "scores": [
+            0.9854513444302176,
+            0.9783290653008963,
+            0.9878064684402713,
+            0.9808401475068141,
+            0.9722302388969056
+          ]
+        },
+        "best_model": "RF",
+        "best_auroc": 0.9850492178661193
+      }
+    }
+  ]
+}

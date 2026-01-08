@@ -2,7 +2,7 @@
 
 from .grace import GRACEScore
 from .timi import TIMIScore
-from .recuima import RECUIMAScorer
+from .recuima import RECUIMAScorer, parse_complicaciones, compute_recuima_from_dataframe
 from .registry import get_score, list_scores, register_score
 from .score_data_manager import (
     ScoreDataConfig,
@@ -22,6 +22,8 @@ __all__ = [
     "GRACEScore",
     "TIMIScore",
     "RECUIMAScorer",
+    "parse_complicaciones",
+    "compute_recuima_from_dataframe",
     "get_score",
     "list_scores",
     "register_score",
