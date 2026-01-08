@@ -1006,21 +1006,38 @@ if grace_column is not None:
                             grace_scores = None
                             alignment_method = None
                             
-                            # MÉTODO 1: Buscar en columnas preservadas con prefijo _score_
-                            # Estas columnas se guardan durante el entrenamiento con los scores originales
-                            preserved_grace_col = f'_score_{grace_column}'
-                            if preserved_grace_col in test_df.columns:
-                                grace_scores = test_df[preserved_grace_col].values
-                                alignment_method = "preserved"
-                                st.success(f"✅ Usando GRACE scores preservados en testset ({len(grace_scores)} valores)")
-                            else:
-                                # Buscar cualquier columna _score_* que contenga 'grace'
-                                grace_preserved_cols = [c for c in test_df.columns if c.startswith('_score_') and 'grace' in c.lower()]
-                                if grace_preserved_cols:
-                                    preserved_grace_col = grace_preserved_cols[0]
+                            # MÉTODO 0: Buscar en session_state.preserved_clinical_scores (caché separado)
+                            if 'preserved_clinical_scores' in st.session_state and st.session_state.preserved_clinical_scores:
+                                cached_scores = st.session_state.preserved_clinical_scores
+                                # Buscar columna GRACE en el caché
+                                for cache_col in [grace_column, 'escala_grace', 'GRACE', 'grace_score']:
+                                    if cache_col in cached_scores:
+                                        cached_values = cached_scores[cache_col]
+                                        # Alinear con los índices del test_df
+                                        if hasattr(cached_values, 'loc'):
+                                            common_idx = test_df.index.intersection(cached_values.index)
+                                            if len(common_idx) > 0:
+                                                grace_scores = cached_values.loc[common_idx].values
+                                                alignment_method = "cached"
+                                                st.success(f"✅ Usando GRACE scores del caché ({len(grace_scores)} valores)")
+                                                break
+                            
+                            # MÉTODO 1: Buscar en columnas preservadas con prefijo _score_ (legacy)
+                            # Estas columnas se guardaban antes directamente en el dataset
+                            if grace_scores is None:
+                                preserved_grace_col = f'_score_{grace_column}'
+                                if preserved_grace_col in test_df.columns:
                                     grace_scores = test_df[preserved_grace_col].values
                                     alignment_method = "preserved"
-                                    st.success(f"✅ Usando columna preservada '{preserved_grace_col}' ({len(grace_scores)} valores)")
+                                    st.success(f"✅ Usando GRACE scores preservados en testset ({len(grace_scores)} valores)")
+                                else:
+                                    # Buscar cualquier columna _score_* que contenga 'grace'
+                                    grace_preserved_cols = [c for c in test_df.columns if c.startswith('_score_') and 'grace' in c.lower()]
+                                    if grace_preserved_cols:
+                                        preserved_grace_col = grace_preserved_cols[0]
+                                        grace_scores = test_df[preserved_grace_col].values
+                                        alignment_method = "preserved"
+                                        st.success(f"✅ Usando columna preservada '{preserved_grace_col}' ({len(grace_scores)} valores)")
                             
                             # MÉTODO 2: Buscar columna directa en test_df
                             if grace_scores is None and grace_column in test_df.columns:

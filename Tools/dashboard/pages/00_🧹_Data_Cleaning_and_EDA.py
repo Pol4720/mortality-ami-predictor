@@ -60,6 +60,8 @@ def init_session_state():
         st.session_state.analyzer = None
     if 'cleaning_config' not in st.session_state:
         st.session_state.cleaning_config = CleaningConfig()
+    if 'preserved_clinical_scores' not in st.session_state:
+        st.session_state.preserved_clinical_scores = {}
 
 
 def load_data_page():
@@ -637,7 +639,7 @@ def variable_selection_page():
                     # ================================================================
                     # IMPORTANTE: Preservar columnas de scores clínicos automáticamente
                     # Estas columnas son necesarias para comparación con GRACE/RECUIMA
-                    # Se guardan con prefijo '_score_' para no usarse como features
+                    # Se guardan en session_state por separado, NO en el dataset
                     # ================================================================
                     CLINICAL_SCORE_COLUMNS = [
                         'escala_grace', 'GRACE', 'grace_score',  # GRACE
@@ -646,20 +648,19 @@ def variable_selection_page():
                     ]
                     
                     # Encontrar qué columnas de scores existen en el dataframe original
+                    # y guardarlas en session_state (caché separado del dataset)
                     preserved_scores = {}
                     for col in CLINICAL_SCORE_COLUMNS:
                         if col in df.columns and col not in st.session_state.variables_to_keep:
-                            preserved_scores[f'_score_{col}'] = df[col].copy()
+                            preserved_scores[col] = df[col].copy()
                     
-                    # Aplicar los cambios al dataframe
-                    df_filtered = df[sorted(st.session_state.variables_to_keep)].copy()
-                    
-                    # Añadir columnas de scores preservadas con prefijo _score_
-                    for score_col, score_values in preserved_scores.items():
-                        df_filtered[score_col] = score_values.values
-                    
+                    # Guardar en session_state para uso posterior (comparaciones con GRACE, etc.)
                     if preserved_scores:
-                        st.info(f"ℹ️ Columnas de scores clínicos preservadas automáticamente: {list(preserved_scores.keys())}")
+                        st.session_state.preserved_clinical_scores = preserved_scores
+                        st.info(f"ℹ️ Columnas de scores clínicos guardadas en caché (separadas del dataset): {list(preserved_scores.keys())}")
+                    
+                    # Aplicar los cambios al dataframe (SIN añadir columnas _score_)
+                    df_filtered = df[sorted(st.session_state.variables_to_keep)].copy()
                     
                     # Actualizar el session_state correcto según el origen de datos
                     if data_key == "raw_data":
@@ -1516,9 +1517,9 @@ def data_cleaning_page():
             
             numeric_imputation = st.selectbox(
                 "Método para numéricas",
-                ["mean", "median", "knn", "forward", "backward", "constant"],
-                index=1,
-                help="Media, mediana, KNN, relleno hacia adelante/atrás, constante"
+                ["none", "mean", "median", "knn", "forward", "backward", "constant"],
+                index=0,
+                help="Ninguno (preservar originales), media, mediana, KNN, relleno hacia adelante/atrás, constante"
             )
             
             if numeric_imputation == "knn":
@@ -1533,9 +1534,9 @@ def data_cleaning_page():
             
             categorical_imputation = st.selectbox(
                 "Método para categóricas",
-                ["mode", "constant", "forward", "backward"],
+                ["none", "mode", "constant", "forward", "backward"],
                 index=0,
-                help="Moda, constante, relleno hacia adelante/atrás"
+                help="Ninguno (preservar originales), moda, constante, relleno hacia adelante/atrás"
             )
             
             if categorical_imputation == "constant":
@@ -1548,18 +1549,19 @@ def data_cleaning_page():
             
             outlier_method = st.selectbox(
                 "Método de detección",
-                ["iqr", "zscore", "modified_zscore", "isolation_forest", "lof", "percentile", "none"],
+                ["none", "iqr", "zscore", "modified_zscore", "isolation_forest", "lof", "percentile"],
                 index=0,
                 format_func=lambda x: {
+                    "none": "❌ Ninguno (preservar originales)",
                     "iqr": "📊 IQR (Rango Intercuartílico)",
                     "zscore": "📈 Z-score (Desviación estándar)",
                     "modified_zscore": "📉 Modified Z-score (MAD - robusto)",
                     "isolation_forest": "🌲 Isolation Forest (ML)",
                     "lof": "🔍 LOF (Local Outlier Factor)",
-                    "percentile": "📏 Percentil",
-                    "none": "❌ Ninguno"
+                    "percentile": "📏 Percentil"
                 }.get(x, x),
                 help="""
+                • **Ninguno**: Preserva los datos originales sin modificar
                 • **IQR**: Clásico, usa Q1-1.5*IQR y Q3+1.5*IQR
                 • **Z-score**: Basado en desviación estándar (sensible a extremos)
                 • **Modified Z-score**: Usa MAD, más robusto ante extremos
@@ -1618,13 +1620,13 @@ def data_cleaning_page():
             
             outlier_treatment = st.selectbox(
                 "Tratamiento de outliers",
-                ["cap", "remove", "transform", "none"],
+                ["none", "cap", "remove", "transform"],
                 index=0,
                 format_func=lambda x: {
+                    "none": "❌ Ninguno (preservar originales)",
                     "cap": "🔒 Limitar (Winsorización)",
                     "remove": "🗑️ Eliminar (marcar NaN)",
-                    "transform": "🔄 Transformar (log/sqrt)",
-                    "none": "👁️ Solo detectar"
+                    "transform": "🔄 Transformar (log/sqrt)"
                 }.get(x, x),
                 help="""
                 • **Limitar**: Recorta valores a los umbrales
@@ -1784,6 +1786,7 @@ def data_cleaning_page():
                     # ================================================================
                     # PRESERVAR columnas de scores clínicos ANTES de la limpieza
                     # Estas columnas son necesarias para comparación con GRACE/RECUIMA
+                    # Se guardan en session_state por separado, NO en el dataset
                     # ================================================================
                     CLINICAL_SCORE_COLUMNS = [
                         'escala_grace', 'GRACE', 'grace_score',  # GRACE
@@ -1791,22 +1794,23 @@ def data_cleaning_page():
                     ]
                     
                     # Guardar valores originales de scores antes de cualquier transformación
+                    # Se guardan en session_state (caché separado del dataset)
                     preserved_scores = {}
                     for col in CLINICAL_SCORE_COLUMNS:
                         if col in df.columns:
-                            preserved_scores[f'_score_{col}'] = df[col].copy()
+                            preserved_scores[col] = df[col].copy()
                     
                     cleaner = DataCleaner(config)
                     df_clean = cleaner.fit_transform(df, target_column=target_column)
                     
-                    # Restaurar columnas de scores preservadas
-                    # Usar el índice del df_clean para alinear correctamente
-                    for score_col, original_values in preserved_scores.items():
-                        # Obtener valores alineados con las filas que quedaron después de limpieza
-                        df_clean[score_col] = original_values.loc[df_clean.index].values
-                    
+                    # Guardar scores preservados en session_state (alineados con las filas que quedaron)
                     if preserved_scores:
-                        st.info(f"ℹ️ Columnas de scores clínicos preservadas: {list(preserved_scores.keys())}")
+                        aligned_scores = {}
+                        for col, original_values in preserved_scores.items():
+                            # Obtener valores alineados con las filas que quedaron después de limpieza
+                            aligned_scores[col] = original_values.loc[df_clean.index]
+                        st.session_state.preserved_clinical_scores = aligned_scores
+                        st.info(f"ℹ️ Columnas de scores clínicos guardadas en caché (separadas del dataset): {list(aligned_scores.keys())}")
                     
                     st.session_state.cleaned_data = df_clean
                     st.session_state.cleaner = cleaner
