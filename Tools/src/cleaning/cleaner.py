@@ -160,14 +160,18 @@ class DataCleaner:
         
         df_clean = df.copy()
         
-        # Separate target if exists
-        target = None
-        if target_column and target_column in df_clean.columns:
-            target = df_clean[target_column].copy()
-            df_clean = df_clean.drop(columns=[target_column])
+        # Store target column name for later (but DON'T separate it yet)
+        # The target must be present during duplicate removal to maintain alignment
+        self._target_column = target_column
         
-        # 1. Identify column types
+        # 1. Identify column types (excluding target from cleaning)
         numeric_cols, categorical_cols = self._identify_column_types(df_clean)
+        
+        # Remove target from columns to clean (if present)
+        if target_column and target_column in numeric_cols:
+            numeric_cols.remove(target_column)
+        if target_column and target_column in categorical_cols:
+            categorical_cols.remove(target_column)
         
         # 2. Initialize metadata
         self._initialize_metadata(df_clean, numeric_cols, categorical_cols)
@@ -197,10 +201,7 @@ class DataCleaner:
         # 10. Update final metadata
         self._update_final_metadata(df_clean)
         
-        # Restore target
-        if target is not None:
-            df_clean[target_column] = target
-        
+        # Target is already in df_clean (was never removed), so just return
         return df_clean
     
     def _identify_column_types(
