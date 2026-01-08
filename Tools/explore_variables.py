@@ -60,6 +60,9 @@ LEAKAGE_VARIABLES = {
     
     # IDs y fechas
     'numero', 'anno', 'unidad', 'fecha_ingreso', 'fecha_egreso',
+    
+    # EXCLUIR escala_grace - el objetivo es NO depender de ella
+    'escala_grace', 'GRACE', 'grace_score',
 }
 
 # Variables disponibles AL INGRESO (válidas para predicción)
@@ -78,8 +81,8 @@ VALID_ADMISSION_VARIABLES = {
     'presion_arterial_sistolica', 'presion_arterial_diastolica',
     'frecuencia_cardiaca',
     
-    # Clasificación clínica al ingreso
-    'indice_killip', 'escala_grace',
+    # Clasificación clínica al ingreso (SIN escala_grace - objetivo es no depender de ella)
+    'indice_killip',
     
     # ECG al ingreso
     'scacest', 'supradesnivel', 'infradesnivel', 'depresion_st',
