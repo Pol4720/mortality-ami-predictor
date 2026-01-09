@@ -21,7 +21,9 @@ class IsolationForestBinaryClassifier(BaseCustomClassifier):
         threshold="auto",
         random_state=None,
         n_jobs=None,
+        name="IsolationForestBinaryClassifier" 
     ):
+        super().__init__(name=name)
         self.n_estimators = n_estimators
         self.max_samples = max_samples
         self.contamination = contamination
@@ -30,6 +32,16 @@ class IsolationForestBinaryClassifier(BaseCustomClassifier):
         self.threshold = threshold
         self.random_state = random_state
         self.n_jobs = n_jobs
+        
+        self.model_ = IsolationForest(
+            n_estimators=self.n_estimators,
+            max_samples=self.max_samples,
+            contamination=self.contamination,
+            max_features=self.max_features,
+            bootstrap=self.bootstrap,
+            random_state=self.random_state,
+            n_jobs=self.n_jobs,
+        )
 
     def get_params(self, deep=True):
         return {
@@ -41,6 +53,7 @@ class IsolationForestBinaryClassifier(BaseCustomClassifier):
             "threshold": self.threshold,
             "random_state": self.random_state,
             "n_jobs": self.n_jobs,
+            "name": self.name,
         }
 
     def set_params(self, **params):
@@ -51,20 +64,12 @@ class IsolationForestBinaryClassifier(BaseCustomClassifier):
 
     def fit(self, X, y):
         self._validate_input(X, training=True)
-        self._validate_targets(y, training=True)
+        y = self._validate_targets(y, training=True)
         
+        X = self._convert_to_array(X)
 
-        self.model_ = IsolationForest(
-            n_estimators=self.n_estimators,
-            max_samples=self.max_samples,
-            contamination=self.contamination,
-            max_features=self.max_features,
-            bootstrap=self.bootstrap,
-            random_state=self.random_state,
-            n_jobs=self.n_jobs,
-        )
-
-        self.model_.fit(X)
+        self.model_.fit(X, y)
+        self.is_fitted_ = True
 
         scores = self.model_.decision_function(X)
 
@@ -79,18 +84,13 @@ class IsolationForestBinaryClassifier(BaseCustomClassifier):
         return self
 
     def predict(self, X):
-        """
-        Predicción binaria {0,1}.
-        """
-        
         scores = self.model_.decision_function(X)
         return (scores < self.threshold_).astype(int)
 
     def predict_proba(self, X):
-        """
-        Probabilidades aproximadas para cada clase.
-        """
-
+        self._validate_input(X, training=False)
+        X =  self._convert_to_array(X)
+        
         scores = self.model_.decision_function(X)
 
         probs_anomaly = 1 / (1 + np.exp(scores))
