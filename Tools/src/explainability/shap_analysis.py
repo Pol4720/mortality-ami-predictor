@@ -56,9 +56,29 @@ def compute_shap_values(
         else:
             X_df = pd.DataFrame(X)
     else:
-        X_df = X
+        X_df = X.copy()
         if feature_names is None:
             feature_names = list(X_df.columns)
+    
+    # Ensure all columns are numeric - SHAP requires numeric data
+    # This fixes: "ufunc 'isfinite' not supported for the input types"
+    for col in X_df.columns:
+        if X_df[col].dtype == 'object' or X_df[col].dtype.name == 'category':
+            # Try to convert to numeric, coerce errors to NaN
+            X_df[col] = pd.to_numeric(X_df[col], errors='coerce')
+        elif not np.issubdtype(X_df[col].dtype, np.number):
+            # Force conversion for any other non-numeric type
+            X_df[col] = pd.to_numeric(X_df[col], errors='coerce')
+    
+    # Convert entire DataFrame to float64 to ensure compatibility
+    X_df = X_df.astype(np.float64)
+    
+    # Handle any remaining NaN/inf values
+    X_df = X_df.replace([np.inf, -np.inf], np.nan)
+    X_df = X_df.fillna(X_df.median())
+    
+    # If still has NaN (e.g., all-NaN columns), fill with 0
+    X_df = X_df.fillna(0)
     
     # Create explainer based on model type
     try:
