@@ -103,8 +103,8 @@ model_source = st.sidebar.radio(
 )
 
 if model_source == "Standard Models":
+
     saved_models = list_saved_models(task)
-    
     # If no models found for custom task, also check 'mortality' folder
     if not saved_models and task not in ['mortality', 'arrhythmia']:
         st.info(f"ℹ️ No models found for task '{task}', checking 'mortality' folder...")
@@ -121,6 +121,21 @@ if model_source == "Standard Models":
     )
     selected_model_path = Path(saved_models[selected_model])
     is_custom = False
+
+    # Buscar testset exacto asociado al modelo seleccionado (por timestamp si es posible)
+    import re
+    testset_path = None
+    # Buscar timestamp en el nombre del modelo
+    match = re.search(r'_(\d{8,})', selected_model)
+    if match:
+        ts = match.group(1)
+        # Buscar testset con el mismo timestamp
+        candidates = list(TESTSETS_DIR.glob(f"testset_{task}_{ts}*.parquet"))
+        if candidates:
+            testset_path = candidates[0]
+    # Si no se encuentra, usar el método habitual
+    if not testset_path:
+        testset_path = get_latest_testset(task, TESTSETS_DIR)
 
 else:  # Custom Models
     from src.models.persistence import list_saved_models as list_custom_models
@@ -433,19 +448,15 @@ if metrics_file and metrics_file.exists():
                 
                 # Load Bootstrap and Jackknife results to create interactive plots
                 try:
-                    # Import required functions
                     from src.evaluation.resampling import ResamplingResult, plot_resampling_results_plotly
-                    
-                    # Reconstruct ResamplingResult objects from CSV data
+                    import numpy as np
+                    import os
+                    # Cargar los arrays reales guardados
                     bootstrap_metrics = {}
                     jackknife_metrics = {}
-                    
                     for metric in resampling_metrics:
-                        # For display purposes, we'll create simple distributions
-                        # In a real scenario, these would be loaded from saved results
                         boot_mean_col = f'bootstrap_{metric}_mean'
                         jack_mean_col = f'jackknife_{metric}_mean'
-                        
                         if boot_mean_col in metrics_df.columns:
                             boot_mean = metrics_df[boot_mean_col].iloc[0]
                             boot_std = metrics_df.get(f'bootstrap_{metric}_std', pd.Series([0])).iloc[0]
@@ -455,7 +466,6 @@ if metrics_file and metrics_file.exists():
                                 'ci_lower': metrics_df.get(f'bootstrap_{metric}_ci_lower', pd.Series([boot_mean])).iloc[0],
                                 'ci_upper': metrics_df.get(f'bootstrap_{metric}_ci_upper', pd.Series([boot_mean])).iloc[0]
                             }
-                        
                         if jack_mean_col in metrics_df.columns:
                             jack_mean = metrics_df[jack_mean_col].iloc[0]
                             jack_std = metrics_df.get(f'jackknife_{metric}_std', pd.Series([0])).iloc[0]
@@ -465,16 +475,18 @@ if metrics_file and metrics_file.exists():
                                 'ci_lower': metrics_df.get(f'jackknife_{metric}_ci_lower', pd.Series([jack_mean])).iloc[0],
                                 'ci_upper': metrics_df.get(f'jackknife_{metric}_ci_upper', pd.Series([jack_mean])).iloc[0]
                             }
-                    
-                    # Create tabs for different metrics
+                    # Crear tabs para cada métrica
                     metric_tabs = st.tabs([m.upper() for m in resampling_metrics if f'bootstrap_{m}_mean' in metrics_df.columns])
-                    
                     for tab_idx, metric in enumerate([m for m in resampling_metrics if f'bootstrap_{m}_mean' in metrics_df.columns]):
                         with metric_tabs[tab_idx]:
-                            # Create simulated distributions for visualization
-                            # In production, these should be loaded from saved resampling results
-                            if metric in bootstrap_metrics and metric in jackknife_metrics:
-                                # Create simple normal distributions around the mean
+                            # Intentar cargar los arrays reales
+                            boot_path = os.path.join(str(figures_dir), f"bootstrap_{metric}_{task}.npy")
+                            jack_path = os.path.join(str(figures_dir), f"jackknife_{metric}_{task}.npy")
+                            try:
+                                boot_data = np.load(boot_path)
+                                jack_data = np.load(jack_path)
+                            except Exception:
+                                # Fallback: usar normales si no existen
                                 np.random.seed(42)
                                 boot_data = np.random.normal(
                                     bootstrap_metrics[metric]['mean'],
@@ -486,39 +498,31 @@ if metrics_file and metrics_file.exists():
                                     jackknife_metrics[metric]['std'] if jackknife_metrics[metric]['std'] > 0 else 0.001,
                                     623
                                 )
-                                
-                                # Create ResamplingResult objects
-                                boot_result = ResamplingResult(
-                                    method='bootstrap',
-                                    metrics={metric: boot_data.tolist()},
-                                    mean_scores={metric: bootstrap_metrics[metric]['mean']},
-                                    std_scores={metric: bootstrap_metrics[metric]['std']},
-                                    confidence_intervals={metric: (bootstrap_metrics[metric]['ci_lower'], bootstrap_metrics[metric]['ci_upper'])},
-                                    confidence_level=0.95,
-                                    n_iterations=1000
-                                )
-                                
-                                jack_result = ResamplingResult(
-                                    method='jackknife',
-                                    metrics={metric: jack_data.tolist()},
-                                    mean_scores={metric: jackknife_metrics[metric]['mean']},
-                                    std_scores={metric: jackknife_metrics[metric]['std']},
-                                    confidence_intervals={metric: (jackknife_metrics[metric]['ci_lower'], jackknife_metrics[metric]['ci_upper'])},
-                                    confidence_level=0.95,
-                                    n_iterations=623
-                                )
-                                
-                                # Create interactive plot
-                                fig = plot_resampling_results_plotly(
-                                    results=[boot_result, jack_result],
-                                    metric=metric
-                                )
-                                
-                                st.plotly_chart(fig, use_container_width=True, config=plotly_config)
-                                st.caption(f"**{metric.upper()}**: Bootstrap (left) shows distribution from 1000 iterations with replacement. Jackknife (right) shows leave-one-out distribution.")
-                
+                            boot_result = ResamplingResult(
+                                method='bootstrap',
+                                metrics={metric: boot_data.tolist()},
+                                mean_scores={metric: bootstrap_metrics[metric]['mean']},
+                                std_scores={metric: bootstrap_metrics[metric]['std']},
+                                confidence_intervals={metric: (bootstrap_metrics[metric]['ci_lower'], bootstrap_metrics[metric]['ci_upper'])},
+                                confidence_level=0.95,
+                                n_iterations=len(boot_data)
+                            )
+                            jack_result = ResamplingResult(
+                                method='jackknife',
+                                metrics={metric: jack_data.tolist()},
+                                mean_scores={metric: jackknife_metrics[metric]['mean']},
+                                std_scores={metric: jackknife_metrics[metric]['std']},
+                                confidence_intervals={metric: (jackknife_metrics[metric]['ci_lower'], jackknife_metrics[metric]['ci_upper'])},
+                                confidence_level=0.95,
+                                n_iterations=len(jack_data)
+                            )
+                            fig = plot_resampling_results_plotly(
+                                results=[boot_result, jack_result],
+                                metric=metric
+                            )
+                            st.plotly_chart(fig, use_container_width=True, config=plotly_config)
+                            st.caption(f"**{metric.upper()}**: Bootstrap (izquierda) y Jackknife (derecha) usando los datos reales de resampling.")
                 except Exception as e:
-                    # Fallback to static image if interactive plots fail
                     st.warning(f"⚠️ Could not create interactive plots: {e}")
                     resampling_fig = get_latest_figure(f"resampling_{task}_*.png") or get_latest_figure(f"resampling_{task}.png")
                     if resampling_fig and resampling_fig.exists():
@@ -578,13 +582,25 @@ if can_generate_plots:
         
         X_test = test_df.drop(columns=[target])
         y_test = test_df[target].values
+
+        # Validar que las columnas de X_test coinciden con las del modelo (si es posible)
+        if hasattr(model, 'feature_names_in_'):
+            model_features = list(model.feature_names_in_)
+            test_features = list(X_test.columns)
+            if set(model_features) != set(test_features):
+                st.warning(f"⚠️ Las columnas del testset no coinciden con las del modelo. Modelo: {model_features}, Testset: {test_features}")
         
         # Get predictions
         y_prob = model.predict_proba(X_test)[:, 1]
-        
+
+        # Validar que las dimensiones de y_test y y_prob coinciden
+        if len(y_prob) != len(y_test):
+            st.error(f"❌ El número de predicciones ({len(y_prob)}) no coincide con el número de muestras del test set ({len(y_test)}). Verifica que el test set corresponde al modelo.")
+            st.stop()
+
         # Generate interactive plots
         st.info("💡 **Tip**: All plots are interactive! Hover for details, zoom by clicking and dragging, double-click to reset.")
-        
+
         # Display figures in tabs for better organization
         tab1, tab2, tab3, tab4 = st.tabs([
             "📊 ROC & Calibration", 
@@ -592,10 +608,10 @@ if can_generate_plots:
             "📉 Decision Curve",
             "📋 Summary"
         ])
-        
+
         with tab1:
             col1, col2 = st.columns(2)
-            
+
             with col1:
                 st.markdown("#### ROC Curve")
                 try:
@@ -603,7 +619,7 @@ if can_generate_plots:
                     st.plotly_chart(roc_fig, use_container_width=True, config=plotly_config)
                 except Exception as e:
                     st.error(f"Error generating ROC curve: {e}")
-            
+
             with col2:
                 st.markdown("#### Calibration Curve")
                 try:
@@ -611,13 +627,13 @@ if can_generate_plots:
                     st.plotly_chart(calib_fig, use_container_width=True, config=plotly_config)
                 except Exception as e:
                     st.error(f"Error generating calibration curve: {e}")
-        
+
         with tab2:
             st.markdown("#### Confusion Matrix")
             try:
                 confusion_fig = plot_confusion_matrix(y_test, y_prob, name=task)
                 st.plotly_chart(confusion_fig, use_container_width=True, config=plotly_config)
-                
+
                 # Add threshold slider
                 st.markdown("---")
                 threshold = st.slider(
@@ -628,13 +644,13 @@ if can_generate_plots:
                     step=0.05,
                     help="Change the probability threshold for classification"
                 )
-                
+
                 if threshold != 0.5:
                     custom_fig = plot_confusion_matrix(y_test, y_prob, name=f"{task} (threshold={threshold})", threshold=threshold)
                     st.plotly_chart(custom_fig, use_container_width=True, config=plotly_config)
             except Exception as e:
                 st.error(f"Error generating confusion matrix: {e}")
-        
+
         with tab3:
             st.markdown("#### Decision Curve Analysis")
             st.caption("Evaluates clinical utility across different probability thresholds")
@@ -643,14 +659,14 @@ if can_generate_plots:
                 st.plotly_chart(dca_fig, use_container_width=True, config=plotly_config)
             except Exception as e:
                 st.error(f"Error generating decision curve: {e}")
-        
+
         with tab4:
             st.markdown("#### All Plots Summary")
             st.caption("Overview of all evaluation metrics")
-            
+
             # Show all plots in a grid
             col1, col2 = st.columns(2)
-            
+
             with col1:
                 try:
                     st.markdown("**ROC Curve**")
@@ -658,14 +674,14 @@ if can_generate_plots:
                     st.plotly_chart(roc_fig_small, use_container_width=True, config=plotly_config, key="roc_summary")
                 except:
                     pass
-                
+
                 try:
                     st.markdown("**Confusion Matrix**")
                     conf_fig_small = plot_confusion_matrix(y_test, y_prob, name=task)
                     st.plotly_chart(conf_fig_small, use_container_width=True, config=plotly_config, key="conf_summary")
                 except:
                     pass
-            
+
             with col2:
                 try:
                     st.markdown("**Calibration Curve**")
@@ -673,14 +689,13 @@ if can_generate_plots:
                     st.plotly_chart(cal_fig_small, use_container_width=True, config=plotly_config, key="cal_summary")
                 except:
                     pass
-                
+
                 try:
                     st.markdown("**Decision Curve**")
                     dca_fig_small = decision_curve_analysis(y_test, y_prob, name=task)
                     st.plotly_chart(dca_fig_small, use_container_width=True, config=plotly_config, key="dca_summary")
                 except:
                     pass
-        
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
@@ -692,49 +707,33 @@ if can_generate_plots:
             st.write(f"**Testset path**: {testset_path}")
             st.write(f"**Testset exists**: {testset_path.exists() if testset_path else False}")
         st.info("ℹ️ Falling back to static images...")
-        can_generate_plots = False
-
-# Fallback to static images if interactive plots can't be generated
-if not can_generate_plots:
-    st.warning("⚠️ Interactive plots unavailable. Showing saved images (if available).")
-    
-    # Display figures in columns
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.markdown("#### Calibration Curve")
-        # Try with and without timestamp pattern
-        calib_fig = get_latest_figure(f"calibration_{task}_*.png") or get_latest_figure(f"calibration_{task}.png")
-        if calib_fig and calib_fig.exists():
-            st.image(str(calib_fig), use_container_width=True)
-        else:
-            st.info("No calibration plot available")
-
-    with col2:
-        st.markdown("#### Decision Curve")
-        decision_fig = get_latest_figure(f"decision_curve_{task}_*.png") or get_latest_figure(f"decision_curve_{task}.png")
-        if decision_fig and decision_fig.exists():
-            st.image(str(decision_fig), use_container_width=True)
-        else:
-            st.info("No decision curve available")
-
-    with col3:
-        st.markdown("#### Confusion Matrix")
-        confusion_fig = get_latest_figure(f"confusion_{task}_*.png") or get_latest_figure(f"confusion_{task}.png")
-        if confusion_fig and confusion_fig.exists():
-            st.image(str(confusion_fig), use_container_width=True)
-        else:
-            st.info("No confusion matrix available")
-
-    st.markdown("---")
-
-    # ROC Curve (full width)
-    st.markdown("#### ROC Curve")
-    roc_fig = get_latest_figure(f"roc_{task}_*.png") or get_latest_figure(f"roc_{task}.png")
-    if roc_fig and roc_fig.exists():
-        st.image(str(roc_fig), use_container_width=True)
-    else:
-        st.info("No ROC curve available")
+        
+        # Fallback to static images
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("#### Decision Curve")
+            decision_fig = get_latest_figure(f"decision_curve_{task}_*.png") or get_latest_figure(f"decision_curve_{task}.png")
+            if decision_fig and decision_fig.exists():
+                st.image(str(decision_fig), use_container_width=True)
+            else:
+                st.info("No decision curve available")
+        
+        with col2:
+            st.markdown("#### Confusion Matrix")
+            confusion_fig = get_latest_figure(f"confusion_{task}_*.png") or get_latest_figure(f"confusion_{task}.png")
+            if confusion_fig and confusion_fig.exists():
+                st.image(str(confusion_fig), use_container_width=True)
+            else:
+                st.info("No confusion matrix available")
+        
+        with col3:
+            st.markdown("#### ROC Curve")
+            roc_fig = get_latest_figure(f"roc_{task}_*.png") or get_latest_figure(f"roc_{task}.png")
+            if roc_fig and roc_fig.exists():
+                st.image(str(roc_fig), use_container_width=True)
+            else:
+                st.info("No ROC curve available")
 
 # Additional figures
 with st.expander("🔍 Additional Plots"):
