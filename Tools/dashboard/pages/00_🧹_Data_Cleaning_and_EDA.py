@@ -277,9 +277,9 @@ def variable_selection_page():
                         st.session_state.variables_to_keep = valid_vars
                         st.session_state.variables_to_drop = available_vars - valid_vars
                         
-                        # Sincronizar directamente el valor del multiselect widget
-                        # Esto es necesario porque Streamlit usa la key como fuente de verdad
-                        st.session_state.multiselect_vars = sorted(list(valid_vars))
+                        # Eliminar el estado del multiselect para que se reconstruya
+                        if 'multiselect_vars' in st.session_state:
+                            del st.session_state.multiselect_vars
                         
                         st.success(f"✅ Selección cargada: {len(valid_vars)} variables")
                         
@@ -372,20 +372,20 @@ def variable_selection_page():
                 all_vars = sorted(df.columns.tolist())
                 st.session_state.variables_to_keep = set(all_vars)
                 st.session_state.variables_to_drop = set()
-                st.session_state.multiselect_vars = all_vars
+                del st.session_state.multiselect_vars  # Eliminar para que se reconstruya
                 st.rerun()
             
             if st.button("❌ Deseleccionar todas", key="deselect_all", use_container_width=True):
                 st.session_state.variables_to_keep = set()
                 st.session_state.variables_to_drop = set(df.columns.tolist())
-                st.session_state.multiselect_vars = []
+                del st.session_state.multiselect_vars  # Eliminar para que se reconstruya
                 st.rerun()
             
             if st.button("🔄 Invertir selección", key="invert_selection", use_container_width=True):
                 old_keep = st.session_state.variables_to_keep.copy()
                 st.session_state.variables_to_keep = st.session_state.variables_to_drop.copy()
                 st.session_state.variables_to_drop = old_keep
-                st.session_state.multiselect_vars = sorted(list(st.session_state.variables_to_keep))
+                del st.session_state.multiselect_vars  # Eliminar para que se reconstruya
                 st.rerun()
     
     # Tab 2: Búsqueda y filtrado
@@ -413,7 +413,8 @@ def variable_selection_page():
                         if st.button("✅ Seleccionar coincidencias", key="select_matching"):
                             st.session_state.variables_to_keep.update(matching_vars)
                             st.session_state.variables_to_drop -= set(matching_vars)
-                            st.session_state.multiselect_vars = sorted(list(st.session_state.variables_to_keep))
+                            if 'multiselect_vars' in st.session_state:
+                                del st.session_state.multiselect_vars  # Eliminar para que se reconstruya
                             st.success(f"✅ {len(matching_vars)} variables añadidas a la selección")
                             st.rerun()
                     
@@ -421,7 +422,8 @@ def variable_selection_page():
                         if st.button("❌ Descartar coincidencias", key="drop_matching"):
                             st.session_state.variables_to_drop.update(matching_vars)
                             st.session_state.variables_to_keep -= set(matching_vars)
-                            st.session_state.multiselect_vars = sorted(list(st.session_state.variables_to_keep))
+                            if 'multiselect_vars' in st.session_state:
+                                del st.session_state.multiselect_vars  # Eliminar para que se reconstruya
                             st.warning(f"🗑️ {len(matching_vars)} variables marcadas para descarte")
                             st.rerun()
                     
@@ -460,13 +462,15 @@ def variable_selection_page():
                 if st.button("✅ Seleccionar por tipo", key="select_by_type", use_container_width=True):
                     st.session_state.variables_to_keep.update(filtered_vars)
                     st.session_state.variables_to_drop -= set(filtered_vars)
-                    st.session_state.multiselect_vars = sorted(list(st.session_state.variables_to_keep))
+                    if 'multiselect_vars' in st.session_state:
+                        del st.session_state.multiselect_vars  # Eliminar para que se reconstruya
                     st.rerun()
                 
                 if st.button("❌ Descartar por tipo", key="drop_by_type", use_container_width=True):
                     st.session_state.variables_to_drop.update(filtered_vars)
                     st.session_state.variables_to_keep -= set(filtered_vars)
-                    st.session_state.multiselect_vars = sorted(list(st.session_state.variables_to_keep))
+                    if 'multiselect_vars' in st.session_state:
+                        del st.session_state.multiselect_vars  # Eliminar para que se reconstruya
                     st.rerun()
     
     # Tab 3: Análisis de calidad
@@ -555,7 +559,8 @@ def variable_selection_page():
             
             st.session_state.variables_to_keep = set(vars_filtered)
             st.session_state.variables_to_drop = set(df.columns) - set(vars_filtered)
-            st.session_state.multiselect_vars = sorted(vars_filtered)
+            if 'multiselect_vars' in st.session_state:
+                del st.session_state.multiselect_vars  # Eliminar para que se reconstruya
             
             st.success(f"✅ Filtros aplicados: {len(vars_filtered)} variables seleccionadas")
             st.rerun()
